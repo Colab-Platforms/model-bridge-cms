@@ -54,7 +54,7 @@ The backend is organized by domain modules and shared infrastructure layers so y
 | Styling | Tailwind CSS v4 |
 | Backend | Node.js, Express 5, TypeScript |
 | Validation | Zod |
-| Database | Prisma 7 + PostgreSQL (expected) |
+| Database | Prisma 7 + PostgreSQL |
 | Auth Utilities | bcryptjs, jsonwebtoken |
 | Security | Helmet, CORS, XSS sanitization, compression |
 
