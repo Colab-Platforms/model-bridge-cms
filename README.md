@@ -56,7 +56,7 @@ The backend is organized by domain modules and shared infrastructure layers so y
 | Validation | Zod |
 | Database | Prisma 7 + PostgreSQL |
 | Auth Utilities | bcryptjs, jsonwebtoken |
-| Security | Helmet, CORS, XSS sanitization, compression |
+| Security | Helmet, CORS, XSS sanitization, compression | etc
 
 ---
 
