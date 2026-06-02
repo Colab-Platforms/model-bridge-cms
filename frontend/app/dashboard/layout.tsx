@@ -18,7 +18,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Wait for client mount so Zustand persist can rehydrate from localStorage
-  // before we decide whether to redirect.
+ 
   useEffect(() => {
     setMounted(true);
   }, []);
