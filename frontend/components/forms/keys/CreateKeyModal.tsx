@@ -28,6 +28,8 @@ const schema = z.object({
   name: z.string().min(1, "Name is required"),
   scopes: z.array(z.enum(SCOPES)).min(1, "Select at least one scope"),
   rateLimit: z.coerce.number().int().min(1, "Must be at least 1"),
+  monthlyLimit: z.string().optional(),  
+
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -50,7 +52,7 @@ export default function CreateKeyModal({ open, onClose }: Props) {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { scopes: [], rateLimit: 60 },
+    defaultValues: { scopes: [], rateLimit: 60, monthlyLimit: "" },
   });
 
   const { mutate, isPending } = useMutation({
@@ -100,10 +102,10 @@ export default function CreateKeyModal({ open, onClose }: Props) {
           >
             {/* Name */}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ck-name">Key name</Label>
+              <Label htmlFor="ck-name">Project name</Label>
               <Input
                 id="ck-name"
-                placeholder="e.g. Production"
+                placeholder="e.g. My Production App"
                 aria-invalid={!!errors.name}
                 {...register("name")}
               />
@@ -180,11 +182,12 @@ export default function CreateKeyModal({ open, onClose }: Props) {
               )}
             </div>
 
-            {/* Rate limit */}
+            {/* Rate limit + Monthly limit */}
+               <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ck-rate">Rate limit (req / min)</Label>
+              <Label htmlFor="ek-rate">Rate limit (req / min)</Label>
               <Input
-                id="ck-rate"
+                id="ek-rate"
                 type="number"
                 min={1}
                 aria-invalid={!!errors.rateLimit}
@@ -196,6 +199,23 @@ export default function CreateKeyModal({ open, onClose }: Props) {
                 </p>
               )}
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ek-monthly">
+                Monthly limit{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <Input
+                id="ek-monthly"
+                type="number"
+                min={1}
+                placeholder="No limit"
+                {...register("monthlyLimit")}
+              />
+            </div>
+          </div>
 
             {apiError && (
               <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">

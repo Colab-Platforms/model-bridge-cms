@@ -116,7 +116,7 @@ export default function KeysPage() {
         </div>
         <Button onClick={() => setCreateOpen(true)} className="shrink-0">
           <Plus className="size-4" />
-          Create new key
+          Create new project
         </Button>
       </div>
 
@@ -141,7 +141,7 @@ export default function KeysPage() {
           </div>
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
-            Create your first key
+            Create your first project
           </Button>
         </div>
       ) : (

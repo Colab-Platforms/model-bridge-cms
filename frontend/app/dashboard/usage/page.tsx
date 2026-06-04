@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import {useSearchParams} from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronDown,
@@ -94,6 +95,8 @@ function fmtTokens(n: number) {
   return n.toLocaleString();
 }
 
+
+
 // ── Status badge ──────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<LogStatus, string> = {
@@ -153,10 +156,25 @@ export default function UsagePage() {
   const [customEnd, setCustomEnd] = useState("");
   const [model, setModel] = useState("");
   const [status, setStatus] = useState("");
+  const [capability, setCapability] = useState("");
   const [apiKeyId, setApiKeyId] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState("timestamp");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+  const requestId = searchParams.get("requestId");
+  if (requestId) {
+    // expand the matching row directly if visible,
+    // or at minimum pass it as a filter to the query
+    setExpandedId(requestId);
+  }
+}, [searchParams]);
+
 
   // Compute effective date range
   const dateRange = useMemo(() => {
@@ -165,10 +183,23 @@ export default function UsagePage() {
     return presetDates(days);
   }, [preset, customStart, customEnd]);
 
+  // toggle sort order or change sort field
+  const toggleSort = (col: string) => {
+    if (sortBy === col) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(col);
+      setSortOrder("desc");
+    }
+  };
+
+
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [preset, customStart, customEnd, model, status, apiKeyId, limit]);
+  }, [preset, customStart, customEnd, model, status, apiKeyId, capability, limit]);
+
+
 
   // Build query params (omit blanks)
   const queryParams = useMemo(() => {
@@ -178,8 +209,11 @@ export default function UsagePage() {
     if (model) p.model = model;
     if (status) p.status = status;
     if (apiKeyId) p.apiKeyId = apiKeyId;
+    if (capability) p.capability = capability;
+    if (sortBy) p.sortBy = sortBy;
+    if (sortOrder) p.sortOrder = sortOrder;
     return p;
-  }, [page, limit, dateRange, model, status, apiKeyId]);
+  }, [page, limit, dateRange, model, status, apiKeyId, capability, sortBy, sortOrder]);
 
   // Usage logs query
   const { data, isLoading, isFetching, refetch } = useQuery<UsageResponse>({
@@ -215,6 +249,29 @@ export default function UsagePage() {
     { key: "90d", label: "90d" },
     { key: "custom", label: "Custom" },
   ];
+
+  // ── Detail row component ─────────────────────────────────────────────────────
+  function SortHead({ col, label, current, order, onToggle, className }: {
+    col: string; label: string; current: string;
+    order: "asc" | "desc"; onToggle: (col: string) => void;
+    className?: string;
+  }) {
+    const active = current === col;
+    return (
+      <TableHead
+        className={cn("cursor-pointer select-none", className)}
+        onClick={() => onToggle(col)}
+      >
+        <span className={cn("flex items-center gap-1", className?.includes("text-right") && "justify-end")}>
+          {label}
+          <span className="text-muted-foreground">
+            {active ? (order === "asc" ? "↑" : "↓") : "↕"}
+          </span>
+        </span>
+      </TableHead>
+    );
+  }
+
 
   return (
     <div className="space-y-5">
@@ -322,15 +379,26 @@ export default function UsagePage() {
 
         {/* Status */}
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">
-            Status
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Status</span>
           <FilterSelect value={status} onChange={setStatus}>
             <option value="">All statuses</option>
             <option value="SUCCESS">Success</option>
             <option value="FAILED">Failed</option>
             <option value="PARTIAL">Partial</option>
             <option value="PENDING">Pending</option>
+          </FilterSelect>
+        </div>
+
+        {/* Capability */}
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground">Capability</span>
+          <FilterSelect value={capability} onChange={setCapability}>
+            <option value="">All capabilities</option>
+            <option value="CHAT">Chat</option>
+            <option value="IMAGE">Image</option>
+            <option value="AUDIO">Audio</option>
+            <option value="VIDEO">Video</option>
+            <option value="EMBEDDING">Embedding</option>
           </FilterSelect>
         </div>
 
@@ -375,14 +443,16 @@ export default function UsagePage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-8" />
-                <TableHead>Timestamp</TableHead>
+                <TableHead>Request ID</TableHead>
+                <SortHead col="timestamp"   label="Timestamp" current={sortBy} order={sortOrder} onToggle={toggleSort} />
                 <TableHead>Model</TableHead>
                 <TableHead>Key</TableHead>
                 <TableHead>Capability</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Prompt</TableHead>
                 <TableHead className="text-right">Completion</TableHead>
-                <TableHead className="text-right">Cost</TableHead>
+                <SortHead col="totalTokens" label="Total"     current={sortBy} order={sortOrder} onToggle={toggleSort} className="text-right" />
+                <SortHead col="costUsd"     label="Cost"      current={sortBy} order={sortOrder} onToggle={toggleSort} className="text-right" />
                 <TableHead className="text-right">Latency</TableHead>
               </TableRow>
             </TableHeader>
@@ -403,6 +473,9 @@ export default function UsagePage() {
                         ) : (
                           <ChevronRight className="size-4 text-muted-foreground" />
                         )}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[100px]">
+                        {log.requestId}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
                         {fmtTimestamp(log.timestamp)}
@@ -427,6 +500,9 @@ export default function UsagePage() {
                       <TableCell className="text-right tabular-nums text-muted-foreground">
                         {fmtTokens(log.completionTokens)}
                       </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {fmtTokens(log.totalTokens)}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {fmtCost(log.costUsd)}
                       </TableCell>
@@ -435,10 +511,11 @@ export default function UsagePage() {
                       </TableCell>
                     </TableRow>
 
+
                     {/* Inline detail panel */}
                     {isExpanded && (
                       <tr className="border-b border-border bg-muted/30">
-                        <td colSpan={10} className="px-6 py-4">
+                        <td colSpan={12} className="px-6 py-4">
                           {detailLoading ? (
                             <div className="space-y-2">
                               <Skeleton className="h-4 w-64" />
@@ -476,17 +553,17 @@ export default function UsagePage() {
                               />
                               {(detail?.errorMessage ||
                                 log.status === "FAILED") && (
-                                <div className="sm:col-span-2 lg:col-span-3">
-                                  <DetailRow
-                                    label="Error"
-                                    value={
-                                      <span className="text-destructive">
-                                        {detail?.errorMessage ?? "Request failed"}
-                                      </span>
-                                    }
-                                  />
-                                </div>
-                              )}
+                                  <div className="sm:col-span-2 lg:col-span-3">
+                                    <DetailRow
+                                      label="Error"
+                                      value={
+                                        <span className="text-destructive">
+                                          {detail?.errorMessage ?? "Request failed"}
+                                        </span>
+                                      }
+                                    />
+                                  </div>
+                                )}
                             </div>
                           )}
                         </td>
