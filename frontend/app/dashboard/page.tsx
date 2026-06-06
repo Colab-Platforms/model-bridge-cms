@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Activity, Key, BarChart3, DollarSign } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   Card,
@@ -9,7 +11,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/store/authStore";
+import api from "@/lib/api";
+
+interface StatsSummary {
+  totalRequests: number;
+  successfulRequests: number;
+  totalTokens: number;
+  totalSpendUsd: number;
+  avgLatencyMs: number;
+}
+
+interface StatsResponse {
+  summary: StatsSummary;
+}
 
 interface StatCard {
   label: string;
@@ -18,35 +34,54 @@ interface StatCard {
   icon: LucideIcon;
 }
 
-const STAT_CARDS: StatCard[] = [
-  {
-    label: "Total Requests",
-    value: "—",
-    description: "All-time API calls",
-    icon: Activity,
-  },
-  {
-    label: "Total Tokens",
-    value: "—",
-    description: "Prompt + completion tokens",
-    icon: BarChart3,
-  },
-  {
-    label: "Total Spend",
-    value: "$0.00",
-    description: "Lifetime cost",
-    icon: DollarSign,
-  },
-  {
-    label: "Active Keys",
-    value: "0",
-    description: "Currently active API keys",
-    icon: Key,
-  },
-];
-
 export default function OverviewPage() {
   const user = useAuthStore((s) => s.user);
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const startDate = thirtyDaysAgo.toISOString().split("T")[0];
+  const endDate = new Date().toISOString().split("T")[0];
+
+  const { data: stats, isLoading } = useQuery<StatsResponse>({
+    queryKey: ["stats", { startDate, endDate }],
+    queryFn: () =>
+      api
+        .get("/api/v1/usage/stats", { params: { startDate, endDate, groupBy: "day" } })
+        .then((r) => r.data),
+  });
+
+  const STAT_CARDS = useMemo<StatCard[]>(
+    () => [
+      {
+        label: "Total Requests",
+        value: stats?.summary.totalRequests.toLocaleString() ?? "—",
+        description: "Last 30 days",
+        icon: Activity,
+      },
+      {
+        label: "Total Tokens",
+        value: stats?.summary.totalTokens.toLocaleString() ?? "—",
+        description: "Prompt + completion tokens",
+        icon: BarChart3,
+      },
+      {
+        label: "Total Spend",
+        value:
+          stats?.summary.totalSpendUsd != null
+            ? `$${stats.summary.totalSpendUsd.toFixed(2)}`
+            : "$0.00",
+        description: "Last 30 days",
+        icon: DollarSign,
+      },
+      {
+        label: "Active Keys",
+        value: "0",
+        description: "Currently active API keys",
+        icon: Key,
+      },
+    ],
+    [stats]
+  );
 
   return (
     <div className="space-y-6">
@@ -71,7 +106,11 @@ export default function OverviewPage() {
               <Icon className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-foreground">{value}</p>
+              {isLoading ? (
+                <Skeleton className="h-7 w-24 rounded-lg" />
+              ) : (
+                <p className="text-2xl font-bold text-foreground">{value}</p>
+              )}
               <p className="mt-1 text-xs text-muted-foreground">{description}</p>
             </CardContent>
           </Card>
