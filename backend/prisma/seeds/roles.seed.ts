@@ -1,30 +1,36 @@
 import prisma from "@root/prisma.js";
 
-/** Default roles many apps start from — edit or add rows for your domain. */
 const DEFAULT_ROLES = [
-  {
-    name: "Administrator",
-    slug: "admin",
-    description: "Full access to manage users, roles, and settings.",
-  },
-  {
-    name: "User",
-    slug: "user",
-    description: "Standard end-user access.",
-  }
+  { name: "Admin" },
+  { name: "SuperAdmin" },
+  { name: "User" },
 ] as const;
 
 export async function seedRoles(): Promise<void> {
-  console.log("   → roles");
-  for (const role of DEFAULT_ROLES) {
-    await prisma.role.upsert({
-      where: { slug: role.slug },
-      update: { name: role.name, description: role.description },
-      create: {
-        name: role.name,
-        slug: role.slug,
-        description: role.description,
-      },
+  console.log("⏳ Seeding roles...");
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const role of DEFAULT_ROLES) {
+        await tx.role.upsert({
+          where: { name: role.name }, 
+          update: {
+            isActive: true,
+            isDeleted: false,
+            deletedAt: null,
+          },
+          create: {
+            name: role.name,
+            isActive: true,
+            isDeleted: false,
+          },
+        });
+      }
     });
+
+    console.log(" Roles seeded successfully!");
+  } catch (error) {
+    console.error("❌ Error seeding roles:", error);
+    throw error; 
   }
 }

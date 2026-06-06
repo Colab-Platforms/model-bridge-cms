@@ -21,7 +21,7 @@ app.use(express.json());
 app.use(sanitizeMiddleware);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
-app.use("/api", routes);
+app.use("/api/v0", routes);
 app.use("/health", (_req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
