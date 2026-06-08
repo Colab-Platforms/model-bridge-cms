@@ -1,1 +1,198 @@
-export {};
+import { ApiKeyStatus, Prisma } from "@prisma/client";
+
+import prisma from "../../../prisma.js";
+import AppError from "../../shared/errors/index.js";
+import { generateApiKey } from "../../utils/generateApiKey.js";
+import STATUS_CODES from "../../utils/statusCodes.js";
+import type {
+  CreateApiKeyInput,
+  GetAllApiKeysQuery,
+  UpdateApiKeyInput,
+} from "./api-keys.types.js";
+
+const apiKeySelect = {
+  id: true,
+  userId: true,
+  projectId: true,
+  name: true,
+  keyPrefix: true,
+  creditLimit: true,
+  limitType: true,
+  status: true,
+  lastUsedAt: true,
+  expiresAt: true,
+  createdAt: true,
+  updatedAt: true,
+  user: {
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+    },
+  },
+  project: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      isActive: true,
+    },
+  },
+} satisfies Prisma.ApiKeySelect;
+
+const apiKeyWhere = (query?: GetAllApiKeysQuery): Prisma.ApiKeyWhereInput => ({
+  isDeleted: false,
+  ...(query?.status ? { status: query.status } : {}),
+  ...(query?.projectId ? { projectId: query.projectId } : {}),
+  ...(query?.userId ? { userId: query.userId } : {}),
+});
+
+const ensureUserAndProject = async (userId: string, projectId: string) => {
+  const [user, project] = await Promise.all([
+    prisma.user.findFirst({
+      where: {
+        id: userId,
+        isDeleted: false,
+      },
+      select: { id: true },
+    }),
+    prisma.project.findFirst({
+      where: {
+        id: projectId,
+        isDeleted: false,
+      },
+      select: { id: true, userId: true },
+    }),
+  ]);
+
+  if (!user) {
+    throw new AppError("User not found", STATUS_CODES.NOT_FOUND);
+  }
+
+  if (!project) {
+    throw new AppError("Project not found", STATUS_CODES.NOT_FOUND);
+  }
+
+  if (project.userId !== userId) {
+    throw new AppError(
+      "Project does not belong to the provided user",
+      STATUS_CODES.BAD_REQUEST
+    );
+  }
+};
+
+export const createApiKeyService = async (body: CreateApiKeyInput) => {
+  await ensureUserAndProject(body.userId, body.projectId);
+
+  const generatedKey = generateApiKey();
+
+  const apiKey = await prisma.apiKey.create({
+    data: {
+      userId: body.userId,
+      projectId: body.projectId,
+      name: body.name,
+      keyPrefix: generatedKey.keyPrefix,
+      keyHash: generatedKey.keyHash,
+      creditLimit: body.creditLimit,
+      limitType: body.limitType,
+      status: body.status ?? ApiKeyStatus.ACTIVE,
+      expiresAt: body.expiresAt,
+    },
+    select: apiKeySelect,
+  });
+
+  return {
+    ...apiKey,
+    apiKey: generatedKey.apiKey,
+  };
+};
+
+export const getAllApiKeysService = async (query: GetAllApiKeysQuery) => {
+  return prisma.apiKey.findMany({
+    where: apiKeyWhere(query),
+    select: apiKeySelect,
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+export const getApiKeyByIdService = async (id: string) => {
+  const apiKey = await prisma.apiKey.findFirst({
+    where: {
+      id,
+      isDeleted: false,
+    },
+    select: apiKeySelect,
+  });
+
+  if (!apiKey) {
+    throw new AppError("API key not found", STATUS_CODES.NOT_FOUND);
+  }
+
+  return apiKey;
+};
+
+export const updateApiKeyService = async (id: string, body: UpdateApiKeyInput) => {
+  const existingApiKey = await prisma.apiKey.findFirst({
+    where: {
+      id,
+      isDeleted: false,
+    },
+    select: { id: true },
+  });
+
+  if (!existingApiKey) {
+    throw new AppError("API key not found", STATUS_CODES.NOT_FOUND);
+  }
+
+  return prisma.apiKey.update({
+    where: { id },
+    data: {
+      ...(body.name !== undefined ? { name: body.name } : {}),
+      ...(body.creditLimit !== undefined ? { creditLimit: body.creditLimit } : {}),
+      ...(body.limitType !== undefined ? { limitType: body.limitType } : {}),
+      ...(body.status !== undefined ? { status: body.status } : {}),
+      ...(body.expiresAt !== undefined ? { expiresAt: body.expiresAt } : {}),
+    },
+    select: apiKeySelect,
+  });
+};
+
+export const getApiKeysByProjectIdService = async (projectId: string) => {
+  return prisma.apiKey.findMany({
+    where: apiKeyWhere({ projectId }),
+    select: apiKeySelect,
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+export const getApiKeysByUserIdService = async (userId: string) => {
+  return prisma.apiKey.findMany({
+    where: apiKeyWhere({ userId }),
+    select: apiKeySelect,
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+export const deleteApiKeyService = async (id: string) => {
+  const existingApiKey = await prisma.apiKey.findFirst({
+    where: {
+      id,
+      isDeleted: false,
+    },
+    select: { id: true },
+  });
+
+  if (!existingApiKey) {
+    throw new AppError("API key not found", STATUS_CODES.NOT_FOUND);
+  }
+
+  return prisma.apiKey.update({
+    where: { id },
+    data: {
+      isDeleted: true,
+      status: ApiKeyStatus.REVOKED,
+    },
+    select: apiKeySelect,
+  });
+};

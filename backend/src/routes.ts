@@ -14,7 +14,7 @@ import pricingRoutes from "./modules/pricing/pricing.route.js";
 import modelsRoutes from "./modules/models/models.route.js";
 import providersRoutes from "./modules/providers/providers.route.js";
 import routingRoutes from "./modules/routing/routing.route.js";
-import completionsRoutes from "./modules/completions/completions.route.js";
+import completionsRoutes from "./modules/chat-completions/completions.route.js";
 import embeddingsRoutes from "./modules/embeddings/embeddings.route.js";
 import imagesRoutes from "./modules/images/images.route.js";
 import usageRoutes from "./modules/usage/usage.route.js";
