@@ -26,6 +26,7 @@ enum ApiKeyStatus {
 }
 
 enum RequestStatus {
+  PENDING
   SUCCESS
   FAILED
   PARTIAL
@@ -198,11 +199,13 @@ model WalletTransaction {
   id                 String                @id @default(cuid(2))
   walletId           String                @map("wallet_id")
   inferenceRequestId  String?               @map("inference_request_id")
+  referenceId        String?               @map("reference_id")
   type               WalletTransactionType
   amount             Decimal               @db.Decimal(18, 8)
   balanceBefore      Decimal?              @map("balance_before") @db.Decimal(18, 8)
   balanceAfter       Decimal?              @map("balance_after") @db.Decimal(18, 8)
   description        String?               @db.Text
+  createdBy          String?               @map("created_by")
   createdAt          DateTime              @default(now()) @map("created_at")
   isDeleted          Boolean               @default(false) @map("is_deleted")
 

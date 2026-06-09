@@ -44,6 +44,7 @@ router.use("/models", modelsRoutes);
 router.use("/providers", providersRoutes);
 router.use("/routing", routingRoutes);
 router.use("/completions", completionsRoutes);
+router.use("/v1/chat/completions", completionsRoutes);
 router.use("/embeddings", embeddingsRoutes);
 router.use("/images", imagesRoutes);
 router.use("/usage", usageRoutes);
