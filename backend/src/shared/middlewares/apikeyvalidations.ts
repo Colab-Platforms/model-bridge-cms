@@ -1,3 +1,4 @@
+import { ApiKeyStatus, UserStatus } from "@prisma/client";
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 
@@ -60,7 +61,17 @@ export const apiKeyAuth = async (
       );
     }
 
-    if (apiKeyRecord.status !== "ACTIVE") {
+    if (apiKeyRecord.isDeleted) {
+      return sendResponse(
+        res,
+        false,
+        null,
+        "API key is deleted",
+        STATUS_CODES.FORBIDDEN
+      );
+    }
+
+    if (apiKeyRecord.status !== ApiKeyStatus.ACTIVE) {
         return sendResponse(
             res,
             false,
@@ -83,6 +94,16 @@ export const apiKeyAuth = async (
       );
     }
 
+    if (apiKeyRecord.project?.isDeleted) {
+      return sendResponse(
+        res,
+        false,
+        null,
+        "Project is deleted",
+        STATUS_CODES.FORBIDDEN
+      );
+    }
+
     if (!apiKeyRecord.project?.isActive) {
       return sendResponse(
         res,
@@ -99,6 +120,16 @@ export const apiKeyAuth = async (
         false,
         null,
         "User account is deleted",
+        STATUS_CODES.FORBIDDEN
+      );
+    }
+
+    if (apiKeyRecord.user?.status !== UserStatus.ACTIVE) {
+      return sendResponse(
+        res,
+        false,
+        null,
+        "User account is inactive",
         STATUS_CODES.FORBIDDEN
       );
     }

@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { WalletStatus } from "@prisma/client";
 
 import prisma from "../../../prisma.js";
 import { sendResponse } from "../../utils/responseUtils.js";
@@ -13,7 +14,7 @@ export const checkCredits = async (
   next: NextFunction
 ) => {
   try {
-    const { model, messages } = req.body;
+    const { model, messages, max_tokens } = req.body;
 
     const user = (req as any).user;
 
@@ -50,11 +51,28 @@ export const checkCredits = async (
       promptText.length / AVG_CHARS_PER_TOKEN
     );
 
-    const maxOutputTokens =
-      modelRecord.maxOutputTokens ?? 0;
+    if (
+      typeof max_tokens === "number" &&
+      modelRecord.maxOutputTokens !== null &&
+      modelRecord.maxOutputTokens !== undefined &&
+      max_tokens > modelRecord.maxOutputTokens
+    ) {
+      return sendResponse(
+        res,
+        false,
+        null,
+        `Requested max_tokens exceeds model limit of ${modelRecord.maxOutputTokens}`,
+        STATUS_CODES.BAD_REQUEST
+      );
+    }
 
-    const inputTokenPrice = Number(modelRecord.inputPricePer1m) / 1_000_000;
-    const outputTokenPrice = Number(modelRecord.outputPricePer1m) / 1_000_000;
+    const maxOutputTokens =
+      typeof max_tokens === "number"
+        ? max_tokens
+        : modelRecord.maxOutputTokens ?? 0;
+
+    const inputTokenPrice = Number(modelRecord.inputPricePerToken ?? 0);
+    const outputTokenPrice = Number(modelRecord.outputPricePerToken ?? 0);
 
     const estimatedInputCost =
       estimatedPromptTokens *
@@ -74,9 +92,10 @@ export const checkCredits = async (
     const totalEstimatedCost =
       estimatedCost + platformFee;
 
-    const wallet = await prisma.wallet.findUnique({
+    const wallet = await prisma.wallet.findFirst({
       where: {
         userId: user.id,
+        isDeleted: false,
       },
     });
 
@@ -87,6 +106,16 @@ export const checkCredits = async (
         null,
         "Wallet not found",
         STATUS_CODES.NOT_FOUND
+      );
+    }
+
+    if (wallet.status !== WalletStatus.ACTIVE) {
+      return sendResponse(
+        res,
+        false,
+        null,
+        "Wallet is inactive",
+        STATUS_CODES.FORBIDDEN
       );
     }
 
@@ -111,6 +140,7 @@ export const checkCredits = async (
       estimatedInputCost,
       estimatedOutputCost,
       platformFee,
+      platformMarkupPercent: PLATFORM_FEE_PERCENT,
       totalEstimatedCost,
     };
 
