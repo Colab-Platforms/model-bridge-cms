@@ -1,6 +1,4 @@
 import { seedProviders } from "./provider.seed.js";
-import { seedRoles } from "./roles.seed.js"; // Note: sometimes TS requires .js extension in imports depending on your module resolution
-import { seedUsers } from "./users.seed.js";
 import prisma from "@root/prisma.js";
 
 async function main() {

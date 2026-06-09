@@ -1,3 +1,4 @@
+import { Request, Response } from 'express';
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -22,7 +23,7 @@ app.use(sanitizeMiddleware);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
 app.use("/api/v0", routes);
-app.use("/health", (_req, res) => {
+app.use("/health", (_req: Request, res: Response) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
