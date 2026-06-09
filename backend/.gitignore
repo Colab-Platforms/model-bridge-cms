@@ -4,4 +4,3 @@ node_modules
 /prisma/generated
 dist
 build
-package-lock.json
