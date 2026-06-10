@@ -13,6 +13,8 @@ export const getAllModelsQuerySchema = z.object({
     .enum(["true", "false"])
     .transform((value) => value === "true")
     .optional(),
+  page: z.coerce.number().int().positive().optional(),
+  pageSize: z.coerce.number().int().positive().max(100).optional(),
 });
 
 export const modelIdParamsValidator = validateParams(modelIdParamsSchema);

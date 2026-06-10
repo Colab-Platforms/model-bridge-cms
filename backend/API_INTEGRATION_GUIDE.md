@@ -5,13 +5,13 @@
 Use this base URL for all app API calls:
 
 ```txt
-{YOUR_BACKEND_URL}/api/v0
+{YOUR_BACKEND_URL}/api/v1
 ```
 
 Example:
 
 ```txt
-http://localhost:5000/api/v0
+http://localhost:5000/api/v1
 ```
 
 ## Health URLs
@@ -20,7 +20,7 @@ Basic health endpoints:
 
 ```txt
 GET {YOUR_BACKEND_URL}/health
-GET {YOUR_BACKEND_URL}/api/v0/health
+GET {YOUR_BACKEND_URL}/api/v1/health
 ```
 
 ## Auth Rules
@@ -170,6 +170,8 @@ Optional query params:
 - `providerId`
 - `slug`
 - `isActive=true|false`
+- `page`
+- `pageSize`
 
 Example:
 
@@ -177,6 +179,59 @@ Example:
 GET /models?isActive=true
 GET /models?slug=gpt-4o
 GET /models?providerId=abc123
+GET /models?page=1&pageSize=10
+GET /models?providerId=abc123&isActive=true&page=2&pageSize=5
+```
+
+Notes:
+- default `page` is `1`
+- default `pageSize` is `10`
+- max `pageSize` is `100`
+
+Paginated response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 10,
+    "totalRecords": 27,
+    "totalPages": 3,
+    "hasNextPage": true,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "id": "cm_model_123",
+        "providerId": "cm_provider_123",
+        "slug": "gpt-4o",
+        "displayName": "GPT-4o",
+        "description": "General-purpose OpenAI model",
+        "contextLength": 128000,
+        "maxOutputTokens": 16384,
+        "tokenizer": "cl100k_base",
+        "inputPricePerToken": "0.00000500",
+        "outputPricePerToken": "0.00001500",
+        "cacheWritePricePerToken": null,
+        "cacheReadPricePerToken": null,
+        "inputModalities": ["text"],
+        "outputModalities": ["text"],
+        "supportedParameters": ["temperature", "max_tokens", "stream"],
+        "defaultForCapabilities": ["chat"],
+        "isActive": true,
+        "createdAt": "2026-06-10T10:00:00.000Z",
+        "updatedAt": "2026-06-10T10:00:00.000Z",
+        "provider": {
+          "id": "cm_provider_123",
+          "slug": "openai",
+          "displayName": "OpenAI",
+          "isActive": true
+        }
+      }
+    ]
+  },
+  "message": "Models fetched successfully"
+}
 ```
 
 ### GET `/models/:id`
@@ -191,7 +246,95 @@ GET /models/cm123abc
 
 ---
 
-## 3. API Keys APIs
+## 3. Projects APIs
+
+Auth:
+
+```http
+Authorization: Bearer <USER_ACCESS_TOKEN>
+```
+
+### POST `/projects`
+
+Create a project for the currently logged-in user.
+
+Payload:
+
+```json
+{
+  "name": "Frontend App",
+  "slug": "frontend-app",
+  "description": "Project used by the main frontend application",
+  "isActive": true
+}
+```
+
+Required:
+- `name`
+
+Notes:
+- `slug` is optional
+- if `slug` is not sent, backend auto-generates it from `name`
+- project ownership always comes from the logged-in user token
+
+### GET `/projects`
+
+Get all projects for the current logged-in user.
+
+Optional query params:
+- `isActive=true|false`
+- `slug`
+- `search`
+
+Examples:
+
+```txt
+GET /projects
+GET /projects?isActive=true
+GET /projects?slug=frontend-app
+GET /projects?search=frontend
+```
+
+### GET `/projects/:id`
+
+Get one project by internal project id.
+
+Example:
+
+```txt
+GET /projects/cm_project_123 
+```
+
+### PATCH `/projects/:id`
+
+Update project.
+
+Payload:
+
+```json
+{
+  "name": "Frontend App Production",
+  "slug": "frontend-app-prod",
+  "description": "Updated production project",
+  "isActive": true
+}
+```
+
+Notes:
+- at least one field is required
+- `slug: null` can be sent if frontend wants backend to regenerate a slug
+- `description: null` clears the description
+
+### DELETE `/projects/:id`
+
+Soft delete project.
+
+Notes:
+- this also revokes and soft-deletes API keys linked to that project
+
+---
+
+## 4. API Keys APIs
 
 Auth:
 
@@ -275,7 +418,7 @@ Get API keys for one user.
 
 ---
 
-## 4. Wallet APIs
+## 5. Wallet APIs
 
 Auth:
 
@@ -336,7 +479,7 @@ These exist in backend, but should only be used by admin panels:
 
 ---
 
-## 5. Providers APIs
+## 6. Providers APIs
 
 Auth:
 
@@ -392,7 +535,7 @@ Soft delete provider.
 
 ---
 
-## 6. Chat Completions API
+## 7. Chat Completions API
 
 This is the main AI generation endpoint.
 
@@ -402,7 +545,7 @@ Auth:
 Authorization: Bearer <PROJECT_API_KEY>
 ```
 
-### POST `/v1/chat/completions`
+### POST `/chat/completions`
 
 Payload:
 
@@ -466,7 +609,7 @@ When `stream=true`, backend returns SSE.
 Frontend should call this as a streaming endpoint and read chunks from:
 
 ```txt
-POST /v1/chat/completions
+POST /chat/completions
 ```
 
 Example payload:
@@ -492,14 +635,14 @@ data: [DONE]
 
 ---
 
-## 7. Root / Health
+## 8. Root / Health
 
 ### GET `/`
 
 Example:
 
 ```txt
-GET /api/v0/
+GET /api/v1/
 ```
 
 ### GET `/health`
@@ -508,7 +651,7 @@ Available at:
 
 ```txt
 GET /health
-GET /api/v0/health
+GET /api/v1/health
 ```
 
 ---
@@ -525,14 +668,15 @@ GET /api/v0/health
 
 1. Create/login user
 2. Create wallet and add balance
-3. Create project API key
-4. Use that API key in:
+3. Create project using `/projects`
+4. Create project API key using that project id
+5. Use that API key in:
 
 ```http
 Authorization: Bearer <PROJECT_API_KEY>
 ```
 
-5. Call `/v1/chat/completions`
+6. Call `/chat/completions`
 
 ### Important
 

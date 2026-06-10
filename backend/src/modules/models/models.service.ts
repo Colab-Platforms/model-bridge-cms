@@ -2,6 +2,10 @@ import { Prisma } from "@prisma/client";
 
 import prisma from "../../../prisma.js";
 import AppError from "../../shared/errors/index.js";
+import {
+  formatPaginationResponse,
+  getPaginationOptions,
+} from "../../utils/paginationUtils.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import type { GetAllModelsQuery } from "./models.types.js";
 
@@ -36,16 +40,26 @@ const modelSelect = {
 } satisfies Prisma.ModelSelect;
 
 export const getAllModelsService = async (query: GetAllModelsQuery) => {
-  return prisma.model.findMany({
-    where: {
-      isDeleted: false,
-      ...(query.providerId ? { providerId: query.providerId } : {}),
-      ...(query.slug ? { slug: query.slug } : {}),
-      ...(typeof query.isActive === "boolean" ? { isActive: query.isActive } : {}),
-    },
-    select: modelSelect,
-    orderBy: { createdAt: "desc" },
-  });
+  const { take, skip, page, pageSize } = getPaginationOptions(query, 10);
+  const where: Prisma.ModelWhereInput = {
+    isDeleted: false,
+    ...(query.providerId ? { providerId: query.providerId } : {}),
+    ...(query.slug ? { slug: query.slug } : {}),
+    ...(typeof query.isActive === "boolean" ? { isActive: query.isActive } : {}),
+  };
+
+  const [models, totalRecords] = await Promise.all([
+    prisma.model.findMany({
+      where,
+      select: modelSelect,
+      orderBy: { createdAt: "desc" },
+      take,
+      skip,
+    }),
+    prisma.model.count({ where }),
+  ]);
+
+  return formatPaginationResponse(models, totalRecords, page, pageSize);
 };
 
 export const getModelByIdService = async (id: string) => {
