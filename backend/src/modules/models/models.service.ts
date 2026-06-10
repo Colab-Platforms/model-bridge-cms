@@ -39,6 +39,32 @@ const modelSelect = {
   },
 } satisfies Prisma.ModelSelect;
 
+const formatDecimalValue = (value: Prisma.Decimal | null) => {
+  if (value === null) {
+    return null;
+  }
+
+  const decimalPlaces = value.decimalPlaces();
+  return value.toFixed(decimalPlaces);
+};
+
+const formatModelPriceFields = <
+  T extends {
+    inputPricePerToken: Prisma.Decimal | null;
+    outputPricePerToken: Prisma.Decimal | null;
+    cacheWritePricePerToken: Prisma.Decimal | null;
+    cacheReadPricePerToken: Prisma.Decimal | null;
+  },
+>(
+  model: T
+) => ({
+  ...model,
+  inputPricePerToken: formatDecimalValue(model.inputPricePerToken),
+  outputPricePerToken: formatDecimalValue(model.outputPricePerToken),
+  cacheWritePricePerToken: formatDecimalValue(model.cacheWritePricePerToken),
+  cacheReadPricePerToken: formatDecimalValue(model.cacheReadPricePerToken),
+});
+
 export const getAllModelsService = async (query: GetAllModelsQuery) => {
   const { take, skip, page, pageSize } = getPaginationOptions(query, 10);
   const where: Prisma.ModelWhereInput = {
@@ -59,7 +85,12 @@ export const getAllModelsService = async (query: GetAllModelsQuery) => {
     prisma.model.count({ where }),
   ]);
 
-  return formatPaginationResponse(models, totalRecords, page, pageSize);
+  return formatPaginationResponse(
+    models.map((model) => formatModelPriceFields(model)),
+    totalRecords,
+    page,
+    pageSize
+  );
 };
 
 export const getModelByIdService = async (id: string) => {
@@ -75,5 +106,5 @@ export const getModelByIdService = async (id: string) => {
     throw new AppError("Model not found", STATUS_CODES.NOT_FOUND);
   }
 
-  return model;
+  return formatModelPriceFields(model);
 };
