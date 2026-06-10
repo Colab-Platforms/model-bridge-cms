@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import api from "@/lib/api";
+import { useProjectStore } from "@/store/projectStore";
 import { cn } from "@/lib/utils";
 import { DailySpendChart } from "@/components/charts/DailySpendChart";
 import { ModelPieChart } from "@/components/charts/ModelPieChart";
@@ -75,6 +76,7 @@ const PRESET_LABELS: { key: Preset; label: string }[] = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function StatisticsPage() {
+  const activeProject = useProjectStore((s) => s.activeProject);
   const [preset, setPreset] = useState<Preset>("30d");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -86,14 +88,14 @@ export default function StatisticsPage() {
   }, [preset, customStart, customEnd]);
 
   const { data, isLoading } = useQuery<StatsResponse>({
-    queryKey: ["stats", dateRange],
+    queryKey: ["stats", dateRange, activeProject?.id],
     queryFn: () =>
       api
         .get("/api/v1/usage/stats", {
-          params: { ...dateRange, groupBy: "day" },
+          params: { ...dateRange, groupBy: "day", projectId: activeProject!.id },
         })
         .then((r) => r.data),
-    enabled: !!dateRange.startDate && !!dateRange.endDate,
+    enabled: !!activeProject && !!dateRange.startDate && !!dateRange.endDate,
   });
 
   const summaryCards = [

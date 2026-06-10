@@ -25,11 +25,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useProjectStore } from "@/store/projectStore";
 import type { ApiKey } from "@/types";
 
 // ── Local types for this endpoint ─────────────────────────────────────────────
 
-type LogStatus = "SUCCESS" | "FAILED" | "PARTIAL" | "PENDING";
+type LogStatus = "SUCCESS" | "FAILED" | "PARTIAL" | "STOPPED";
 
 interface UsageLogItem {
   id: string;
@@ -49,6 +50,11 @@ interface UsageLogItem {
 interface UsageLogDetail extends UsageLogItem {
   finishReason?: string;
   errorMessage?: string;
+  providerCost?: string;
+  platformMarkupPercent?: string;
+  platformMarkup?: string;
+  requestPayload?: Record<string, unknown>;
+  responseMetadata?: Record<string, unknown>;
 }
 
 interface UsageResponse {
@@ -103,7 +109,7 @@ const STATUS_STYLES: Record<LogStatus, string> = {
   SUCCESS: "bg-green-100 text-green-700",
   FAILED: "bg-red-100 text-red-700",
   PARTIAL: "bg-amber-100 text-amber-700",
-  PENDING: "bg-blue-100 text-blue-700",
+  STOPPED: "bg-zinc-100 text-zinc-500",
 };
 
 function StatusBadge({ status }: { status: LogStatus }) {
@@ -151,6 +157,7 @@ function FilterSelect({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function UsagePage() {
+  const activeProject = useProjectStore((s) => s.activeProject);
   const [preset, setPreset] = useState<Preset>("7d");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -161,6 +168,8 @@ export default function UsagePage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showPayload, setShowPayload] = useState(false);
+  const [showResponse, setShowResponse] = useState(false);
   const [sortBy, setSortBy] = useState("timestamp");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -199,11 +208,18 @@ export default function UsagePage() {
     setPage(1);
   }, [preset, customStart, customEnd, model, status, apiKeyId, capability, limit]);
 
+  // Reset JSON panel visibility when a different row is expanded
+  useEffect(() => {
+    setShowPayload(false);
+    setShowResponse(false);
+  }, [expandedId]);
+
 
 
   // Build query params (omit blanks)
   const queryParams = useMemo(() => {
     const p: Record<string, string | number> = { page, limit };
+    if (activeProject?.id) p.projectId = activeProject.id;
     if (dateRange.startDate) p.startDate = dateRange.startDate;
     if (dateRange.endDate) p.endDate = dateRange.endDate;
     if (model) p.model = model;
@@ -213,19 +229,22 @@ export default function UsagePage() {
     if (sortBy) p.sortBy = sortBy;
     if (sortOrder) p.sortOrder = sortOrder;
     return p;
-  }, [page, limit, dateRange, model, status, apiKeyId, capability, sortBy, sortOrder]);
+  }, [page, limit, activeProject?.id, dateRange, model, status, apiKeyId, capability, sortBy, sortOrder]);
 
   // Usage logs query
   const { data, isLoading, isFetching, refetch } = useQuery<UsageResponse>({
     queryKey: ["usage", queryParams],
     queryFn: () =>
       api.get("/api/v1/usage", { params: queryParams }).then((r) => r.data),
+    enabled: !!activeProject,
   });
 
   // API keys for the filter dropdown
   const { data: keys = [] } = useQuery<ApiKey[]>({
-    queryKey: ["keys"],
-    queryFn: () => api.get("/api/v1/keys").then((r) => r.data),
+    queryKey: ["keys", activeProject?.id],
+    queryFn: () =>
+      api.get("/api/v1/keys", { params: { projectId: activeProject!.id } }).then((r) => r.data),
+    enabled: !!activeProject,
   });
 
   // Detail fetch for expanded row
@@ -385,7 +404,7 @@ export default function UsagePage() {
             <option value="SUCCESS">Success</option>
             <option value="FAILED">Failed</option>
             <option value="PARTIAL">Partial</option>
-            <option value="PENDING">Pending</option>
+            <option value="STOPPED">Stopped</option>
           </FilterSelect>
         </div>
 
@@ -515,44 +534,54 @@ export default function UsagePage() {
                     {/* Inline detail panel */}
                     {isExpanded && (
                       <tr className="border-b border-border bg-muted/30">
-                        <td colSpan={12} className="px-6 py-4">
+                        <td colSpan={12} className="px-6 py-5 space-y-5">
                           {detailLoading ? (
                             <div className="space-y-2">
                               <Skeleton className="h-4 w-64" />
                               <Skeleton className="h-4 w-48" />
+                              <Skeleton className="h-4 w-56" />
                             </div>
                           ) : (
-                            <div className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                              <DetailRow
-                                label="Request ID"
-                                value={
-                                  <span className="font-mono text-xs break-all">
-                                    {detail?.requestId ?? log.requestId}
-                                  </span>
-                                }
-                              />
-                              <DetailRow
-                                label="Full timestamp"
-                                value={new Date(log.timestamp).toLocaleString()}
-                              />
-                              <DetailRow
-                                label="Total tokens"
-                                value={fmtTokens(log.totalTokens)}
-                              />
-                              <DetailRow
-                                label="Finish reason"
-                                value={detail?.finishReason ?? "—"}
-                              />
-                              <DetailRow
-                                label="Latency"
-                                value={fmtLatency(log.latencyMs)}
-                              />
-                              <DetailRow
-                                label="Cost"
-                                value={fmtCost(log.costUsd)}
-                              />
-                              {(detail?.errorMessage ||
-                                log.status === "FAILED") && (
+                            <>
+                              {/* ── Summary grid ── */}
+                              <div className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                                <DetailRow
+                                  label="Request ID"
+                                  value={
+                                    <span className="font-mono text-xs break-all">
+                                      {detail?.requestId ?? log.requestId}
+                                    </span>
+                                  }
+                                />
+                                <DetailRow
+                                  label="Timestamp"
+                                  value={new Date(log.timestamp).toLocaleString()}
+                                />
+                                <DetailRow
+                                  label="Model"
+                                  value={<span className="font-mono text-xs">{log.model}</span>}
+                                />
+                                <DetailRow
+                                  label="Prompt tokens"
+                                  value={fmtTokens(log.promptTokens)}
+                                />
+                                <DetailRow
+                                  label="Completion tokens"
+                                  value={fmtTokens(log.completionTokens)}
+                                />
+                                <DetailRow
+                                  label="Total tokens"
+                                  value={fmtTokens(log.totalTokens)}
+                                />
+                                <DetailRow
+                                  label="Finish reason"
+                                  value={detail?.finishReason ?? "—"}
+                                />
+                                <DetailRow
+                                  label="Latency"
+                                  value={fmtLatency(log.latencyMs)}
+                                />
+                                {(detail?.errorMessage || log.status === "FAILED") && (
                                   <div className="sm:col-span-2 lg:col-span-3">
                                     <DetailRow
                                       label="Error"
@@ -564,7 +593,77 @@ export default function UsagePage() {
                                     />
                                   </div>
                                 )}
-                            </div>
+                              </div>
+
+                              {/* ── Cost breakdown ── */}
+                              <div className="rounded-xl border border-border bg-background p-4">
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Cost Breakdown
+                                </p>
+                                <div className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
+                                  <DetailRow
+                                    label="Provider cost"
+                                    value={fmtCost(detail?.providerCost ?? log.costUsd)}
+                                  />
+                                  <DetailRow
+                                    label="Platform markup"
+                                    value={
+                                      detail?.platformMarkupPercent
+                                        ? `${detail.platformMarkupPercent}% → ${fmtCost(detail.platformMarkup ?? "0")}`
+                                        : "—"
+                                    }
+                                  />
+                                  <DetailRow
+                                    label="Total charged"
+                                    value={
+                                      <span className="font-semibold text-foreground">
+                                        {fmtCost(log.costUsd)}
+                                      </span>
+                                    }
+                                  />
+                                </div>
+                              </div>
+
+                              {/* ── Request payload ── */}
+                              {detail?.requestPayload && (
+                                <div className="rounded-xl border border-border bg-background">
+                                  <button
+                                    onClick={() => setShowPayload((v) => !v)}
+                                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/40 transition-colors rounded-xl"
+                                  >
+                                    {showPayload
+                                      ? <ChevronDown className="size-3.5 text-muted-foreground" />
+                                      : <ChevronRight className="size-3.5 text-muted-foreground" />}
+                                    Request Payload
+                                  </button>
+                                  {showPayload && (
+                                    <pre className="max-h-64 overflow-auto border-t border-border px-4 py-3 text-xs text-foreground font-mono leading-relaxed">
+                                      {JSON.stringify(detail.requestPayload, null, 2)}
+                                    </pre>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* ── Response metadata ── */}
+                              {detail?.responseMetadata && (
+                                <div className="rounded-xl border border-border bg-background">
+                                  <button
+                                    onClick={() => setShowResponse((v) => !v)}
+                                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/40 transition-colors rounded-xl"
+                                  >
+                                    {showResponse
+                                      ? <ChevronDown className="size-3.5 text-muted-foreground" />
+                                      : <ChevronRight className="size-3.5 text-muted-foreground" />}
+                                    Response Metadata
+                                  </button>
+                                  {showResponse && (
+                                    <pre className="max-h-64 overflow-auto border-t border-border px-4 py-3 text-xs text-foreground font-mono leading-relaxed">
+                                      {JSON.stringify(detail.responseMetadata, null, 2)}
+                                    </pre>
+                                  )}
+                                </div>
+                              )}
+                            </>
                           )}
                         </td>
                       </tr>

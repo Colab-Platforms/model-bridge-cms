@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/store/authStore";
+import { useProjectStore } from "@/store/projectStore";
 import api from "@/lib/api";
 
 interface StatsSummary {
@@ -36,6 +37,7 @@ interface StatCard {
 
 export default function OverviewPage() {
   const user = useAuthStore((s) => s.user);
+  const activeProject = useProjectStore((s) => s.activeProject);
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -43,11 +45,14 @@ export default function OverviewPage() {
   const endDate = new Date().toISOString().split("T")[0];
 
   const { data: stats, isLoading } = useQuery<StatsResponse>({
-    queryKey: ["stats", { startDate, endDate }],
+    queryKey: ["stats", { startDate, endDate, projectId: activeProject?.id }],
     queryFn: () =>
       api
-        .get("/api/v1/usage/stats", { params: { startDate, endDate, groupBy: "day" } })
+        .get("/api/v1/usage/stats", {
+          params: { startDate, endDate, groupBy: "day", projectId: activeProject!.id },
+        })
         .then((r) => r.data),
+    enabled: !!activeProject,
   });
 
   const STAT_CARDS = useMemo<StatCard[]>(

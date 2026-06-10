@@ -1,10 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 
+import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import {
   SidebarProvider,
   SidebarInset,
@@ -19,21 +21,23 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import api from "@/lib/api";
+import type { Project } from "@/types";
 
 const ROUTE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   keys: "API Keys",
   usage: "Usage Logs",
+  activity: "Activity Log",
   stats: "Statistics",
   credits: "Credits & Wallet",
-  profile: "Profile",
+  projects: "Projects",
+  settings: "Settings",
 };
 
 function useBreadcrumbs() {
   const pathname = usePathname();
-  // e.g. "/dashboard/keys" → ["dashboard", "keys"]
   const segments = pathname.split("/").filter(Boolean);
-
   return segments.map((seg, i) => ({
     label: ROUTE_LABELS[seg] ?? seg,
     href: "/" + segments.slice(0, i + 1).join("/"),
@@ -46,7 +50,9 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const setProjects = useProjectStore((s) => s.setProjects);
   const user = useAuthStore((s) => s.user);
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const crumbs = useBreadcrumbs();
 
@@ -54,11 +60,26 @@ export default function DashboardLayout({
     setMounted(true);
   }, []);
 
-  // useEffect(() => {
-  //   if (mounted && !user) {
-  //     router.replace("/auth/login");
-  //   }
-  // }, [mounted, user, router]);
+
+const { data: fetchedProjects } = useQuery<Project[]>({
+  queryKey: ["projects"],
+  queryFn: () => api.get("/projects").then((r) => r.data),
+  enabled: mounted,
+  staleTime: 5 * 60 * 1000,
+});
+
+useEffect(() => {
+  if (fetchedProjects) {
+    setProjects(fetchedProjects);
+  }
+}, [fetchedProjects, setProjects]);
+
+
+  useEffect(() => {
+    if (mounted && !user) {
+      router.replace("/auth/login");
+    }
+  }, [mounted, user, router]);
 
   if (!mounted) return null;
 

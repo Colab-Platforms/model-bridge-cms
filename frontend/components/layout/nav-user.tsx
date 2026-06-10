@@ -98,9 +98,9 @@ export function NavUser() {
             <DropdownMenuSeparator />
 
             <DropdownMenuGroup>
-              <DropdownMenuItem onSelect={() => router.push("/dashboard/profile")}>
+              <DropdownMenuItem onSelect={() => router.push("/dashboard/settings")}>
                 <CircleUserRoundIcon />
-                Profile
+                Settings
               </DropdownMenuItem>
             </DropdownMenuGroup>
 

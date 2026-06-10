@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +14,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -36,6 +35,7 @@ import EditKeyModal from "@/components/forms/keys/EditKeyModal";
 import OneTimeKeyDisplay from "@/components/forms/keys/OneTimeKeyDisplay";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useProjectStore } from "@/store/projectStore";
 import type { ApiKey } from "@/types";
 
 function fmt(str: string | null | undefined) {
@@ -54,7 +54,9 @@ function StatusPill({ status }: { status: ApiKey["status"] }) {
         "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
         status === "ACTIVE" && "bg-green-100 text-green-700",
         status === "REVOKED" && "bg-red-100 text-red-700",
-        status === "EXPIRED" && "bg-zinc-100 text-zinc-500"
+        status === "INACTIVE" && "bg-zinc-100 text-zinc-500",
+        status === "EXPIRED" && "bg-zinc-100 text-zinc-500",
+        status === "EXHAUSTED" && "bg-orange-100 text-orange-700"
       )}
     >
       {status}
@@ -64,6 +66,7 @@ function StatusPill({ status }: { status: ApiKey["status"] }) {
 
 export default function KeysPage() {
   const qc = useQueryClient();
+  const activeProject = useProjectStore((s) => s.activeProject);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editKey, setEditKey] = useState<ApiKey | null>(null);
@@ -72,12 +75,14 @@ export default function KeysPage() {
   const [rotatedApiKey, setRotatedApiKey] = useState<string | null>(null);
 
   const { data: keys = [], isLoading } = useQuery<ApiKey[]>({
-    queryKey: ["keys"],
-    queryFn: () => api.get("/api/v1/keys").then((r) => r.data),
+    queryKey: ["keys", activeProject?.id],
+    queryFn: () =>
+      api.get("/api-keys", { params: { projectId: activeProject!.id } }).then((r) => r.data),
+    enabled: !!activeProject,
   });
 
   const revokeMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/api/v1/keys/${id}`),
+    mutationFn: (id: string) => api.delete(`/api-keys/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["keys"] });
       setRevokeKey(null);
@@ -89,9 +94,9 @@ export default function KeysPage() {
 
   const rotateMutation = useMutation({
     mutationFn: (id: string) =>
-      api.post(`/api/v1/keys/${id}/rotate`).then((r) => r.data),
+      api.post(`/api-keys/${id}/rotate`).then((r) => r.data),
     onSuccess: (data) => {
-      setRotatedApiKey(data.key);
+      setRotatedApiKey(data.apiKey);
       qc.invalidateQueries({ queryKey: ["keys"] });
     },
     onError: (err) => {
@@ -116,7 +121,7 @@ export default function KeysPage() {
         </div>
         <Button onClick={() => setCreateOpen(true)} className="shrink-0">
           <Plus className="size-4" />
-          Create new project
+          Create new key
         </Button>
       </div>
 
@@ -141,7 +146,7 @@ export default function KeysPage() {
           </div>
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
-            Create your first project
+            Create your first key
           </Button>
         </div>
       ) : (
@@ -152,8 +157,7 @@ export default function KeysPage() {
                 <TableHead>Key</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Scopes</TableHead>
-                <TableHead>Rate limit</TableHead>
+                <TableHead>Credit limit</TableHead>
                 <TableHead>Last used</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="w-10" />
@@ -169,17 +173,10 @@ export default function KeysPage() {
                   <TableCell>
                     <StatusPill status={key.status} />
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {key.scopes.map((scope) => (
-                        <Badge key={scope} variant="secondary" className="text-xs">
-                          {scope}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {key.rateLimit}/min
+                    {key.creditLimit
+                      ? `$${key.creditLimit} / ${key.limitType?.toLowerCase() ?? "period"}`
+                      : "No limit"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {fmt(key.lastUsedAt)}

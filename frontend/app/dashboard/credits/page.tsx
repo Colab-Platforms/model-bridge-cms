@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CoinsIcon, ExternalLink, FileText } from "lucide-react";
 
 import {
@@ -35,7 +35,7 @@ import { useAuthStore } from "@/store/authStore";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type TxType =
-  | "CREDIT_PURCHASE"
+  | "TOPUP"
   | "CREDIT_GRANT"
   | "USAGE_DEDUCTION"
   | "REFUND"
@@ -44,12 +44,13 @@ type TxType =
 interface CreditTransaction {
   id: string;
   type: TxType;
-  amountUsd: string;
+  amount: string;
   balanceBefore: string;
   balanceAfter: string;
   description: string | null;
   createdAt: string;
-  usageLogId: string | null;
+  usageLogId?: string | null;
+  inferenceRequestId?: string | null;
 }
 
 interface TransactionsResponse {
@@ -63,10 +64,8 @@ type Preset = "7d" | "30d" | "90d" | "custom";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const SUPPORT_EMAIL = "support@modelbridge.ai";
-
 const TYPE_STYLES: Record<TxType, string> = {
-  CREDIT_PURCHASE: "bg-green-100 text-green-700",
+  TOPUP:           "bg-green-100 text-green-700",
   CREDIT_GRANT:    "bg-blue-100 text-blue-700",
   USAGE_DEDUCTION: "bg-red-100 text-red-700",
   REFUND:          "bg-emerald-100 text-emerald-700",
@@ -74,7 +73,7 @@ const TYPE_STYLES: Record<TxType, string> = {
 };
 
 const TYPE_LABELS: Record<TxType, string> = {
-  CREDIT_PURCHASE: "Purchase",
+  TOPUP:           "Top-up",
   CREDIT_GRANT:    "Grant",
   USAGE_DEDUCTION: "Deduction",
   REFUND:          "Refund",
@@ -84,13 +83,13 @@ const TYPE_LABELS: Record<TxType, string> = {
 function isCredit(tx: CreditTransaction): boolean {
   if (tx.type === "USAGE_DEDUCTION") return false;
   if (
-    tx.type === "CREDIT_PURCHASE" ||
+    tx.type === "TOPUP" ||
     tx.type === "CREDIT_GRANT" ||
     tx.type === "REFUND"
   )
     return true;
   // ADJUSTMENT: follow the amount sign
-  return parseFloat(tx.amountUsd) >= 0;
+  return parseFloat(tx.amount) >= 0;
 }
 
 function fmtUsd(raw: string) {
@@ -127,37 +126,94 @@ const PRESET_LABELS: { key: Preset; label: string }[] = [
 // ── TopUpModal ────────────────────────────────────────────────────────────────
 
 function TopUpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [copied, setCopied] = useState(false);
+  const qc = useQueryClient();
+  const [amount, setAmount]       = useState("");
+  const [description, setDesc]    = useState("");
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState("");
 
-  const copy = () => {
-    navigator.clipboard.writeText(SUPPORT_EMAIL);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const reset = () => { setAmount(""); setDesc(""); setError(""); };
+
+  const handleClose = () => { reset(); onClose(); };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const n = parseFloat(amount);
+    if (!n || n <= 0) { setError("Enter a valid amount greater than 0."); return; }
+    setLoading(true);
+    setError("");
+    try {
+      await api.post("/wallets/me/add-balance", {
+        amount:      n.toFixed(2),
+        description: description.trim() || undefined,
+        referenceId: `topup-${Date.now()}`,
+      });
+      await qc.invalidateQueries({ queryKey: ["wallet-balance"] });
+      await qc.invalidateQueries({ queryKey: ["wallet-transactions"] });
+      handleClose();
+    } catch {
+      setError("Failed to add credits. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Add Credits</DialogTitle>
           <DialogDescription>
-            To add credits to your account, please contact our support team.
-            Stripe integration is coming soon.
+            Enter the amount you want to add to your balance.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2.5">
-          <span className="flex-1 font-mono text-sm text-foreground">
-            {SUPPORT_EMAIL}
-          </span>
-          <Button variant="outline" size="sm" onClick={copy} className="shrink-0">
-            {copied ? "Copied!" : "Copy"}
-          </Button>
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Amount (USD)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="10.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background pl-7 pr-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">
+              Description <span className="text-muted-foreground font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Monthly top-up"
+              value={description}
+              onChange={(e) => setDesc(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+            />
+          </div>
+
+          {error && <p className="text-sm text-red-500">{error}</p>}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Adding…" : "Add Credits"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
 }
+
 
 // ── FilterSelect ──────────────────────────────────────────────────────────────
 
@@ -215,8 +271,8 @@ export default function CreditsPage() {
   const { data: balanceData, isLoading: balanceLoading } = useQuery<{
     balance: string;
   }>({
-    queryKey: ["credits-balance"],
-    queryFn: () => api.get("/api/v1/credits/balance").then((r) => r.data),
+    queryKey: ["wallet-balance"],
+    queryFn: () => api.get("/wallets/balance").then((r) => r.data),
   });
 
   // Sync live balance into authStore → sidebar badge updates automatically
@@ -237,11 +293,17 @@ export default function CreditsPage() {
   }, [page, limit, dateRange, typeFilter]);
 
   const { data, isLoading } = useQuery<TransactionsResponse>({
-    queryKey: ["credits-transactions", queryParams],
+    queryKey: ["wallet-transactions", queryParams],
     queryFn: () =>
       api
-        .get("/api/v1/credits/transactions", { params: queryParams })
-        .then((r) => r.data),
+        .get("/wallets/transactions", { params: queryParams })
+        .then((r) => {
+          const raw = r.data;
+          if (Array.isArray(raw)) {
+            return { data: raw as CreditTransaction[], total: raw.length, page: 1, limit: raw.length };
+          }
+          return raw as TransactionsResponse;
+        }),
   });
 
   const txs        = data?.data ?? [];
@@ -344,7 +406,7 @@ export default function CreditsPage() {
           </span>
           <FilterSelect value={typeFilter} onChange={setTypeFilter}>
             <option value="">All types</option>
-            <option value="CREDIT_PURCHASE">Purchase</option>
+            <option value="TOPUP">Top-up</option>
             <option value="CREDIT_GRANT">Grant</option>
             <option value="USAGE_DEDUCTION">Deduction</option>
             <option value="REFUND">Refund</option>
@@ -413,7 +475,7 @@ export default function CreditsPage() {
                       )}
                     >
                       {credit ? "+" : "-"}
-                      {fmtUsd(tx.amountUsd)}
+                      {fmtUsd(tx.amount)}
                     </TableCell>
 
                     <TableCell className="text-right tabular-nums text-muted-foreground">
@@ -429,11 +491,11 @@ export default function CreditsPage() {
                     </TableCell>
 
                     <TableCell>
-                      {tx.usageLogId && (
+                      {(tx.usageLogId ?? tx.inferenceRequestId) && (
                         <button
                           onClick={() =>
                             router.push(
-                              `/dashboard/usage?requestId=${tx.usageLogId}`
+                              `/dashboard/usage?requestId=${tx.usageLogId ?? tx.inferenceRequestId}`
                             )
                           }
                           title="View usage log"
