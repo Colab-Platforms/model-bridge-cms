@@ -40,7 +40,7 @@ export class WalletTransactionService {
   ) {
     return this.createTransaction(tx, {
       ...input,
-      type: WalletTransactionType.CREDIT_GRANT,
+      type: WalletTransactionType.TOPUP,
     });
   }
 

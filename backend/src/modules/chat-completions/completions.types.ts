@@ -114,6 +114,7 @@ export interface StreamAccumulator {
   model: string;
   usage?: ProviderUsage;
   finishReason?: string;
+  content?: string;
 }
 
 export type UnifiedChatMessages = ProviderChatMessage[];

@@ -33,6 +33,7 @@ Used by:
 - wallets
 - api-keys
 - providers
+- usage
 
 Header:
 
@@ -479,7 +480,252 @@ These exist in backend, but should only be used by admin panels:
 
 ---
 
-## 6. Providers APIs
+## 6. Usage APIs
+
+Auth:
+
+```http
+Authorization: Bearer <USER_ACCESS_TOKEN>
+```
+
+These endpoints return OpenRouter-style usage/log data for the logged-in user.
+
+Notes:
+- normal users only receive their own usage data
+- `userId` can be sent only for admin/internal usage
+- platform markup fields are intentionally not returned
+
+### GET `/usage/logs`
+
+Get paginated inference request logs.
+
+Optional query params:
+- `userId`
+- `projectId`
+- `apiKeyId`
+- `modelId`
+- `providerId`
+- `status`
+- `requestType`
+- `stream=true|false`
+- `search`
+- `dateRangePreset`
+- `from`
+- `to`
+- `sort`
+- `page`
+- `pageSize`
+
+Supported `dateRangePreset` values:
+- `today`
+- `past_24h`
+- `past_7d`
+- `past_30d`
+- `past_1y`
+- `custom`
+
+Supported `sort` fields:
+- `createdAt`
+- `totalCost`
+- `totalTokens`
+- `promptTokens`
+- `completionTokens`
+- `latencyMs`
+- `responseCompletionTimeMs`
+- `status`
+
+Examples:
+
+```txt
+GET /usage/logs
+GET /usage/logs?dateRangePreset=past_7d
+GET /usage/logs?apiKeyId=cm_api_key_123&dateRangePreset=past_30d
+GET /usage/logs?projectId=cm_project_123&status=SUCCESS&sort=createdAt:desc
+GET /usage/logs?search=gpt&page=1&pageSize=20
+GET /usage/logs?dateRangePreset=custom&from=2026-06-01T00:00:00.000Z&to=2026-06-11T23:59:59.000Z
+```
+
+Paginated response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 2,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "id": "cm_inf_123",
+        "userId": "cm_user_123",
+        "projectId": "cm_project_123",
+        "apiKeyId": "cm_key_123",
+        "modelId": "cm_model_123",
+        "requestType": "CHAT",
+        "requestedModelSlug": "gpt-5.4",
+        "resolvedModelSlug": "gpt-5.4",
+        "stream": false,
+        "status": "SUCCESS",
+        "responseCompletionTimeMs": 2200,
+        "promptTokens": 812,
+        "completionTokens": 318,
+        "totalTokens": 1130,
+        "totalCost": "0.00680000",
+        "latencyMs": 640,
+        "createdAt": "2026-06-11T10:15:00.000Z",
+        "apiKey": {
+          "id": "cm_key_123",
+          "name": "AI Colab Chat",
+          "keyPrefix": "mb_live_xxx",
+          "status": "ACTIVE"
+        },
+        "project": {
+          "id": "cm_project_123",
+          "name": "AI Colab Chat",
+          "slug": "ai-colab-chat",
+          "isActive": true
+        },
+        "model": {
+          "id": "cm_model_123",
+          "slug": "gpt-5.4",
+          "displayName": "GPT-5.4",
+          "providerId": "cm_provider_123",
+          "provider": {
+            "id": "cm_provider_123",
+            "slug": "openai",
+            "displayName": "OpenAI",
+            "isActive": true
+          }
+        }
+      }
+    ]
+  },
+  "message": "Usage logs fetched successfully"
+}
+```
+
+### GET `/usage/summary`
+
+Get aggregate usage totals for the selected filter set.
+
+Optional query params:
+- `userId`
+- `projectId`
+- `apiKeyId`
+- `modelId`
+- `providerId`
+- `status`
+- `requestType`
+- `stream=true|false`
+- `search`
+- `dateRangePreset`
+- `from`
+- `to`
+
+Examples:
+
+```txt
+GET /usage/summary?dateRangePreset=today
+GET /usage/summary?projectId=cm_project_123&dateRangePreset=past_30d
+GET /usage/summary?dateRangePreset=custom&from=2026-06-01T00:00:00.000Z&to=2026-06-11T23:59:59.000Z
+```
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "range": {
+      "from": "2026-06-04T10:00:00.000Z",
+      "to": "2026-06-11T10:00:00.000Z"
+    },
+    "totals": {
+      "totalRequests": 42,
+      "successRequests": 38,
+      "failedRequests": 2,
+      "stoppedRequests": 1,
+      "pendingRequests": 0,
+      "partialRequests": 1,
+      "promptTokens": 12000,
+      "completionTokens": 8400,
+      "totalTokens": 20400,
+      "totalCost": "0.13700000",
+      "averageLatencyMs": 721.5,
+      "averageResponseCompletionTimeMs": 1880.2
+    }
+  },
+  "message": "Usage summary fetched successfully"
+}
+```
+
+### GET `/usage/timeseries`
+
+Get grouped chart data for the selected date range.
+
+Optional query params:
+- `userId`
+- `projectId`
+- `apiKeyId`
+- `modelId`
+- `providerId`
+- `status`
+- `requestType`
+- `stream=true|false`
+- `search`
+- `dateRangePreset`
+- `from`
+- `to`
+- `granularity=hour|day|week|month`
+
+Examples:
+
+```txt
+GET /usage/timeseries?dateRangePreset=past_7d
+GET /usage/timeseries?apiKeyId=cm_key_123&dateRangePreset=past_30d&granularity=day
+```
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "range": {
+      "from": "2026-06-04T10:00:00.000Z",
+      "to": "2026-06-11T10:00:00.000Z"
+    },
+    "granularity": "day",
+    "series": [
+      {
+        "bucket": "2026-06-09T00:00:00.000Z",
+        "requests": 12,
+        "promptTokens": 4100,
+        "completionTokens": 2900,
+        "totalTokens": 7000,
+        "totalCost": "0.04680000"
+      }
+    ]
+  },
+  "message": "Usage timeseries fetched successfully"
+}
+```
+
+Search behavior:
+- matches requested model slug
+- matches resolved model slug
+- matches API key name
+- matches API key prefix
+- matches project name
+- matches model display name
+- matches provider display name
+
+---
+
+## 7. Providers APIs
 
 Auth:
 
@@ -535,7 +781,7 @@ Soft delete provider.
 
 ---
 
-## 7. Chat Completions API
+## 8. Chat Completions API
 
 This is the main AI generation endpoint.
 
@@ -635,7 +881,7 @@ data: [DONE]
 
 ---
 
-## 8. Root / Health
+## 9. Root / Health
 
 ### GET `/`
 

@@ -5,7 +5,7 @@ import AppError from "../../shared/errors/index.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import prisma from "../../../prisma.js";
 import type { LoginInput, RegisterInput } from "./auth.types.js";
-import { generateToken, verifyToken } from "./auth.utils.js";
+import { generateToken, getTokenExpiryDate, hashToken, verifyToken } from "./auth.utils.js";
 
 const authUserSelect = {
 	id: true,
@@ -42,6 +42,12 @@ export type LoginResult = {
 	tokens: AuthTokens;
 };
 
+type SessionContext = {
+	deviceName?: string;
+	userAgent?: string;
+	ipAddress?: string;
+};
+
 const mapRegisterData = (body: RegisterInput) => ({
 	email: body.email,
 	firstName: body.firstName,
@@ -55,7 +61,61 @@ const mapRegisterData = (body: RegisterInput) => ({
 	timezone: body.timezone,
 });
 
-export const loginService = async (body: LoginInput): Promise<LoginResult> => {
+const buildTokens = (userId: string, email: string): AuthTokens => ({
+	accessToken: generateToken("access", { userId, email }),
+	refreshToken: generateToken("refresh", { userId, email }),
+});
+
+const createSession = async (
+	tx: Prisma.TransactionClient,
+	userId: string,
+	refreshToken: string,
+	context?: SessionContext
+) => {
+	await tx.session.create({
+		data: {
+			userId,
+			refreshTokenHash: hashToken(refreshToken),
+			deviceName: context?.deviceName,
+			userAgent: context?.userAgent,
+			ipAddress: context?.ipAddress,
+			expiresAt: getTokenExpiryDate(refreshToken),
+			absoluteExpiresAt: getTokenExpiryDate(refreshToken),
+			lastUsedAt: new Date(),
+		},
+	});
+};
+
+const issueTokensAndCreateSession = async (
+	tx: Prisma.TransactionClient,
+	user: { id: string; email: string },
+	context?: SessionContext
+) => {
+	const tokens = buildTokens(user.id, user.email);
+	await createSession(tx, user.id, tokens.refreshToken, context);
+	return tokens;
+};
+
+const findActiveSessionByRefreshToken = async (refreshToken: string, userId: string) => {
+	const refreshTokenHash = hashToken(refreshToken);
+
+	return prisma.session.findFirst({
+		where: {
+			userId,
+			refreshTokenHash,
+			revokedAt: null,
+			OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+			absoluteExpiresAt: {
+				gt: new Date(),
+			},
+		},
+	});
+};
+
+export const loginService = async (
+	body: LoginInput,
+	context?: SessionContext
+): Promise<LoginResult> => {
 	const user = await prisma.user.findUnique({
 		where: { email: body.email, isDeleted: false },
 		select: authUserWithPasswordSelect,
@@ -76,21 +136,28 @@ export const loginService = async (body: LoginInput): Promise<LoginResult> => {
 	}
 
 	const { passwordHash: _passwordHash, ...safeUser } = user;
-	const payload = {
-		userId: safeUser.id,
-		email: safeUser.email,
-	};
 
-	return {
-		user: safeUser,
-		tokens: {
-			accessToken: generateToken("access", payload),
-			refreshToken: generateToken("refresh", payload),
-		},
-	};
+	return prisma.$transaction(async (tx) => {
+		const tokens = await issueTokensAndCreateSession(
+			tx,
+			{
+				id: safeUser.id,
+				email: safeUser.email,
+			},
+			context
+		);
+
+		return {
+			user: safeUser,
+			tokens,
+		};
+	});
 };
 
-export const registerService = async (body: RegisterInput): Promise<LoginResult> => {
+export const registerService = async (
+	body: RegisterInput,
+	context?: SessionContext
+): Promise<LoginResult> => {
 	const passwordHash = await bcrypt.hash(body.password, 10);
 
 	try {
@@ -121,16 +188,14 @@ export const registerService = async (body: RegisterInput): Promise<LoginResult>
 
 			return {
 				user: user,
-				tokens: {
-					accessToken: generateToken("access", {
-						userId: user.id,
+				tokens: await issueTokensAndCreateSession(
+					tx,
+					{
+						id: user.id,
 						email: user.email,
-					}),
-					refreshToken: generateToken("refresh", {
-						userId: user.id,
-						email: user.email,
-					}),
-				},
+					},
+					context
+				),
 			};
 		});
 	} catch (error: unknown) {
@@ -147,8 +212,16 @@ export const registerService = async (body: RegisterInput): Promise<LoginResult>
 	}
 };
 
-export const refreshService = async (refreshToken: string): Promise<LoginResult> => {
+export const refreshService = async (
+	refreshToken: string,
+	context?: SessionContext
+): Promise<LoginResult> => {
 	const payload = verifyToken(refreshToken, "refresh");
+	const session = await findActiveSessionByRefreshToken(refreshToken, payload.userId);
+
+	if (!session) {
+		throw new AppError("Refresh session is invalid or expired", STATUS_CODES.UNAUTHORIZED);
+	}
 
 	const user = await prisma.user.findUnique({
 		where: { id: payload.userId, isDeleted: false },
@@ -163,11 +236,70 @@ export const refreshService = async (refreshToken: string): Promise<LoginResult>
 		throw new AppError("User account is not active", STATUS_CODES.FORBIDDEN);
 	}
 
-	return {
-		user,
-		tokens: {
-			accessToken: generateToken("access", { userId: user.id, email: user.email }),
-			refreshToken: generateToken("refresh", { userId: user.id, email: user.email }),
+	return prisma.$transaction(async (tx) => {
+		const tokens = buildTokens(user.id, user.email);
+
+		await tx.session.update({
+			where: {
+				id: session.id,
+			},
+			data: {
+				refreshTokenHash: hashToken(tokens.refreshToken),
+				expiresAt: getTokenExpiryDate(tokens.refreshToken),
+				absoluteExpiresAt: getTokenExpiryDate(tokens.refreshToken),
+				lastUsedAt: new Date(),
+				deviceName: context?.deviceName ?? session.deviceName,
+				userAgent: context?.userAgent ?? session.userAgent,
+				ipAddress: context?.ipAddress ?? session.ipAddress,
+			},
+		});
+
+		return {
+			user,
+			tokens,
+		};
+	});
+};
+
+export const logoutService = async (refreshToken: string) => {
+	const payload = verifyToken(refreshToken, "refresh");
+	const refreshTokenHash = hashToken(refreshToken);
+
+	const session = await prisma.session.findFirst({
+		where: {
+			userId: payload.userId,
+			refreshTokenHash,
+			revokedAt: null,
 		},
-	};
+		select: { id: true },
+	});
+
+	if (!session) {
+		throw new AppError("Session not found", STATUS_CODES.NOT_FOUND);
+	}
+
+	await prisma.session.update({
+		where: {
+			id: session.id,
+		},
+		data: {
+			revokedAt: new Date(),
+		},
+	});
+
+	return { success: true };
+};
+
+export const logoutAllService = async (userId: string) => {
+	await prisma.session.updateMany({
+		where: {
+			userId,
+			revokedAt: null,
+		},
+		data: {
+			revokedAt: new Date(),
+		},
+	});
+
+	return { success: true };
 };
