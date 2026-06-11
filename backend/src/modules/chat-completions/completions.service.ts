@@ -28,6 +28,8 @@ const providerFactory = createProviderFactory({
   },
 });
 
+const AVG_CHARS_PER_TOKEN = 2.5;
+
 const resolveModelRecord = async (modelSlug: string): Promise<ResolvedModelRecord> => {
   const modelRecord = await prisma.model.findFirst({
     where: {
@@ -173,6 +175,31 @@ const buildOpenAIFinalChunk = (
   ...(accumulator.usage ? { usage: mapUsageToOpenAIUsage(accumulator.usage) } : {}),
 });
 
+const estimateTokensFromText = (text: string) =>
+  text.trim().length > 0 ? Math.ceil(text.length / AVG_CHARS_PER_TOKEN) : 0;
+
+const resolveStreamUsage = (
+  accumulator: StreamAccumulator,
+  estimatedPromptTokens: number
+) => {
+  const estimatedCompletionTokens = estimateTokensFromText(accumulator.content ?? "");
+  const promptTokens = accumulator.usage?.promptTokens ?? estimatedPromptTokens;
+  const completionTokens =
+    accumulator.usage?.completionTokens && accumulator.usage.completionTokens > 0
+      ? accumulator.usage.completionTokens
+      : estimatedCompletionTokens;
+  const totalTokens =
+    accumulator.usage?.totalTokens && accumulator.usage.totalTokens > 0
+      ? accumulator.usage.totalTokens
+      : promptTokens + completionTokens;
+
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens,
+  };
+};
+
 export class CompletionsService {
   async execute(input: ExecuteCompletionInput): Promise<OpenAICompatibleChatCompletionResponse> {
     const modelRecord = await resolveModelRecord(input.body.model);
@@ -222,6 +249,7 @@ export class CompletionsService {
     options: ExecuteStreamOptions
   ): Promise<AsyncIterable<string>> {
     const modelRecord = await resolveModelRecord(input.body.model);
+    const startedAt = Date.now();
     const providerRequest = buildProviderRequest({
       ...input,
       body: {
@@ -255,10 +283,12 @@ export class CompletionsService {
       const accumulator: StreamAccumulator = {
         requestId: inferenceRequest.id,
         model: input.body.model,
+        content: "",
       };
       let streamStarted = false;
       let settled = false;
       let providerFailed = false;
+      let firstChunkAt: number | null = null;
 
       try {
         for await (const event of providerStream) {
@@ -276,6 +306,7 @@ export class CompletionsService {
           if (event.type === "start") {
             if (!streamStarted) {
               streamStarted = true;
+              firstChunkAt = firstChunkAt ?? Date.now();
               yield toSseMessage(buildOpenAIStartChunk(accumulator.requestId, input.body.model));
             }
             continue;
@@ -284,10 +315,12 @@ export class CompletionsService {
           if (event.type === "content") {
             if (!streamStarted) {
               streamStarted = true;
+              firstChunkAt = firstChunkAt ?? Date.now();
               yield toSseMessage(buildOpenAIStartChunk(accumulator.requestId, input.body.model));
             }
 
             if (event.delta) {
+              accumulator.content = `${accumulator.content ?? ""}${event.delta}`;
               yield toSseMessage(
                 buildOpenAIContentChunk(accumulator.requestId, input.body.model, event.delta)
               );
@@ -307,12 +340,14 @@ export class CompletionsService {
           return;
         }
 
-        if (!accumulator.usage) {
-          throw new AppError(
-            "Provider stream usage metadata is missing",
-            STATUS_CODES.SERVER_ERROR
-          );
-        }
+        accumulator.usage = resolveStreamUsage(
+          accumulator,
+          input.context.creditCheck.estimatedPromptTokens
+        );
+
+        const completedAt = Date.now();
+        const latencyMs = firstChunkAt ? firstChunkAt - startedAt : completedAt - startedAt;
+        const responseCompletionTimeMs = completedAt - startedAt;
 
         await inferenceTrackingService.completeRequest({
           inferenceRequestId: inferenceRequest.id,
@@ -320,8 +355,8 @@ export class CompletionsService {
           promptTokens: accumulator.usage.promptTokens,
           completionTokens: accumulator.usage.completionTokens,
           totalTokens: accumulator.usage.totalTokens,
-          latencyMs: 0,
-          responseCompletionTimeMs: 0,
+          latencyMs,
+          responseCompletionTimeMs,
           inputPricePerToken: modelRecord.inputPricePerToken,
           outputPricePerToken: modelRecord.outputPricePerToken,
           platformMarkupPercent: input.context.creditCheck.platformMarkupPercent,

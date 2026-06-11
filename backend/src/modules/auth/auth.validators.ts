@@ -25,6 +25,11 @@ export const refreshSchema = z.object({
   refreshToken: z.string().min(1),
 });
 
+export const logoutSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+
 export const loginValidator = validateBody(loginSchema);
 export const registerValidator = validateBody(registerSchema);
 export const refreshValidator = validateBody(refreshSchema);
+export const logoutValidator = validateBody(logoutSchema);

@@ -349,10 +349,17 @@ model InferenceRequest {
   walletTransactions    WalletTransaction[]
   requestMetadata       RequestMetadata[]
 
-  @@index([userId])
-  @@index([projectId])
-  @@index([apiKeyId])
+  // @@index([userId])
+  // @@index([projectId])
+  // @@index([apiKeyId])
   @@index([modelId])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([apiKeyId, createdAt])
+  @@index([modelId, createdAt])
+  @@index([status, createdAt])
+  @@index([requestType, createdAt])
   @@map("inference_requests")
 }
 

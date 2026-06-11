@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
 import app from "./app.js";
 import { configureServerTimeouts, registerServerLifecycle } from "./utils/serverConfig.js";
 // import { syncModelsForProvider } from "./scripts/syncProviderModels.js";

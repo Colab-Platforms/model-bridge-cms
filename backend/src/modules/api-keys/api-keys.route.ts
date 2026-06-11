@@ -21,12 +21,12 @@ import {
 
 const router = Router();
 
-router.post("/", auth(), createApiKeyValidator, createApiKeyController);
-router.get("/", auth(), getAllApiKeysQueryValidator, getAllApiKeysController);
-router.get("/project/:projectId", auth(), apiKeyProjectIdParamsValidator, getApiKeysByProjectIdController);
-router.get("/user/:userId", auth(), apiKeyUserIdParamsValidator, getApiKeysByUserIdController);
-router.get("/:id", auth(), apiKeyIdParamsValidator, getApiKeyByIdController);
-router.patch("/:id", auth(), apiKeyIdParamsValidator, updateApiKeyValidator, updateApiKeyController);
-router.delete("/:id", auth(), apiKeyIdParamsValidator, deleteApiKeyController);
+router.post("/", auth("USER", "ADMIN"), createApiKeyValidator, createApiKeyController);
+router.get("/", auth("USER", "ADMIN"), getAllApiKeysQueryValidator, getAllApiKeysController);
+router.get("/project/:projectId", auth("USER", "ADMIN"), apiKeyProjectIdParamsValidator, getApiKeysByProjectIdController);
+router.get("/user/:userId", auth("USER", "ADMIN"), apiKeyUserIdParamsValidator, getApiKeysByUserIdController);
+router.get("/:id", auth("USER", "ADMIN"), apiKeyIdParamsValidator, getApiKeyByIdController);
+router.patch("/:id", auth("USER", "ADMIN"), apiKeyIdParamsValidator, updateApiKeyValidator, updateApiKeyController);
+router.delete("/:id", auth("USER", "ADMIN"), apiKeyIdParamsValidator, deleteApiKeyController);
 
 export default router;

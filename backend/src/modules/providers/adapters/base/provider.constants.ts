@@ -13,7 +13,7 @@ export const DEFAULT_PROVIDER_RETRY_COUNT = 2;
 export const PROVIDER_DEFAULT_BASE_URLS = {
   OPENAI: "https://api.openai.com/v1",
   ANTHROPIC: "https://api.anthropic.com/v1",
-  GEMINI: "https://generativelanguage.googleapis.com/v1beta/openai",
+  GEMINI: "https://generativelanguage.googleapis.com/v1beta",
   GROQ: "https://api.groq.com/openai/v1",
   DEEPSEEK: "https://api.deepseek.com/v1",
   MISTRAL: "https://api.mistral.ai/v1",
