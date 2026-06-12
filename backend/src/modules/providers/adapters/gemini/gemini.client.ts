@@ -41,6 +41,8 @@ const extractGeminiUsage = (response: GeminiGenerateContentResponse) => ({
       (response.usageMetadata?.candidatesTokenCount ?? 0),
 });
 
+const splitSseFrames = (buffer: string) => buffer.split(/\r?\n\r?\n/);
+
 export class GeminiClient {
   constructor(
     private readonly httpClient: ProviderHttpClient,
@@ -110,8 +112,70 @@ export class GeminiClient {
         for await (const chunk of responseStream) {
           buffer += chunk.toString();
 
-          const frames = buffer.split("\n\n");
+          const frames = splitSseFrames(buffer);
           buffer = frames.pop() ?? "";
+
+          for (const frame of frames) {
+            const lines = frame
+              .split("\n")
+              .map((line) => line.trim())
+              .filter((line) => line.startsWith("data:"));
+
+            for (const line of lines) {
+              const rawData = line.replace(/^data:\s*/, "");
+
+              if (!rawData) {
+                continue;
+              }
+
+              const parsedChunk = JSON.parse(rawData) as GeminiGenerateContentResponse;
+              const contentDelta = extractGeminiText(parsedChunk);
+              const candidate = parsedChunk.candidates?.[0];
+
+              latestUsage = extractGeminiUsage(parsedChunk);
+
+              if (!emittedStart) {
+                emittedStart = true;
+                yield {
+                  type: "start",
+                  requestId: parsedChunk.responseId ?? fallbackRequestId,
+                  provider: providerName,
+                  model: parsedChunk.modelVersion ?? fallbackModel,
+                  rawChunk: parsedChunk,
+                };
+              }
+
+              if (contentDelta) {
+                yield {
+                  type: "content",
+                  requestId: parsedChunk.responseId ?? fallbackRequestId,
+                  provider: providerName,
+                  model: parsedChunk.modelVersion ?? fallbackModel,
+                  delta: contentDelta,
+                  finishReason: candidate?.finishReason,
+                  usage: latestUsage,
+                  rawChunk: parsedChunk,
+                };
+              }
+
+              if (candidate?.finishReason && !emittedEnd) {
+                emittedEnd = true;
+                yield {
+                  type: "end",
+                  requestId: parsedChunk.responseId ?? fallbackRequestId,
+                  provider: providerName,
+                  model: parsedChunk.modelVersion ?? fallbackModel,
+                  finishReason: candidate.finishReason,
+                  usage: latestUsage,
+                  rawChunk: parsedChunk,
+                };
+              }
+            }
+          }
+        }
+
+        if (buffer.trim()) {
+          const frames = splitSseFrames(`${buffer}\n\n`);
 
           for (const frame of frames) {
             const lines = frame

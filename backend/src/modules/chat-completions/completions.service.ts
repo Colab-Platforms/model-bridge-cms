@@ -200,6 +200,9 @@ const resolveStreamUsage = (
   };
 };
 
+const hasMeaningfulStreamOutput = (accumulator: StreamAccumulator) =>
+  Boolean(accumulator.content?.trim()) || (accumulator.usage?.completionTokens ?? 0) > 0;
+
 export class CompletionsService {
   async execute(input: ExecuteCompletionInput): Promise<OpenAICompatibleChatCompletionResponse> {
     const modelRecord = await resolveModelRecord(input.body.model);
@@ -344,6 +347,13 @@ export class CompletionsService {
           accumulator,
           input.context.creditCheck.estimatedPromptTokens
         );
+
+        if (!hasMeaningfulStreamOutput(accumulator)) {
+          throw new AppError(
+            "Provider returned an empty streaming response",
+            STATUS_CODES.SERVER_ERROR
+          );
+        }
 
         const completedAt = Date.now();
         const latencyMs = firstChunkAt ? firstChunkAt - startedAt : completedAt - startedAt;

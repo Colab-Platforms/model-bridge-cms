@@ -2,6 +2,10 @@ import { Prisma } from "@prisma/client";
 
 import prisma from "../../../prisma.js";
 import AppError from "../../shared/errors/index.js";
+import {
+  formatPaginationResponse,
+  getPaginationOptions,
+} from "../../utils/paginationUtils.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import { walletTransactionService } from "./wallet-transaction.service.js";
 import {
@@ -236,61 +240,46 @@ export const getBalance = async (userId: string) => {
   };
 };
 
-const txSelect = {
-  id: true,
-  walletId: true,
-  inferenceRequestId: true,
-  referenceId: true,
-  type: true,
-  amount: true,
-  balanceBefore: true,
-  balanceAfter: true,
-  description: true,
-  createdBy: true,
-  createdAt: true,
-} satisfies Prisma.WalletTransactionSelect;
-
 export const getWalletTransactions = async (
   userId: string,
   query: WalletTransactionsQuery
 ) => {
-  const wallet = await prisma.wallet.findFirst({
-    where: { userId, isDeleted: false },
-    select: { id: true },
-  });
-
-  const page = query.page ?? 1;
-  const limit = query.limit ?? 20;
-  const skip = (page - 1) * limit;
-
-  if (!wallet) {
-    return { data: [], total: 0, page, limit };
-  }
-
+  const wallet = await getWalletOrThrow(userId);
+  const effectiveQuery = query.limit
+    ? { ...query, page: 1, pageSize: query.limit }
+    : query;
+  const { take, skip, page, pageSize } = getPaginationOptions(effectiveQuery, 20);
   const where: Prisma.WalletTransactionWhereInput = {
     walletId: wallet.id,
     isDeleted: false,
-    ...(query.type ? { type: query.type } : {}),
-    ...((query.startDate || query.endDate) ? {
-      createdAt: {
-        ...(query.startDate ? { gte: new Date(query.startDate) } : {}),
-        ...(query.endDate ? { lte: new Date(`${query.endDate}T23:59:59.999Z`) } : {}),
-      },
-    } : {}),
   };
 
-  const [transactions, total] = await prisma.$transaction([
+  const [transactions, totalRecords] = await Promise.all([
     prisma.walletTransaction.findMany({
       where,
-      select: txSelect,
-      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        walletId: true,
+        inferenceRequestId: true,
+        referenceId: true,
+        type: true,
+        amount: true,
+        balanceBefore: true,
+        balanceAfter: true,
+        description: true,
+        createdBy: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take,
       skip,
-      take: limit,
     }),
     prisma.walletTransaction.count({ where }),
   ]);
 
-  return { data: transactions, total, page, limit };
+  return formatPaginationResponse(transactions, totalRecords, page, pageSize);
 };
 
 export const addBalance = async (input: AddBalanceInput) => {
