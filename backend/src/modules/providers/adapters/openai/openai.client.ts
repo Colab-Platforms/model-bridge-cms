@@ -22,6 +22,8 @@ import type {
   OpenAIStreamChatCompletionChunk,
 } from "./openai.types.js";
 
+const splitSseFrames = (buffer: string) => buffer.split(/\r?\n\r?\n/);
+
 export class OpenAIClient {
   constructor(
     private readonly httpClient: ProviderHttpClient,
@@ -77,8 +79,89 @@ export class OpenAIClient {
         for await (const chunk of responseStream) {
           buffer += chunk.toString();
 
-          const frames = buffer.split("\n\n");
+          const frames = splitSseFrames(buffer);
           buffer = frames.pop() ?? "";
+
+          for (const frame of frames) {
+            const lines = frame
+              .split("\n")
+              .map((line) => line.trim())
+              .filter((line) => line.startsWith("data:"));
+
+            for (const line of lines) {
+              const rawData = line.replace(/^data:\s*/, "");
+
+              if (rawData === "[DONE]") {
+                if (!emittedEnd) {
+                  emittedEnd = true;
+                  yield {
+                    type: "end",
+                    requestId: streamRequestId,
+                    provider: providerName,
+                    model: streamModel,
+                    usage: latestUsage,
+                  };
+                }
+                continue;
+              }
+
+              const parsedChunk = JSON.parse(rawData) as OpenAIStreamChatCompletionChunk;
+              streamRequestId = parsedChunk.id;
+              streamModel = parsedChunk.model;
+
+              if (parsedChunk.usage) {
+                latestUsage = {
+                  promptTokens: parsedChunk.usage.prompt_tokens,
+                  completionTokens: parsedChunk.usage.completion_tokens,
+                  totalTokens: parsedChunk.usage.total_tokens,
+                };
+              }
+
+              if (!emittedStart) {
+                emittedStart = true;
+                yield {
+                  type: "start",
+                  requestId: parsedChunk.id,
+                  provider: providerName,
+                  model: parsedChunk.model,
+                  rawChunk: parsedChunk,
+                };
+              }
+
+              const choice = parsedChunk.choices[0];
+              const delta = choice?.delta.content;
+
+              if (delta) {
+                yield {
+                  type: "content",
+                  requestId: parsedChunk.id,
+                  provider: providerName,
+                  model: parsedChunk.model,
+                  delta,
+                  finishReason: choice.finish_reason ?? undefined,
+                  usage: latestUsage,
+                  rawChunk: parsedChunk,
+                };
+              }
+
+              if (choice?.finish_reason && !emittedEnd) {
+                emittedEnd = true;
+                yield {
+                  type: "end",
+                  requestId: parsedChunk.id,
+                  provider: providerName,
+                  model: parsedChunk.model,
+                  finishReason: choice.finish_reason,
+                  usage: latestUsage,
+                  rawChunk: parsedChunk,
+                };
+              }
+            }
+          }
+        }
+
+        if (buffer.trim()) {
+          const frames = splitSseFrames(`${buffer}\n\n`);
 
           for (const frame of frames) {
             const lines = frame
