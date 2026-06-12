@@ -2,7 +2,26 @@ export interface OpenAIChatCompletionRequest {
   model: string;
   messages: Array<{
     role: "system" | "user" | "assistant" | "tool";
-    content: string;
+    content:
+      | string
+      | Array<
+          | {
+              type: "text";
+              text: string;
+              cache_control?: {
+                type: "ephemeral";
+              };
+            }
+          | {
+              type: "image_url";
+              image_url: {
+                url: string;
+              };
+              cache_control?: {
+                type: "ephemeral";
+              };
+            }
+        >;
     name?: string;
     tool_call_id?: string;
   }>;

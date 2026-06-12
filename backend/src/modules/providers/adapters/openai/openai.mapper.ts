@@ -1,6 +1,7 @@
 import type {
   ProviderChatRequest,
   ProviderChatResponse,
+  ProviderContentPart,
   ProviderEmbeddingRequest,
   ProviderEmbeddingResponse,
 } from "../base/provider.types.js";
@@ -11,13 +12,15 @@ import type {
   OpenAIEmbeddingResponse,
 } from "./openai.types.js";
 
+const mapProviderContentToOpenAI = (content: string | ProviderContentPart[]) => content;
+
 export const mapProviderChatRequestToOpenAI = (
   request: ProviderChatRequest
 ): OpenAIChatCompletionRequest => ({
   model: request.model,
   messages: request.messages.map((message) => ({
     role: message.role,
-    content: message.content,
+    content: mapProviderContentToOpenAI(message.content),
     ...(message.name ? { name: message.name } : {}),
     ...(message.toolCallId ? { tool_call_id: message.toolCallId } : {}),
   })),

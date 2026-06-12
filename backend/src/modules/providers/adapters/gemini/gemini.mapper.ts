@@ -1,4 +1,5 @@
 import type {
+  ProviderContentPart,
   ProviderChatRequest,
   ProviderChatResponse,
   ProviderEmbeddingRequest,
@@ -10,16 +11,49 @@ import type {
   GeminiEmbedContentResponse,
   GeminiGenerateContentRequest,
   GeminiGenerateContentResponse,
+  GeminiPart,
 } from "./gemini.types.js";
 
 const mapProviderMessageRoleToGeminiRole = (
   role: ProviderChatRequest["messages"][number]["role"]
 ): GeminiContent["role"] => (role === "assistant" ? "model" : "user");
 
+const mapProviderContentPartToGeminiPart = (part: ProviderContentPart): GeminiPart => {
+  if (part.type === "text") {
+    return { text: part.text };
+  }
+
+  const match = part.image_url.url.match(/^data:([^;]+);base64,(.+)$/);
+
+  if (!match) {
+    return { text: `[image] ${part.image_url.url}` };
+  }
+
+  return {
+    inlineData: {
+      mimeType: match[1],
+      data: match[2],
+    },
+  };
+};
+
+const mapProviderContentToGeminiParts = (content: string | ProviderContentPart[]): GeminiPart[] =>
+  typeof content === "string"
+    ? [{ text: content }]
+    : content.map(mapProviderContentPartToGeminiPart);
+
+const extractTextFromProviderContent = (content: string | ProviderContentPart[]) =>
+  typeof content === "string"
+    ? content
+    : content
+        .filter((part) => part.type === "text")
+        .map((part) => part.text)
+        .join("");
+
 const extractSystemInstruction = (request: ProviderChatRequest) => {
   const systemText = request.messages
     .filter((message) => message.role === "system")
-    .map((message) => message.content.trim())
+    .map((message) => extractTextFromProviderContent(message.content).trim())
     .filter(Boolean)
     .join("\n\n");
 
@@ -37,7 +71,7 @@ const mapChatMessagesToGeminiContents = (request: ProviderChatRequest): GeminiCo
     .filter((message) => message.role !== "system")
     .map((message) => ({
       role: mapProviderMessageRoleToGeminiRole(message.role),
-      parts: [{ text: message.content }],
+      parts: mapProviderContentToGeminiParts(message.content),
     }));
 
 const toProviderUsage = (usageMetadata?: {
