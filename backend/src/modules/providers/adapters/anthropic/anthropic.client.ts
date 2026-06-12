@@ -1,4 +1,6 @@
-import { ProviderUnavailableError } from "../base/provider.errors.js";
+import type { Readable } from "node:stream";
+
+import { ProviderError, ProviderUnavailableError } from "../base/provider.errors.js";
 import type {
   ProviderChatRequest,
   ProviderChatResponse,
@@ -9,42 +11,276 @@ import type {
   ProviderStreamEvent,
 } from "../base/provider.types.js";
 import { ProviderHttpClient } from "../../shared/provider-http-client.js";
+import { calculateLatencyMs } from "../../shared/provider-utils.js";
+import {
+  mapAnthropicResponseToProviderResponse,
+  mapProviderChatRequestToAnthropic,
+  toProviderUsage,
+} from "./anthropic.mapper.js";
+import type {
+  AnthropicMessageStartEvent,
+  AnthropicMessageDeltaEvent,
+  AnthropicMessagesResponse,
+  AnthropicModelListResponse,
+  AnthropicStreamEvent,
+} from "./anthropic.types.js";
+
+const splitSseFrames = (buffer: string) => buffer.split(/\r?\n\r?\n/);
+
+const buildAnthropicHeaders = (
+  apiKey: string,
+  extraHeaders?: Record<string, string>
+) => ({
+  "x-api-key": apiKey,
+  "Content-Type": "application/json",
+  ...extraHeaders,
+});
+
+const extractRequestId = (
+  messageStartEvent?: AnthropicMessageStartEvent,
+  fallbackProviderName?: string
+) =>
+  messageStartEvent?.message.id ??
+  `${fallbackProviderName?.toLowerCase() ?? "anthropic"}-stream-${Date.now()}`;
+
+const extractModel = (
+  requestModel: string,
+  messageStartEvent?: AnthropicMessageStartEvent
+) => messageStartEvent?.message.model ?? requestModel;
 
 export class AnthropicClient {
   constructor(
     private readonly httpClient: ProviderHttpClient,
     private readonly config: ProviderRuntimeConfig
   ) {
-    void this.httpClient;
   }
 
-  async chatCompletion(_request: ProviderChatRequest): Promise<ProviderChatResponse> {
-    throw new ProviderUnavailableError(
+  async chatCompletion(request: ProviderChatRequest): Promise<ProviderChatResponse> {
+    const startedAt = Date.now();
+    const response = await this.httpClient.request<AnthropicMessagesResponse>({
+      method: "POST",
+      url: "/messages",
+      headers: buildAnthropicHeaders(this.config.apiKey, this.config.headers),
+      data: mapProviderChatRequestToAnthropic(request),
+    });
+
+    return mapAnthropicResponseToProviderResponse(
       this.config.name,
-      "TODO: implement Anthropic chat completion endpoint mapping"
+      request.model,
+      response,
+      calculateLatencyMs(startedAt)
     );
   }
 
-  async streamCompletion(_request: ProviderChatRequest): Promise<AsyncIterable<ProviderStreamEvent>> {
-    throw new ProviderUnavailableError(
-      this.config.name,
-      "TODO: implement Anthropic streaming endpoint handling"
-    );
+  async streamCompletion(request: ProviderChatRequest): Promise<AsyncIterable<ProviderStreamEvent>> {
+    const responseStream = await this.httpClient.requestRaw<Readable>({
+      method: "POST",
+      url: "/messages",
+      responseType: "stream",
+      headers: buildAnthropicHeaders(this.config.apiKey, this.config.headers),
+      data: mapProviderChatRequestToAnthropic({
+        ...request,
+        stream: true,
+      }),
+    });
+
+    const providerName = this.config.name;
+    const requestModel = request.model;
+
+    const iterator = async function* (): AsyncGenerator<ProviderStreamEvent> {
+      let buffer = "";
+      let emittedStart = false;
+      let emittedEnd = false;
+      let messageStartEvent: AnthropicMessageStartEvent | undefined;
+      let latestOutputTokens = 0;
+
+      const buildLatestUsage = (inputTokens?: number) =>
+        toProviderUsage({
+          input_tokens: inputTokens ?? messageStartEvent?.message.usage?.input_tokens ?? 0,
+          output_tokens: latestOutputTokens,
+        });
+
+      const parseFrame = async function* (frame: string): AsyncGenerator<ProviderStreamEvent> {
+        const lines = frame
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line.startsWith("data:"));
+
+        for (const line of lines) {
+          const rawData = line.replace(/^data:\s*/, "");
+
+          if (!rawData) {
+            continue;
+          }
+
+          const event = JSON.parse(rawData) as AnthropicStreamEvent;
+
+          if (event.type === "ping") {
+            continue;
+          }
+
+          if (event.type === "error") {
+            throw new ProviderError(
+              providerName,
+              event.error?.message ?? "Anthropic streaming request failed",
+              {
+                retryable: false,
+                details: event,
+              }
+            );
+          }
+
+          if (event.type === "message_start") {
+            messageStartEvent = event;
+
+            if (!emittedStart) {
+              emittedStart = true;
+              yield {
+                type: "start",
+                requestId: extractRequestId(messageStartEvent, providerName),
+                provider: providerName,
+                model: extractModel(requestModel, messageStartEvent),
+                rawChunk: event,
+              };
+            }
+
+            continue;
+          }
+
+          if (event.type === "content_block_start") {
+            const text = event.content_block?.type === "text" ? event.content_block.text : "";
+
+            if (text) {
+              yield {
+                type: "content",
+                requestId: extractRequestId(messageStartEvent, providerName),
+                provider: providerName,
+                model: extractModel(requestModel, messageStartEvent),
+                delta: text,
+                usage: buildLatestUsage(),
+                rawChunk: event,
+              };
+            }
+
+            continue;
+          }
+
+          if (event.type === "content_block_delta") {
+            const text = event.delta?.type === "text_delta" ? event.delta.text ?? "" : "";
+
+            if (text) {
+              yield {
+                type: "content",
+                requestId: extractRequestId(messageStartEvent, providerName),
+                provider: providerName,
+                model: extractModel(requestModel, messageStartEvent),
+                delta: text,
+                usage: buildLatestUsage(),
+                rawChunk: event,
+              };
+            }
+
+            continue;
+          }
+
+          if (event.type === "message_delta") {
+            latestOutputTokens =
+              event.usage?.output_tokens ?? latestOutputTokens;
+
+            const typedEvent = event as AnthropicMessageDeltaEvent;
+
+            if (typedEvent.delta?.stop_reason && !emittedEnd) {
+              emittedEnd = true;
+              yield {
+                type: "end",
+                requestId: extractRequestId(messageStartEvent, providerName),
+                provider: providerName,
+                model: extractModel(requestModel, messageStartEvent),
+                finishReason: typedEvent.delta.stop_reason ?? undefined,
+                usage: buildLatestUsage(),
+                rawChunk: event,
+              };
+            }
+
+            continue;
+          }
+
+          if (event.type === "message_stop" && !emittedEnd) {
+            emittedEnd = true;
+            yield {
+              type: "end",
+              requestId: extractRequestId(messageStartEvent, providerName),
+              provider: providerName,
+              model: extractModel(requestModel, messageStartEvent),
+              usage: buildLatestUsage(),
+              rawChunk: event,
+            };
+          }
+        }
+      };
+
+      try {
+        for await (const chunk of responseStream) {
+          buffer += chunk.toString();
+
+          const frames = splitSseFrames(buffer);
+          buffer = frames.pop() ?? "";
+
+          for (const frame of frames) {
+            yield* parseFrame(frame);
+          }
+        }
+
+        if (buffer.trim()) {
+          const frames = splitSseFrames(`${buffer}\n\n`);
+
+          for (const frame of frames) {
+            yield* parseFrame(frame);
+          }
+        }
+
+        if (!emittedEnd) {
+          emittedEnd = true;
+          yield {
+            type: "end",
+            requestId: extractRequestId(messageStartEvent, providerName),
+            provider: providerName,
+            model: extractModel(requestModel, messageStartEvent),
+            usage: toProviderUsage({
+              input_tokens: messageStartEvent?.message.usage?.input_tokens ?? 0,
+              output_tokens: latestOutputTokens,
+            }),
+          };
+        }
+      } finally {
+        responseStream.destroy();
+      }
+    };
+
+    return iterator();
   }
 
   async embeddings(_request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResponse> {
     throw new ProviderUnavailableError(
       this.config.name,
-      "TODO: implement Anthropic embeddings when the provider contract is finalized"
+      "Anthropic embeddings are not supported by this adapter"
     );
   }
 
   async healthCheck(): Promise<ProviderHealthCheckResult> {
+    const startedAt = Date.now();
+    const response = await this.httpClient.request<AnthropicModelListResponse>({
+      method: "GET",
+      url: "/models",
+      headers: buildAnthropicHeaders(this.config.apiKey, this.config.headers),
+    });
+
     return {
       provider: this.config.name,
-      isHealthy: true,
-      latencyMs: 0,
-      message: "Anthropic adapter registered. TODO: wire a real health endpoint.",
+      isHealthy: Array.isArray(response.data),
+      latencyMs: calculateLatencyMs(startedAt),
+      message: "Anthropic health check completed",
+      rawResponse: response,
     };
   }
 }
