@@ -13,6 +13,8 @@ export const walletUserIdParamsSchema = z.object({
 });
 
 export const walletTransactionsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  pageSize: z.coerce.number().int().positive().max(100).optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
 });
 

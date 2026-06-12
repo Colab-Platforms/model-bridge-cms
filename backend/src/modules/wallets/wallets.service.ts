@@ -2,6 +2,10 @@ import { Prisma } from "@prisma/client";
 
 import prisma from "../../../prisma.js";
 import AppError from "../../shared/errors/index.js";
+import {
+  formatPaginationResponse,
+  getPaginationOptions,
+} from "../../utils/paginationUtils.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import { walletTransactionService } from "./wallet-transaction.service.js";
 import {
@@ -227,30 +231,41 @@ export const getWalletTransactions = async (
   query: WalletTransactionsQuery
 ) => {
   const wallet = await getWalletOrThrow(userId);
+  const effectiveQuery = query.limit
+    ? { ...query, page: 1, pageSize: query.limit }
+    : query;
+  const { take, skip, page, pageSize } = getPaginationOptions(effectiveQuery, 20);
+  const where: Prisma.WalletTransactionWhereInput = {
+    walletId: wallet.id,
+    isDeleted: false,
+  };
 
-  return prisma.walletTransaction.findMany({
-    where: {
-      walletId: wallet.id,
-      isDeleted: false,
-    },
-    select: {
-      id: true,
-      walletId: true,
-      inferenceRequestId: true,
-      referenceId: true,
-      type: true,
-      amount: true,
-      balanceBefore: true,
-      balanceAfter: true,
-      description: true,
-      createdBy: true,
-      createdAt: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    ...(query.limit ? { take: query.limit } : {}),
-  });
+  const [transactions, totalRecords] = await Promise.all([
+    prisma.walletTransaction.findMany({
+      where,
+      select: {
+        id: true,
+        walletId: true,
+        inferenceRequestId: true,
+        referenceId: true,
+        type: true,
+        amount: true,
+        balanceBefore: true,
+        balanceAfter: true,
+        description: true,
+        createdBy: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take,
+      skip,
+    }),
+    prisma.walletTransaction.count({ where }),
+  ]);
+
+  return formatPaginationResponse(transactions, totalRecords, page, pageSize);
 };
 
 export const addBalance = async (input: AddBalanceInput) => {
