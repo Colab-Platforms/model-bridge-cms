@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw, ActivityIcon } from "lucide-react";
+import { motion } from "motion/react";
 
 import {
   Table,
@@ -19,6 +20,26 @@ import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/store/projectStore";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+interface UsageSummaryResponse {
+  range: {
+    from: string;
+    to: string;
+  };
+  totals: {
+    totalRequests: number;
+    successRequests: number;
+    failedRequests: number;
+    stoppedRequests: number;
+    partialRequests: number;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    totalCost: string;
+    averageLatencyMs: number;
+    averageResponseCompletionTimeMs: number;
+  };
+}
 
 type ActivityType =
   | "USER_REGISTERED" | "USER_LOGIN" | "USER_LOGOUT"
@@ -103,6 +124,19 @@ function fmtDate(ts: string) {
   });
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 30 } },
+};
+
 function FilterSelect({
   value,
   onChange,
@@ -154,6 +188,20 @@ export default function ActivityPage() {
     return presetDates(days);
   }, [preset, customStart, customEnd]);
 
+  const summaryParams = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (activeProject?.id) p.projectId = activeProject.id;
+    if (preset === "custom") {
+      if (customStart) p.from = `${customStart}T00:00:00.000Z`;
+      if (customEnd)   p.to   = `${customEnd}T23:59:59.000Z`;
+      if (customStart && customEnd) p.dateRangePreset = "custom";
+    } else {
+      const MAP: Record<string, string> = { "7d": "past_7d", "30d": "past_30d", "90d": "past_30d" };
+      p.dateRangePreset = MAP[preset] ?? "past_30d";
+    }
+    return p;
+  }, [preset, customStart, customEnd, activeProject?.id]);
+
   useEffect(() => {
     setPage(1);
   }, [preset, customStart, customEnd, typeFilter, limit]);
@@ -170,8 +218,15 @@ export default function ActivityPage() {
   const { data, isLoading, isFetching, refetch } = useQuery<ActivityResponse>({
     queryKey: ["activity", queryParams],
     queryFn: () =>
-      api.get("/api/v1/activity", { params: queryParams }).then((r) => r.data),
-    enabled: !!activeProject,
+      api.get("/activity", { params: queryParams }).then((r) => r.data),
+    enabled: true,
+  });
+
+  const { data: summary, isLoading: summaryLoading } = useQuery<UsageSummaryResponse>({
+    queryKey: ["usage-summary", summaryParams],
+    queryFn: () =>
+      api.get("/usage/summary", { params: summaryParams }).then((r) => r.data),
+    enabled: !!summaryParams.dateRangePreset,
   });
 
   const logs       = data?.data ?? [];
@@ -179,12 +234,17 @@ export default function ActivityPage() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="space-y-5">
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Activity Log</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground/90 font-serif">Activity Log</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Audit trail of all actions in this project.
           </p>
         </div>
@@ -197,10 +257,56 @@ export default function ActivityPage() {
         >
           <RefreshCw className="size-4" />
         </Button>
-      </div>
+      </motion.div>
+
+      {/* Usage summary cards */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          {
+            label: "Total Requests",
+            value: summaryLoading
+              ? null
+              : (summary?.totals.totalRequests.toLocaleString() ?? "—"),
+          },
+          {
+            label: "Success Rate",
+            value: summaryLoading
+              ? null
+              : summary
+              ? `${Math.round((summary.totals.successRequests / Math.max(summary.totals.totalRequests, 1)) * 100)}%`
+              : "—",
+          },
+          {
+            label: "Total Tokens",
+            value: summaryLoading
+              ? null
+              : (summary?.totals.totalTokens.toLocaleString() ?? "—"),
+          },
+          {
+            label: "Total Cost",
+            value: summaryLoading
+              ? null
+              : summary?.totals.totalCost
+              ? `$${parseFloat(summary.totals.totalCost).toFixed(4)}`
+              : "—",
+          },
+        ].map(({ label, value }) => (
+          <div
+            key={label}
+            className="rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm"
+          >
+            <p className="text-xs font-medium text-muted-foreground">{label}</p>
+            {value === null ? (
+              <Skeleton className="mt-1.5 h-6 w-20 rounded-lg" />
+            ) : (
+              <p className="mt-1 text-xl font-bold text-foreground">{value}</p>
+            )}
+          </div>
+        ))}
+      </motion.div>
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-card p-4">
+      <motion.div variants={itemVariants} className="flex flex-wrap items-end gap-3 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
         {/* Date presets */}
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium text-muted-foreground">Date range</span>
@@ -263,29 +369,30 @@ export default function ActivityPage() {
             ))}
           </FilterSelect>
         </div>
-      </div>
+      </motion.div>
 
       {/* Table */}
+      <motion.div variants={itemVariants}>
       {isLoading ? (
-        <div className="space-y-2 rounded-2xl border border-border p-4">
+        <div className="space-y-2 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full rounded-xl" />
           ))}
         </div>
       ) : logs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/20 py-20 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border bg-muted/10 py-20 text-center shadow-sm backdrop-blur-sm">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-muted/50">
             <ActivityIcon className="size-6 text-muted-foreground" />
           </div>
           <div>
-            <p className="font-medium text-foreground">No activity found</p>
+            <p className="font-medium text-foreground text-lg">No activity found</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Try adjusting your filters or date range.
             </p>
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border">
+        <div className="overflow-hidden rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md">
           <Table>
             <TableHeader>
               <TableRow>
@@ -348,10 +455,11 @@ export default function ActivityPage() {
           </Table>
         </div>
       )}
+      </motion.div>
 
       {/* Pagination */}
       {!isLoading && total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             Showing{" "}
             <span className="font-medium text-foreground">
@@ -392,8 +500,8 @@ export default function ActivityPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

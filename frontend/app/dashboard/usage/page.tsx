@@ -11,7 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
-
+import { motion } from "motion/react";
 import {
   Table,
   TableBody,
@@ -34,17 +34,31 @@ type LogStatus = "SUCCESS" | "FAILED" | "PARTIAL" | "STOPPED";
 
 interface UsageLogItem {
   id: string;
-  requestId: string;
-  timestamp: string;
-  model: string;
-  apiKeyPrefix: string;
-  capability: string;
+  createdAt: string;
+  requestedModelSlug: string;
+  resolvedModelSlug: string;
+  model: {
+    slug: string;
+    displayName: string;
+    provider: {
+      slug: string;
+      displayName: string;
+    };
+  };
+  apiKey: {
+    name: string;
+    keyPrefix: string;
+    status: string;
+  };
+  requestType: string;
   status: LogStatus;
+  stream: boolean;
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
-  costUsd: string;
+  totalCost: string;
   latencyMs: number;
+  responseCompletionTimeMs: number;
 }
 
 interface UsageLogDetail extends UsageLogItem {
@@ -58,10 +72,13 @@ interface UsageLogDetail extends UsageLogItem {
 }
 
 interface UsageResponse {
+  currentPage: number;
+  pageSize: number;
+  totalRecords: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
   data: UsageLogItem[];
-  total: number;
-  page: number;
-  limit: number;
 }
 
 type Preset = "7d" | "30d" | "90d" | "custom";
@@ -87,19 +104,35 @@ function fmtTimestamp(ts: string) {
   });
 }
 
-function fmtLatency(ms: number) {
+function fmtLatency(ms: number | null | undefined) {
+  if (ms == null) return "—";
   return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`;
 }
 
-function fmtCost(usd: string) {
+function fmtCost(usd: string | null | undefined) {
+  if (usd == null) return "—";
   const n = parseFloat(usd);
   if (isNaN(n)) return "—";
   return n < 0.0001 ? "<$0.0001" : `$${n.toFixed(4)}`;
 }
 
-function fmtTokens(n: number) {
+function fmtTokens(n: number | null | undefined) {
+  if (n == null) return "—";
   return n.toLocaleString();
 }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 30 } },
+};
 
 
 
@@ -218,24 +251,42 @@ export default function UsagePage() {
 
   // Build query params (omit blanks)
   const queryParams = useMemo(() => {
-    const p: Record<string, string | number> = { page, limit };
+    const p: Record<string, string | number> = { page, pageSize: limit };
     if (activeProject?.id) p.projectId = activeProject.id;
-    if (dateRange.startDate) p.startDate = dateRange.startDate;
-    if (dateRange.endDate) p.endDate = dateRange.endDate;
-    if (model) p.model = model;
-    if (status) p.status = status;
-    if (apiKeyId) p.apiKeyId = apiKeyId;
-    if (capability) p.capability = capability;
-    if (sortBy) p.sortBy = sortBy;
-    if (sortOrder) p.sortOrder = sortOrder;
+
+    // Date range — map presets to backend values
+    if (preset === "custom") {
+      if (dateRange.startDate) p.from = `${dateRange.startDate}T00:00:00.000Z`;
+      if (dateRange.endDate)   p.to   = `${dateRange.endDate}T23:59:59.000Z`;
+      if (dateRange.startDate && dateRange.endDate) p.dateRangePreset = "custom";
+    } else {
+      const PRESET_MAP: Record<string, string> = { "7d": "past_7d", "30d": "past_30d", "90d": "past_30d" };
+      p.dateRangePreset = PRESET_MAP[preset] ?? "past_7d";
+    }
+
+    if (model)      p.search      = model;       // free-text search (model slug, key name, etc.)
+    if (status)     p.status      = status;
+    if (apiKeyId)   p.apiKeyId    = apiKeyId;
+    if (capability) p.requestType = capability;  // capability → requestType
+
+    // Sort: single param in format "field:order"
+    if (sortBy) {
+      const SORT_MAP: Record<string, string> = {
+        timestamp:   "createdAt",
+        totalTokens: "totalTokens",
+        costUsd:     "totalCost",
+      };
+      p.sort = `${SORT_MAP[sortBy] ?? sortBy}:${sortOrder}`;
+    }
+
     return p;
-  }, [page, limit, activeProject?.id, dateRange, model, status, apiKeyId, capability, sortBy, sortOrder]);
+  }, [page, limit, preset, activeProject?.id, dateRange, model, status, apiKeyId, capability, sortBy, sortOrder]);
 
   // Usage logs query
   const { data, isLoading, isFetching, refetch } = useQuery<UsageResponse>({
     queryKey: ["usage", queryParams],
     queryFn: () =>
-      api.get("/api/v1/usage", { params: queryParams }).then((r) => r.data),
+      api.get("/usage/logs", { params: queryParams }).then((r) => r.data),
     enabled: !!activeProject,
   });
 
@@ -243,7 +294,7 @@ export default function UsagePage() {
   const { data: keys = [] } = useQuery<ApiKey[]>({
     queryKey: ["keys", activeProject?.id],
     queryFn: () =>
-      api.get("/api/v1/keys", { params: { projectId: activeProject!.id } }).then((r) => r.data),
+      api.get("/api-keys", { params: { projectId: activeProject!.id } }).then((r) => r.data),
     enabled: !!activeProject,
   });
 
@@ -251,13 +302,13 @@ export default function UsagePage() {
   const { data: detail, isLoading: detailLoading } = useQuery<UsageLogDetail>({
     queryKey: ["usage-detail", expandedId],
     queryFn: () =>
-      api.get(`/api/v1/usage/${expandedId}`).then((r) => r.data),
+      api.get(`/usage/logs/${expandedId}`).then((r) => r.data),
     enabled: !!expandedId,
   });
 
   const logs = data?.data ?? [];
-  const total = data?.total ?? 0;
-  const totalPages = Math.ceil(total / limit);
+  const total = data?.totalRecords ?? 0;
+  const totalPages = data?.totalPages ?? 0;
 
   const toggleRow = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id));
@@ -293,12 +344,17 @@ export default function UsagePage() {
 
 
   return (
-    <div className="space-y-5">
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
       {/* Page header */}
-      <div className="flex items-start justify-between gap-4">
+      <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Usage Logs</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground/90 font-serif">Usage Logs</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Inspect every API request made with your keys.
           </p>
         </div>
@@ -308,26 +364,27 @@ export default function UsagePage() {
             size="icon"
             onClick={() => refetch()}
             aria-label="Refresh"
-            className={cn(isFetching && "animate-spin")}
+            className={cn("transition-all hover:bg-muted/50", isFetching && "animate-spin")}
           >
             <RefreshCw className="size-4" />
           </Button>
           <Button
             variant="outline"
+            className="transition-all hover:shadow-sm"
             onClick={() =>
               toast.info("Export coming soon", {
                 description: "CSV / JSON export will be available in a future update.",
               })
             }
           >
-            <Download className="size-4" />
+            <Download className="size-4 mr-1.5" />
             Export
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-card p-4">
+      <motion.div variants={itemVariants} className="flex flex-wrap items-end gap-3 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
         {/* Date presets */}
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium text-muted-foreground">
@@ -435,29 +492,30 @@ export default function UsagePage() {
             ))}
           </FilterSelect>
         </div>
-      </div>
+      </motion.div>
 
       {/* Table */}
+      <motion.div variants={itemVariants}>
       {isLoading ? (
-        <div className="space-y-2 rounded-2xl border border-border p-4">
+        <div className="space-y-2 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full rounded-xl" />
           ))}
         </div>
       ) : logs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/20 py-20 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border bg-muted/10 py-20 text-center shadow-sm backdrop-blur-sm">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-muted/50">
             <FileText className="size-6 text-muted-foreground" />
           </div>
           <div>
-            <p className="font-medium text-foreground">No logs found</p>
+            <p className="font-medium text-foreground text-lg">No logs found</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Try adjusting your filters or date range.
             </p>
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border">
+        <div className="overflow-hidden rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md">
           <Table>
             <TableHeader>
               <TableRow>
@@ -494,20 +552,20 @@ export default function UsagePage() {
                         )}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[100px]">
-                        {log.requestId}
+                        {log.id}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                        {fmtTimestamp(log.timestamp)}
+                        {fmtTimestamp(log.createdAt)}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {log.model}
+                        {log.model?.displayName ?? log.requestedModelSlug}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
-                        {log.apiKeyPrefix}
+                        {log.apiKey?.keyPrefix}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="text-xs">
-                          {log.capability}
+                          {log.requestType}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -523,7 +581,7 @@ export default function UsagePage() {
                         {fmtTokens(log.totalTokens)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {fmtCost(log.costUsd)}
+                        {fmtCost(log.totalCost)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">
                         {fmtLatency(log.latencyMs)}
@@ -549,17 +607,21 @@ export default function UsagePage() {
                                   label="Request ID"
                                   value={
                                     <span className="font-mono text-xs break-all">
-                                      {detail?.requestId ?? log.requestId}
+                                      {detail?.id ?? log.id}
                                     </span>
                                   }
                                 />
                                 <DetailRow
                                   label="Timestamp"
-                                  value={new Date(log.timestamp).toLocaleString()}
+                                  value={new Date(log.createdAt).toLocaleString()}
                                 />
                                 <DetailRow
                                   label="Model"
-                                  value={<span className="font-mono text-xs">{log.model}</span>}
+                                  value={
+                                    <span className="font-mono text-xs">
+                                      {log.model?.displayName ?? log.requestedModelSlug}
+                                    </span>
+                                  }
                                 />
                                 <DetailRow
                                   label="Prompt tokens"
@@ -603,7 +665,7 @@ export default function UsagePage() {
                                 <div className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
                                   <DetailRow
                                     label="Provider cost"
-                                    value={fmtCost(detail?.providerCost ?? log.costUsd)}
+                                    value={fmtCost(detail?.providerCost ?? log.totalCost)}
                                   />
                                   <DetailRow
                                     label="Platform markup"
@@ -617,7 +679,7 @@ export default function UsagePage() {
                                     label="Total charged"
                                     value={
                                       <span className="font-semibold text-foreground">
-                                        {fmtCost(log.costUsd)}
+                                        {fmtCost(log.totalCost)}
                                       </span>
                                     }
                                   />
@@ -675,10 +737,11 @@ export default function UsagePage() {
           </Table>
         </div>
       )}
+      </motion.div>
 
       {/* Pagination */}
       {!isLoading && total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             Showing{" "}
             <span className="font-medium text-foreground">
@@ -723,9 +786,9 @@ export default function UsagePage() {
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }
 

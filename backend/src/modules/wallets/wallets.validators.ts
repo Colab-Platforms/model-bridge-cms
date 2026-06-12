@@ -13,7 +13,11 @@ export const walletUserIdParamsSchema = z.object({
 });
 
 export const walletTransactionsQuerySchema = z.object({
-  limit: z.coerce.number().int().positive().max(100).optional(),
+  page: z.coerce.number().int().positive().optional().default(1),
+  limit: z.coerce.number().int().positive().max(100).optional().default(20),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  type: z.enum(["TOPUP", "CREDIT_GRANT", "USAGE_DEDUCTION", "REFUND", "ADJUSTMENT"]).optional(),
 });
 
 export const addBalanceSchema = z.object({

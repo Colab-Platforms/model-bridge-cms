@@ -1,9 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CoinsIcon, ExternalLink, FileText } from "lucide-react";
+import { motion } from "motion/react";
 
 import {
   Card,
@@ -243,6 +244,19 @@ function FilterSelect({
   );
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 30 } },
+};
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CreditsPage() {
@@ -273,6 +287,9 @@ export default function CreditsPage() {
   }>({
     queryKey: ["wallet-balance"],
     queryFn: () => api.get("/wallets/balance").then((r) => r.data),
+    staleTime: 0,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   // Sync live balance into authStore → sidebar badge updates automatically
@@ -292,18 +309,23 @@ export default function CreditsPage() {
     return p;
   }, [page, limit, dateRange, typeFilter]);
 
-  const { data, isLoading } = useQuery<TransactionsResponse>({
+  const { data, isLoading, isError, error } = useQuery<TransactionsResponse>({
     queryKey: ["wallet-transactions", queryParams],
     queryFn: () =>
       api
         .get("/wallets/transactions", { params: queryParams })
         .then((r) => {
           const raw = r.data;
+          console.log("[wallet-transactions] raw response:", raw);
           if (Array.isArray(raw)) {
             return { data: raw as CreditTransaction[], total: raw.length, page: 1, limit: raw.length };
           }
           return raw as TransactionsResponse;
         }),
+    staleTime: 0,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    retry: false,
   });
 
   const txs        = data?.data ?? [];
@@ -313,40 +335,47 @@ export default function CreditsPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-5">
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
       {/* Page header */}
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Credits &amp; Wallet</h2>
-        <p className="text-sm text-muted-foreground">
+      <motion.div variants={itemVariants}>
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground/90 font-serif">Credits &amp; Wallet</h2>
+        <p className="text-sm text-muted-foreground mt-1">
           Manage your balance and view transaction history.
         </p>
-      </div>
+      </motion.div>
 
       {/* Hero balance card */}
-      <Card className="bg-gradient-to-br from-primary/10 via-background to-background">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <CoinsIcon className="size-4" />
-            Available Balance
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-end justify-between gap-4">
-          <div>
-            {balanceLoading ? (
-              <Skeleton className="h-10 w-36 rounded-lg" />
-            ) : (
-              <p className="text-4xl font-bold tracking-tight text-foreground">
-                ${parseFloat(balanceData?.balance ?? "0").toFixed(2)}
-              </p>
-            )}
-            <p className="mt-1 text-xs text-muted-foreground">USD</p>
-          </div>
-          <Button onClick={() => setTopUpOpen(true)}>Add Credits</Button>
-        </CardContent>
-      </Card>
+      <motion.div variants={itemVariants}>
+        <Card className="bg-gradient-to-br from-primary/10 via-background to-background rounded-3xl overflow-hidden border-border/40 shadow-sm transition-all hover:shadow-md">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <CoinsIcon className="size-4" />
+              Available Balance
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-end justify-between gap-4">
+            <div>
+              {balanceLoading ? (
+                <Skeleton className="h-10 w-36 rounded-lg" />
+              ) : (
+                <p className="text-4xl font-bold tracking-tight text-foreground">
+                  ${parseFloat(balanceData?.balance ?? "0").toFixed(7)}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground font-medium">USD</p>
+            </div>
+            <Button onClick={() => setTopUpOpen(true)} className="transition-all hover:shadow-md hover:-translate-y-0.5">Add Credits</Button>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-card p-4">
+      <motion.div variants={itemVariants} className="flex flex-wrap items-end gap-3 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
         {/* Date presets */}
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium text-muted-foreground">
@@ -413,29 +442,42 @@ export default function CreditsPage() {
             <option value="ADJUSTMENT">Adjustment</option>
           </FilterSelect>
         </div>
-      </div>
+      </motion.div>
 
       {/* Transaction table */}
+      <motion.div variants={itemVariants}>
       {isLoading ? (
-        <div className="space-y-2 rounded-2xl border border-border p-4">
+        <div className="space-y-2 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full rounded-xl" />
           ))}
         </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-red-300 bg-red-50/10 py-20 text-center shadow-sm backdrop-blur-sm">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-red-100/50">
+            <FileText className="size-6 text-red-500" />
+          </div>
+          <div>
+            <p className="font-medium text-foreground text-lg">Failed to load transactions</p>
+            <p className="mt-1 text-sm text-red-500 font-mono">
+              {(error as any)?.response?.data?.message ?? (error as any)?.message ?? "Unknown error — check browser console"}
+            </p>
+          </div>
+        </div>
       ) : txs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/20 py-20 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border bg-muted/10 py-20 text-center shadow-sm backdrop-blur-sm">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-muted/50">
             <FileText className="size-6 text-muted-foreground" />
           </div>
           <div>
-            <p className="font-medium text-foreground">No transactions found</p>
+            <p className="font-medium text-foreground text-lg">No transactions found</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Try adjusting your filters or date range.
             </p>
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border">
+        <div className="overflow-hidden rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md">
           <Table>
             <TableHeader>
               <TableRow>
@@ -512,10 +554,11 @@ export default function CreditsPage() {
           </Table>
         </div>
       )}
+      </motion.div>
 
       {/* Pagination */}
       {!isLoading && total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             Showing{" "}
             <span className="font-medium text-foreground">
@@ -558,10 +601,10 @@ export default function CreditsPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <TopUpModal open={topUpOpen} onClose={() => setTopUpOpen(false)} />
-    </div>
+    </motion.div>
   );
 }

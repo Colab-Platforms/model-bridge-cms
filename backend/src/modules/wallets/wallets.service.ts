@@ -210,7 +210,21 @@ export const createWalletService = async (input: CreateWalletInput, createdBy?: 
 export const getWalletByUserId = async (userId: string) => getWalletOrThrow(userId);
 
 export const getBalance = async (userId: string) => {
-  const wallet = await getWalletOrThrow(userId);
+  const wallet = await prisma.wallet.findFirst({
+    where: { userId, isDeleted: false },
+    select: walletSelect,
+  });
+
+  if (!wallet) {
+    return {
+      walletId: null,
+      userId,
+      balance: "0",
+      currency: DEFAULT_WALLET_CURRENCY,
+      status: ACTIVE_WALLET_STATUS,
+    };
+  }
+
   assertWalletUsable(wallet);
 
   return {
@@ -222,35 +236,61 @@ export const getBalance = async (userId: string) => {
   };
 };
 
+const txSelect = {
+  id: true,
+  walletId: true,
+  inferenceRequestId: true,
+  referenceId: true,
+  type: true,
+  amount: true,
+  balanceBefore: true,
+  balanceAfter: true,
+  description: true,
+  createdBy: true,
+  createdAt: true,
+} satisfies Prisma.WalletTransactionSelect;
+
 export const getWalletTransactions = async (
   userId: string,
   query: WalletTransactionsQuery
 ) => {
-  const wallet = await getWalletOrThrow(userId);
-
-  return prisma.walletTransaction.findMany({
-    where: {
-      walletId: wallet.id,
-      isDeleted: false,
-    },
-    select: {
-      id: true,
-      walletId: true,
-      inferenceRequestId: true,
-      referenceId: true,
-      type: true,
-      amount: true,
-      balanceBefore: true,
-      balanceAfter: true,
-      description: true,
-      createdBy: true,
-      createdAt: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    ...(query.limit ? { take: query.limit } : {}),
+  const wallet = await prisma.wallet.findFirst({
+    where: { userId, isDeleted: false },
+    select: { id: true },
   });
+
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 20;
+  const skip = (page - 1) * limit;
+
+  if (!wallet) {
+    return { data: [], total: 0, page, limit };
+  }
+
+  const where: Prisma.WalletTransactionWhereInput = {
+    walletId: wallet.id,
+    isDeleted: false,
+    ...(query.type ? { type: query.type } : {}),
+    ...((query.startDate || query.endDate) ? {
+      createdAt: {
+        ...(query.startDate ? { gte: new Date(query.startDate) } : {}),
+        ...(query.endDate ? { lte: new Date(`${query.endDate}T23:59:59.999Z`) } : {}),
+      },
+    } : {}),
+  };
+
+  const [transactions, total] = await prisma.$transaction([
+    prisma.walletTransaction.findMany({
+      where,
+      select: txSelect,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.walletTransaction.count({ where }),
+  ]);
+
+  return { data: transactions, total, page, limit };
 };
 
 export const addBalance = async (input: AddBalanceInput) => {

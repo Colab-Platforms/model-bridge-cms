@@ -96,7 +96,7 @@ function ProfileTab() {
 
   const { data: profile, isLoading } = useQuery<User>({
     queryKey: ["profile"],
-    queryFn: () => api.get("/api/v1/users/me").then((r) => r.data),
+    queryFn: () => api.get("/users/me").then((r) => r.data),
   });
 
   const {
@@ -139,7 +139,7 @@ function ProfileTab() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: ProfileValues) =>
-      api.patch("/api/v1/users/me", data).then((r) => r.data),
+      api.patch("/users/me", data).then((r) => r.data),
     onSuccess: (updated: User) => {
       setUser(updated);
       queryClient.setQueryData(["profile"], updated);
@@ -339,7 +339,7 @@ function PasswordSection() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: PasswordValues) =>
-      api.patch("/api/v1/users/me/password", {
+      api.patch("/users/me/password", {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       }),
@@ -425,11 +425,11 @@ function SessionsSection() {
 
   const { data: sessions = [], isLoading } = useQuery<Session[]>({
     queryKey: ["sessions"],
-    queryFn: () => api.get("/api/v1/sessions").then((r) => r.data),
+    queryFn: () => api.get("/sessions").then((r) => r.data),
   });
 
   const revokeOne = useMutation({
-    mutationFn: (id: string) => api.delete(`/api/v1/sessions/${id}`),
+    mutationFn: (id: string) => api.delete(`/sessions/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       toast.success("Session revoked");
@@ -438,7 +438,7 @@ function SessionsSection() {
   });
 
   const revokeAll = useMutation({
-    mutationFn: () => api.delete("/api/v1/sessions"),
+    mutationFn: () => api.delete("/sessions"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       toast.success("All other sessions revoked");

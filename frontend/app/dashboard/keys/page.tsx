@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, Plus, Key } from "lucide-react";
-import axios from "axios";
+import { toast } from "sonner";
 
 import {
   Table,
@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -22,6 +23,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -47,31 +58,22 @@ function fmt(str: string | null | undefined) {
   });
 }
 
-function StatusPill({ status }: { status: ApiKey["status"] }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-        status === "ACTIVE" && "bg-green-100 text-green-700",
-        status === "REVOKED" && "bg-red-100 text-red-700",
-        status === "INACTIVE" && "bg-zinc-100 text-zinc-500",
-        status === "EXPIRED" && "bg-zinc-100 text-zinc-500",
-        status === "EXHAUSTED" && "bg-orange-100 text-orange-700"
-      )}
-    >
-      {status}
-    </span>
-  );
-}
+const STATUS_STYLES: Record<ApiKey["status"], string> = {
+  ACTIVE:    "bg-green-100 text-green-700 border-green-200",
+  REVOKED:   "bg-red-100 text-red-700 border-red-200",
+  INACTIVE:  "bg-zinc-100 text-zinc-500 border-zinc-200",
+  EXPIRED:   "bg-zinc-100 text-zinc-500 border-zinc-200",
+  EXHAUSTED: "bg-orange-100 text-orange-700 border-orange-200",
+};
 
 export default function KeysPage() {
   const qc = useQueryClient();
   const activeProject = useProjectStore((s) => s.activeProject);
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editKey, setEditKey] = useState<ApiKey | null>(null);
-  const [revokeKey, setRevokeKey] = useState<ApiKey | null>(null);
-  const [rotateKey, setRotateKey] = useState<ApiKey | null>(null);
+  const [createOpen, setCreateOpen]     = useState(false);
+  const [editKey, setEditKey]           = useState<ApiKey | null>(null);
+  const [revokeKey, setRevokeKey]       = useState<ApiKey | null>(null);
+  const [rotateKey, setRotateKey]       = useState<ApiKey | null>(null);
   const [rotatedApiKey, setRotatedApiKey] = useState<string | null>(null);
 
   const { data: keys = [], isLoading } = useQuery<ApiKey[]>({
@@ -86,10 +88,9 @@ export default function KeysPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["keys"] });
       setRevokeKey(null);
+      toast.success("API key revoked");
     },
-    onError: (err) => {
-      if (axios.isAxiosError(err)) console.error(err.response?.data);
-    },
+    onError: () => toast.error("Failed to revoke key. Please try again."),
   });
 
   const rotateMutation = useMutation({
@@ -99,9 +100,7 @@ export default function KeysPage() {
       setRotatedApiKey(data.apiKey);
       qc.invalidateQueries({ queryKey: ["keys"] });
     },
-    onError: (err) => {
-      if (axios.isAxiosError(err)) console.error(err.response?.data);
-    },
+    onError: () => toast.error("Failed to rotate key. Please try again."),
   });
 
   const closeRotateDialog = () => {
@@ -133,7 +132,6 @@ export default function KeysPage() {
           ))}
         </div>
       ) : keys.length === 0 ? (
-        /* Empty state */
         <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/20 py-20 text-center">
           <div className="flex size-14 items-center justify-center rounded-full bg-muted">
             <Key className="size-6 text-muted-foreground" />
@@ -171,19 +169,20 @@ export default function KeysPage() {
                   </TableCell>
                   <TableCell className="font-medium">{key.name}</TableCell>
                   <TableCell>
-                    <StatusPill status={key.status} />
+                    <Badge
+                      variant="outline"
+                      className={cn("text-xs font-medium", STATUS_STYLES[key.status])}
+                    >
+                      {key.status}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {key.creditLimit
                       ? `$${key.creditLimit} / ${key.limitType?.toLowerCase() ?? "period"}`
                       : "No limit"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {fmt(key.lastUsedAt)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {fmt(key.createdAt)}
-                  </TableCell>
+                  <TableCell className="text-muted-foreground">{fmt(key.lastUsedAt)}</TableCell>
+                  <TableCell className="text-muted-foreground">{fmt(key.createdAt)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -225,46 +224,34 @@ export default function KeysPage() {
       )}
 
       {/* ── Modals ── */}
+      <CreateKeyModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      {editKey && <EditKeyModal apiKey={editKey} onClose={() => setEditKey(null)} />}
 
-      <CreateKeyModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-      />
-
-      {editKey && (
-        <EditKeyModal apiKey={editKey} onClose={() => setEditKey(null)} />
-      )}
-
-      {/* Revoke confirm */}
-      <Dialog
-        open={!!revokeKey}
-        onOpenChange={(v) => !v && setRevokeKey(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Revoke API key?</DialogTitle>
-            <DialogDescription>
+      {/* Revoke — AlertDialog prevents accidental dismiss */}
+      <AlertDialog open={!!revokeKey} onOpenChange={(v) => !v && setRevokeKey(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke API key?</AlertDialogTitle>
+            <AlertDialogDescription>
               <strong>{revokeKey?.name}</strong> will be permanently revoked.
               Any application using this key will lose access immediately. This
               cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRevokeKey(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={revokeMutation.isPending}
               onClick={() => revokeKey && revokeMutation.mutate(revokeKey.id)}
             >
               {revokeMutation.isPending ? "Revoking…" : "Revoke key"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {/* Rotate confirm → OneTimeKeyDisplay */}
+      {/* Rotate — Dialog (two-step: confirm → show new key) */}
       <Dialog open={!!rotateKey} onOpenChange={(v) => !v && closeRotateDialog()}>
         <DialogContent>
           <DialogHeader>
@@ -279,12 +266,8 @@ export default function KeysPage() {
               </DialogDescription>
             )}
           </DialogHeader>
-
           {rotatedApiKey ? (
-            <OneTimeKeyDisplay
-              apiKey={rotatedApiKey}
-              onDismiss={closeRotateDialog}
-            />
+            <OneTimeKeyDisplay apiKey={rotatedApiKey} onDismiss={closeRotateDialog} />
           ) : (
             <DialogFooter>
               <Button variant="outline" onClick={closeRotateDialog}>
@@ -292,9 +275,7 @@ export default function KeysPage() {
               </Button>
               <Button
                 disabled={rotateMutation.isPending}
-                onClick={() =>
-                  rotateKey && rotateMutation.mutate(rotateKey.id)
-                }
+                onClick={() => rotateKey && rotateMutation.mutate(rotateKey.id)}
               >
                 {rotateMutation.isPending ? "Rotating…" : "Rotate key"}
               </Button>

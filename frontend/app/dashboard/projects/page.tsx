@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, Plus, FolderOpen } from "lucide-react";
-import axios from "axios";
+import { toast } from "sonner";
+import { motion } from "motion/react";
 
 import {
   Table,
@@ -24,13 +25,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import CreateProjectModal from "@/components/forms/projects/CreateProjectModal";
 import EditProjectModal from "@/components/forms/projects/EditProjectModal";
 import api from "@/lib/api";
@@ -45,6 +48,19 @@ function fmt(str: string) {
     year: "numeric",
   });
 }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 30 } },
+};
 
 export default function ProjectsPage() {
   const qc = useQueryClient();
@@ -61,57 +77,62 @@ export default function ProjectsPage() {
       const updated = projects.filter((p) => p.id !== deleteProject!.id);
       setProjects(updated);
       if (activeProject?.id === deleteProject!.id) {
-        setActiveProject(updated[0] ?? null as unknown as Project);
+        setActiveProject(updated[0] ?? (null as unknown as Project));
       }
       qc.invalidateQueries({ queryKey: ["projects"] });
       setDeleteProject(null);
+      toast.success("Project deleted");
     },
-    onError: (err) => {
-      if (axios.isAxiosError(err)) console.error(err.response?.data);
-    },
+    onError: () => toast.error("Failed to delete project. Please try again."),
   });
 
   return (
-    <div className="space-y-5">
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Projects</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground/90 font-serif">Projects</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Projects group your API keys and usage data.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-          <Plus className="size-4" />
+        <Button onClick={() => setCreateOpen(true)} className="shrink-0 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
+          <Plus className="size-4 mr-1.5" />
           New project
         </Button>
-      </div>
+      </motion.div>
 
       {/* Content */}
+      <motion.div variants={itemVariants}>
       {isLoading ? (
-        <div className="space-y-2 rounded-2xl border border-border p-4">
+        <div className="space-y-2 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full rounded-xl" />
           ))}
         </div>
       ) : projects.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/20 py-20 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-muted">
-            <FolderOpen className="size-6 text-muted-foreground" />
+        <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border bg-muted/10 py-20 text-center shadow-sm backdrop-blur-sm">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-muted/50">
+            <FolderOpen className="size-8 text-muted-foreground" />
           </div>
           <div>
-            <p className="font-medium text-foreground">No projects yet</p>
+            <p className="font-medium text-foreground text-lg">No projects yet</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Create a project to start managing API keys.
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
+          <Button onClick={() => setCreateOpen(true)} className="mt-2 transition-all hover:shadow-md hover:-translate-y-0.5">
+            <Plus className="size-4 mr-1.5" />
             Create your first project
           </Button>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border">
+        <div className="overflow-hidden rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md">
           <Table>
             <TableHeader>
               <TableRow>
@@ -134,22 +155,23 @@ export default function ProjectsPage() {
                       )}
                     </div>
                     {project.description && (
-                      <p className="mt-0.5 text-xs text-muted-foreground truncate max-w-xs">
+                      <p className="mt-0.5 max-w-xs truncate text-xs text-muted-foreground">
                         {project.description}
                       </p>
                     )}
                   </TableCell>
                   <TableCell>
-                    <span
+                    <Badge
+                      variant="outline"
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                        "text-xs font-medium",
                         project.isActive
-                          ? "bg-green-100 text-green-700"
-                          : "bg-zinc-100 text-zinc-500"
+                          ? "border-green-200 bg-green-100 text-green-700"
+                          : "border-zinc-200 bg-zinc-100 text-zinc-500"
                       )}
                     >
                       {project.isActive ? "Active" : "Inactive"}
-                    </span>
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {fmt(project.createdAt)}
@@ -193,41 +215,37 @@ export default function ProjectsPage() {
           </Table>
         </div>
       )}
+      </motion.div>
 
-      {/* Modals */}
+      {/* ── Modals ── */}
       <CreateProjectModal open={createOpen} onClose={() => setCreateOpen(false)} />
 
       {editProject && (
-        <EditProjectModal
-          project={editProject}
-          onClose={() => setEditProject(null)}
-        />
+        <EditProjectModal project={editProject} onClose={() => setEditProject(null)} />
       )}
 
-      {/* Delete confirm */}
-      <Dialog open={!!deleteProject} onOpenChange={(v) => !v && setDeleteProject(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete project?</DialogTitle>
-            <DialogDescription>
+      {/* Delete — AlertDialog prevents accidental dismiss */}
+      <AlertDialog open={!!deleteProject} onOpenChange={(v) => !v && setDeleteProject(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogDescription>
               <strong>{deleteProject?.name}</strong> and all its API keys will be
               permanently deleted. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteProject(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteMutation.isPending}
               onClick={() => deleteProject && deleteMutation.mutate(deleteProject.id)}
             >
               {deleteMutation.isPending ? "Deleting…" : "Delete project"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </motion.div>
   );
 }

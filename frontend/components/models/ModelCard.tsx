@@ -39,7 +39,7 @@ export function ModelCard({
   const extraCount = model.defaultForCapabilities.length - 3;
 
   return (
-    <Card className="group relative">
+    <Card className="group relative overflow-hidden rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-xl hover:-translate-y-1">
       {/* Comparison checkbox — fades in on hover, always visible when selected */}
       <div className="absolute right-3 top-3 z-10">
         <Checkbox
@@ -82,12 +82,12 @@ export function ModelCard({
         {/* Capability badges */}
         <div className="flex flex-wrap gap-1.5">
           {visibleCapabilities.map((cap) => (
-            <Badge key={cap} className={cn("text-xs", CAPABILITY_COLORS[cap])}>
+            <Badge key={cap} className={cn("text-xs shadow-sm", CAPABILITY_COLORS[cap])}>
               {CAPABILITY_LABELS[cap]}
             </Badge>
           ))}
           {extraCount > 0 && (
-            <Badge variant="secondary" className="text-xs text-muted-foreground">
+            <Badge variant="secondary" className="text-xs text-muted-foreground shadow-sm">
               +{extraCount} more
             </Badge>
           )}
@@ -129,7 +129,7 @@ export function ModelCard({
           <Button
             variant="outline"
             size="sm"
-            className="flex-1"
+            className="flex-1 transition-all hover:-translate-y-0.5 hover:shadow-sm"
             onClick={() => {
               navigator.clipboard.writeText(model.slug);
               toast.success("Slug copied", {
@@ -140,7 +140,7 @@ export function ModelCard({
           >
             Copy slug
           </Button>
-          <Button size="sm" className="flex-1" asChild>
+          <Button size="sm" className="flex-1 transition-all hover:-translate-y-0.5 hover:shadow-sm" asChild>
             <Link href={`/models/${model.slug}`}>View details</Link>
           </Button>
         </div>

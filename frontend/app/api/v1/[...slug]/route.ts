@@ -94,14 +94,22 @@ export async function GET(req: NextRequest, { params }: Context) {
     return ok({ status: true, data: models, message: "Success" });
   }
 
-  // GET /api/v1/credits/balance  |  /api/v1/credits/transactions
-  if (resource === "credits") {
+  // GET /api/v1/wallets/balance  |  /api/v1/wallets/transactions  |  /api/v1/wallets/me
+  if (resource === "wallets") {
     if (id === "balance") return ok(mockCreditBalance);
+    if (id === "me") return ok({ ...mockCreditBalance, walletId: "wallet_01", userId: mockUser.id, currency: "USD", status: "ACTIVE" });
     if (id === "transactions") {
       const page = parseInt(sp.get("page") ?? "1");
       const limit = parseInt(sp.get("limit") ?? "20");
-      const sliced = mockTransactions.slice((page - 1) * limit, page * limit);
-      return ok({ data: sliced, total: mockTransactions.length, page, limit });
+      const typeFilter = sp.get("type");
+      const startDate = sp.get("startDate");
+      const endDate = sp.get("endDate");
+      let txs = [...mockTransactions];
+      if (typeFilter) txs = txs.filter((t) => t.type === typeFilter);
+      if (startDate) txs = txs.filter((t) => t.createdAt >= startDate);
+      if (endDate) txs = txs.filter((t) => t.createdAt <= `${endDate}T23:59:59Z`);
+      const sliced = txs.slice((page - 1) * limit, page * limit);
+      return ok({ data: sliced, total: txs.length, page, limit });
     }
   }
 
@@ -149,6 +157,7 @@ export async function POST(req: NextRequest, { params }: Context) {
   const newProject = {
     id: `proj_${Date.now()}`,
     name: body.name,
+    slug: body.slug ?? body.name?.toLowerCase().replace(/\s+/g, "-"),
     description: body.description ?? null,
     isActive: true,
     createdAt: new Date().toISOString(),

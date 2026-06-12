@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { LayoutGrid, List, SearchX } from "lucide-react";
+import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { useModels } from "@/hooks/useModels";
 import type { ModelFilters, CapabilityType } from "@/types/index";
@@ -46,6 +47,19 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: "context_asc", label: "Context ↑" },
   { value: "context_desc", label: "Context ↓" },
 ];
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 30 } },
+};
 
 export default function ModelsPage() {
   const router = useRouter();
@@ -175,11 +189,16 @@ export default function ModelsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="flex flex-col gap-6 p-6"
+    >
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+      <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-semibold">Models</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground/90 font-serif">Models</h1>
           <span className="text-sm text-muted-foreground">
             {total ?? 0} models
           </span>
@@ -220,7 +239,7 @@ export default function ModelsPage() {
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* ── Two-column layout ──────────────────────────────────────────── */}
       <div className="flex gap-6">
@@ -234,7 +253,7 @@ export default function ModelsPage() {
         </div>
 
         {/* Main content */}
-        <div className="flex-1">
+        <motion.div variants={itemVariants} className="flex-1">
           {/* Loading */}
           {isLoading && (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -288,85 +307,88 @@ export default function ModelsPage() {
 
           {/* Table view */}
           {!isLoading && !isError && models && models.length > 0 && view === "table" && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Model</TableHead>
-                  <TableHead>Capabilities</TableHead>
-                  <TableHead>Context</TableHead>
-                  <TableHead>Input Price</TableHead>
-                  <TableHead>Output Price</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {models.map((model) => {
-                  const visible = model.defaultForCapabilities.slice(0, 3);
-                  const extra = model.defaultForCapabilities.length - 3;
-                  return (
-                    <TableRow key={model.id}>
-                      <TableCell>
-                        <p className="font-medium">{model.displayName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {model.provider.displayName}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {visible.map((cap) => (
-                            <Badge
-                              key={cap}
-                              className={cn("text-xs", CAPABILITY_COLORS[cap])}
+            <div className="overflow-hidden rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md mt-2">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Model</TableHead>
+                    <TableHead>Capabilities</TableHead>
+                    <TableHead>Context</TableHead>
+                    <TableHead>Input Price</TableHead>
+                    <TableHead>Output Price</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {models.map((model) => {
+                    const visible = model.defaultForCapabilities.slice(0, 3);
+                    const extra = model.defaultForCapabilities.length - 3;
+                    return (
+                      <TableRow key={model.id}>
+                        <TableCell>
+                          <p className="font-medium">{model.displayName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {model.provider.displayName}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {visible.map((cap) => (
+                              <Badge
+                                key={cap}
+                                className={cn("text-xs shadow-sm", CAPABILITY_COLORS[cap])}
+                              >
+                                {CAPABILITY_LABELS[cap]}
+                              </Badge>
+                            ))}
+                            {extra > 0 && (
+                              <Badge
+                                variant="secondary"
+                                className="text-xs text-muted-foreground shadow-sm"
+                              >
+                                +{extra} more
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {formatContextWindow(model.contextLength)}
+                        </TableCell>
+                        <TableCell>
+                          {formatPrice(model.inputPricePer1m)} / 1M
+                        </TableCell>
+                        <TableCell>
+                          {formatPrice(model.outputPricePer1m)} / 1M
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="transition-all hover:-translate-y-0.5 hover:shadow-sm"
+                              onClick={() => {
+                                navigator.clipboard.writeText(model.slug);
+                                toast.success("Slug copied", {
+                                  description:
+                                    "Paste it as the model param in your SDK call",
+                                });
+                              }}
                             >
-                              {CAPABILITY_LABELS[cap]}
-                            </Badge>
-                          ))}
-                          {extra > 0 && (
-                            <Badge
-                              variant="secondary"
-                              className="text-xs text-muted-foreground"
-                            >
-                              +{extra} more
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {formatContextWindow(model.contextLength)}
-                      </TableCell>
-                      <TableCell>
-                        {formatPrice(model.inputPricePer1m)} / 1M
-                      </TableCell>
-                      <TableCell>
-                        {formatPrice(model.outputPricePer1m)} / 1M
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              navigator.clipboard.writeText(model.slug);
-                              toast.success("Slug copied", {
-                                description:
-                                  "Paste it as the model param in your SDK call",
-                              });
-                            }}
-                          >
-                            Copy slug
-                          </Button>
-                          <Button size="sm" asChild>
-                            <Link href={`/models/${model.slug}`}>
-                              View details
-                            </Link>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                              Copy slug
+                            </Button>
+                            <Button size="sm" asChild className="transition-all hover:-translate-y-0.5 hover:shadow-sm">
+                              <Link href={`/models/${model.slug}`}>
+                                View details
+                              </Link>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
           {/* ── Pagination ───────────────────────────────────────────── */}
@@ -399,7 +421,7 @@ export default function ModelsPage() {
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {/* ── Comparison tray ────────────────────────────────────────────── */}
@@ -409,6 +431,6 @@ export default function ModelsPage() {
         onRemove={handleRemove}
         onClear={handleClearSelection}
       />
-    </div>
+    </motion.div>
   );
 }

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart2 } from "lucide-react";
+import { motion } from "motion/react";
 
 import {
   Card,
@@ -73,6 +74,19 @@ const PRESET_LABELS: { key: Preset; label: string }[] = [
   { key: "custom", label: "Custom" },
 ];
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 30 } },
+};
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function StatisticsPage() {
@@ -91,7 +105,7 @@ export default function StatisticsPage() {
     queryKey: ["stats", dateRange, activeProject?.id],
     queryFn: () =>
       api
-        .get("/api/v1/usage/stats", {
+        .get("/usage/stats", {
           params: { ...dateRange, groupBy: "day", projectId: activeProject!.id },
         })
         .then((r) => r.data),
@@ -128,17 +142,22 @@ export default function StatisticsPage() {
   ];
 
   return (
-    <div className="space-y-5">
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 pb-10"
+    >
       {/* Page header */}
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Statistics</h2>
-        <p className="text-sm text-muted-foreground">
+      <motion.div variants={itemVariants}>
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground/90 font-serif">Statistics</h2>
+        <p className="text-sm text-muted-foreground mt-1">
           Aggregate usage metrics and spend analytics.
         </p>
-      </div>
+      </motion.div>
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-card p-4">
+      <motion.div variants={itemVariants} className="flex flex-wrap items-end gap-3 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium text-muted-foreground">
             Date range
@@ -187,12 +206,12 @@ export default function StatisticsPage() {
             </div>
           </>
         )}
-      </div>
+      </motion.div>
 
       {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <motion.div variants={itemVariants} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {summaryCards.map(({ label, value }) => (
-          <Card key={label}>
+          <Card key={label} className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-card/60 backdrop-blur-md border-border/40 rounded-3xl">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {label}
@@ -207,10 +226,11 @@ export default function StatisticsPage() {
             </CardContent>
           </Card>
         ))}
-      </div>
+      </motion.div>
 
       {/* Daily Spend chart */}
-      <Card>
+      <motion.div variants={itemVariants}>
+      <Card className="rounded-3xl border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md overflow-hidden">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Daily Spend
@@ -224,10 +244,11 @@ export default function StatisticsPage() {
           )}
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Model breakdown */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+      <motion.div variants={itemVariants} className="grid gap-4 lg:grid-cols-2">
+        <Card className="rounded-3xl border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md overflow-hidden">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Requests by Model
@@ -242,7 +263,7 @@ export default function StatisticsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-3xl border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md overflow-hidden">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Model Breakdown
@@ -287,10 +308,11 @@ export default function StatisticsPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {/* Per-key breakdown */}
-      <Card>
+      <motion.div variants={itemVariants}>
+      <Card className="rounded-3xl border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md overflow-hidden">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Per-Key Breakdown
@@ -343,6 +365,7 @@ export default function StatisticsPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
