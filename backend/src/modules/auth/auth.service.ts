@@ -6,6 +6,7 @@ import STATUS_CODES from "../../utils/statusCodes.js";
 import prisma from "../../../prisma.js";
 import type { LoginInput, RegisterInput } from "./auth.types.js";
 import { generateToken, getTokenExpiryDate, hashToken, verifyToken } from "./auth.utils.js";
+import { createWallet } from "../wallets/wallets.service.js";
 
 const authUserSelect = {
 	id: true,
@@ -185,6 +186,8 @@ export const registerService = async (
 				},
 				select: authUserSelect,
 			});
+
+			await createWallet(user.id, user.id, tx);
 
 			return {
 				user: user,

@@ -173,10 +173,16 @@ const updateWalletBalanceWithTransaction = async (
   return updatedWallet;
 };
 
-export const createWallet = async (userId: string, createdBy?: string) => {
-  await getExistingUser(userId);
+export const createWallet = async (
+  userId: string,
+  createdBy?: string,
+  tx?: TransactionClient
+) => {
+  const db = tx ?? prisma;
 
-  const existingWallet = await prisma.wallet.findUnique({
+  await getExistingUser(userId, tx);
+
+  const existingWallet = await db.wallet.findUnique({
     where: {
       userId,
     },
@@ -187,7 +193,7 @@ export const createWallet = async (userId: string, createdBy?: string) => {
     return existingWallet;
   }
 
-  return prisma.wallet.upsert({
+  return db.wallet.upsert({
     where: {
       userId,
     },
