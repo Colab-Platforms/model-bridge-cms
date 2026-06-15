@@ -1,5 +1,11 @@
 import crypto from "crypto";
-import jwt, { type JwtPayload, type SignOptions } from "jsonwebtoken";
+import jwt, {
+	type JsonWebTokenError,
+	type JwtPayload,
+	type NotBeforeError,
+	type SignOptions,
+	type TokenExpiredError,
+} from "jsonwebtoken";
 
 import AppError from "../../shared/errors/index.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
@@ -52,13 +58,34 @@ export const verifyToken = <TKind extends TokenKind = TokenKind>(
 	token: string,
 	expectedKind?: TKind
 ) => {
-	const decoded = jwt.verify(token, getJwtSecret()) as JwtPayload & AuthTokenPayload<TKind>;
+	try {
+		const decoded = jwt.verify(token, getJwtSecret()) as JwtPayload & AuthTokenPayload<TKind>;
 
-	if (expectedKind && decoded.tokenKind !== expectedKind) {
-		throw new AppError("Invalid token kind", STATUS_CODES.UNAUTHORIZED);
+		if (expectedKind && decoded.tokenKind !== expectedKind) {
+			throw new AppError("Invalid token kind", STATUS_CODES.UNAUTHORIZED);
+		}
+
+		return decoded;
+	} catch (error) {
+		const jwtError = error as
+			| TokenExpiredError
+			| JsonWebTokenError
+			| NotBeforeError;
+
+		if (jwtError?.name === "TokenExpiredError") {
+			throw new AppError("Token expired", STATUS_CODES.UNAUTHORIZED);
+		}
+
+		if (jwtError?.name === "NotBeforeError") {
+			throw new AppError("Token is not active yet", STATUS_CODES.UNAUTHORIZED);
+		}
+
+		if (jwtError?.name === "JsonWebTokenError") {
+			throw new AppError("Invalid token", STATUS_CODES.UNAUTHORIZED);
+		}
+
+		throw error;
 	}
-
-	return decoded;
 };
 
 export const hashToken = (token: string) =>
