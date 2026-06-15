@@ -6,9 +6,31 @@ import {
 
 export type ProviderName = (typeof PROVIDER_NAMES)[number];
 
+export interface ProviderTextContentPart {
+  type: "text";
+  text: string;
+  cache_control?: {
+    type: "ephemeral";
+  };
+}
+
+export interface ProviderImageUrlContentPart {
+  type: "image_url";
+  image_url: {
+    url: string;
+  };
+  cache_control?: {
+    type: "ephemeral";
+  };
+}
+
+export type ProviderContentPart =
+  | ProviderTextContentPart
+  | ProviderImageUrlContentPart;
+
 export interface ProviderChatMessage {
   role: "system" | "user" | "assistant" | "tool";
-  content: string;
+  content: string | ProviderContentPart[];
   name?: string;
   toolCallId?: string;
 }

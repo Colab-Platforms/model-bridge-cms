@@ -1,4 +1,5 @@
 import type {
+  ProviderContentPart,
   ProviderChatRequest,
   ProviderChatResponse,
 } from "../base/provider.types.js";
@@ -11,6 +12,33 @@ import type {
 
 const DEFAULT_ANTHROPIC_MAX_TOKENS = 1024;
 
+const mapProviderContentPartToAnthropicBlock = (part: ProviderContentPart) => {
+  if (part.type === "text") {
+    return {
+      type: "text" as const,
+      text: part.text,
+    };
+  }
+
+  return {
+    type: "text" as const,
+    text: `[image] ${part.image_url.url}`,
+  };
+};
+
+const mapProviderContentToAnthropicContent = (content: string | ProviderContentPart[]) =>
+  typeof content === "string"
+    ? content
+    : content.map(mapProviderContentPartToAnthropicBlock);
+
+const extractTextFromProviderContent = (content: string | ProviderContentPart[]) =>
+  typeof content === "string"
+    ? content
+    : content
+        .filter((part) => part.type === "text")
+        .map((part) => part.text)
+        .join("");
+
 const mapProviderMessageRoleToAnthropicRole = (
   role: ProviderChatRequest["messages"][number]["role"]
 ): AnthropicMessage["role"] => (role === "assistant" ? "assistant" : "user");
@@ -18,7 +46,7 @@ const mapProviderMessageRoleToAnthropicRole = (
 const extractSystemPrompt = (request: ProviderChatRequest) => {
   const value = request.messages
     .filter((message) => message.role === "system")
-    .map((message) => message.content.trim())
+    .map((message) => extractTextFromProviderContent(message.content).trim())
     .filter(Boolean)
     .join("\n\n");
 
@@ -36,7 +64,7 @@ const mapChatMessagesToAnthropicMessages = (
 
   return nonSystemMessages.map((message) => ({
     role: mapProviderMessageRoleToAnthropicRole(message.role),
-    content: message.content,
+    content: mapProviderContentToAnthropicContent(message.content),
   }));
 };
 

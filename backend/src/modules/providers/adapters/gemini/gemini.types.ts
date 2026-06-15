@@ -1,5 +1,9 @@
 export interface GeminiPart {
   text?: string;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
 }
 
 export interface GeminiContent {
