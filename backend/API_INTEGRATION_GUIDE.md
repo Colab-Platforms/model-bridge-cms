@@ -34,6 +34,7 @@ Used by:
 - api-keys
 - providers
 - usage
+- overview
 
 Header:
 
@@ -725,7 +726,173 @@ Search behavior:
 
 ---
 
-## 7. Providers APIs
+## 7. Overview API
+
+Auth:
+
+```http
+Authorization: Bearer <USER_ACCESS_TOKEN>
+```
+
+This endpoint is designed for the user dashboard overview page.
+
+### GET `/overview`
+
+Get a single dashboard payload for the currently logged-in user.
+
+Optional query params:
+- `dateRangePreset`
+- `from`
+- `to`
+
+Supported `dateRangePreset` values:
+- `today`
+- `past_24h`
+- `weekly`
+- `monthly`
+- `yearly`
+- `custom`
+
+Examples:
+
+```txt
+GET /overview
+GET /overview?dateRangePreset=weekly
+GET /overview?dateRangePreset=monthly
+GET /overview?dateRangePreset=custom&from=2026-06-01T00:00:00.000Z&to=2026-06-15T23:59:59.000Z
+```
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "summary": {
+      "walletBalance": "245.50000000",
+      "currency": "USD",
+      "walletStatus": "ACTIVE",
+      "totalSequests": 42,
+      "totalTpend": "0.13700000",
+      "totalRokens": 20400,
+      "activeProjects": 3,
+      "activeApiKeys": 5,
+      "successRate": 90.48,
+      "avgLatencyMs": 721.5
+    },
+    "usage": {
+      "requestsByStatus": {
+        "success": 38,
+        "failed": 2,
+        "stopped": 1,
+        "pending": 0,
+        "partial": 1
+      },
+      "tokensBreakdown": {
+        "prompt": 12000,
+        "completion": 8400,
+        "total": 20400
+      },
+      "streamVsNonStream": {
+        "stream": 10,
+        "nonStream": 32
+      },
+      "dateRange": {
+        "preset": "weekly",
+        "from": "2026-06-08T15:30:00.000+05:30",
+        "to": "2026-06-15T12:45:00.000+05:30"
+      }
+    },
+    "topModels": [
+      {
+        "modelId": "cm_model_123",
+        "slug": "gpt-4o",
+        "displayName": "GPT-4o",
+        "provider": {
+          "id": "cm_provider_123",
+          "slug": "openai",
+          "displayName": "OpenAI"
+        },
+        "requests": 18,
+        "totalTokens": 9800,
+        "totalCost": "0.06100000"
+      }
+    ],
+    "topProjects": [
+      {
+        "projectId": "cm_project_123",
+        "name": "AI Colab Chat",
+        "slug": "ai-colab-chat",
+        "isActive": true,
+        "requests": 24,
+        "totalTokens": 11000,
+        "totalCost": "0.07200000"
+      }
+    ],
+    "apiKeys": {
+      "topApiKeys": [
+        {
+          "apiKeyId": "cm_key_123",
+          "name": "Frontend Key",
+          "keyPrefix": "mb_live_xxx",
+          "status": "ACTIVE",
+          "project": {
+            "id": "cm_project_123",
+            "name": "AI Colab Chat",
+            "slug": "ai-colab-chat"
+          },
+          "requests": 21,
+          "totalTokens": 10200,
+          "totalCost": "0.06600000",
+          "lastUsedAt": "2026-06-15T11:30:00.000+05:30"
+        }
+      ]
+    },
+    "wallet": {
+      "currentBalance": "245.50000000",
+      "currency": "USD",
+      "lowBalanceAlert": false,
+      "totalCreditsAdded": "50.00000000",
+      "totalUsageDeducted": "0.13700000",
+      "totalRefunded": "0",
+      "totalTransactionsAmount": "50.13700000",
+      "recentTransactions": [
+        {
+          "id": "cm_txn_123",
+          "type": "USAGE_DEDUCTION",
+          "amount": "0.00680000",
+          "balanceAfter": "245.50000000",
+          "description": "AI Model Usage",
+          "createdAt": "2026-06-15T11:30:00.000+05:30"
+        }
+      ]
+    },
+    "charts": {
+      "granularity": "day",
+      "usageTrend": [
+        {
+          "bucket": "2026-06-14T05:30:00.000+05:30",
+          "requests": 12,
+          "totalTokens": 7000,
+          "totalCost": "0.04680000"
+        }
+      ]
+    }
+  },
+  "message": "Overview fetched successfully"
+}
+```
+
+Notes:
+- this endpoint always returns data for the logged-in user only
+- `from` and `to` are only needed when `dateRangePreset=custom`
+- date/time values in responses are currently formatted in IST by the backend response formatter
+- `topModels`, `topProjects`, and `topApiKeys` are ranked by `totalCost` in the selected date range
+- recent wallet transactions are limited to the latest 5 records
+
+---
+
+## 8. Providers APIs
 
 Auth:
 
@@ -781,7 +948,7 @@ Soft delete provider.
 
 ---
 
-## 8. Chat Completions API
+## 9. Chat Completions API
 
 This is the main AI generation endpoint.
 
@@ -881,7 +1048,7 @@ data: [DONE]
 
 ---
 
-## 9. Root / Health
+## 10. Root / Health
 
 ### GET `/`
 
