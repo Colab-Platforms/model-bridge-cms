@@ -3,6 +3,7 @@ import STATUS_CODES from "../../utils/statusCodes.js";
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../../modules/auth/auth.utils.js";
 import prisma from "../../../prisma.js";
+import AppError from "../errors/index.js";
 
 type AllowedRole = "USER" | "ADMIN" | "SUPERADMIN";
 type RoleName = "User" | "Admin" | "SuperAdmin";
@@ -53,8 +54,27 @@ export const auth = (...allowedRoles: AllowedRole[]) => {
 
       next();
     } catch (err: any) {
+      if (err instanceof AppError) {
+        sendResponse(
+          res,
+          false,
+          null,
+          err.statusCode === STATUS_CODES.FORBIDDEN
+            ? err.message
+            : `Unauthorized: ${err.message}`,
+          err.statusCode
+        );
+        return;
+      }
+
       console.error("Auth Middleware Error:", err);
-      sendResponse(res, false, null, "Unauthorized: " + (err?.message ?? String(err)), STATUS_CODES.UNAUTHORIZED);
+      sendResponse(
+        res,
+        false,
+        null,
+        "Unauthorized: Authentication failed",
+        STATUS_CODES.UNAUTHORIZED
+      );
       return;
     }
   };
