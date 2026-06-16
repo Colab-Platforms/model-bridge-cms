@@ -1,7 +1,8 @@
-import { Prisma } from "@prisma/client";
+import { ActivityType, Prisma } from "@prisma/client";
 
 import prisma from "../../../prisma.js";
 import AppError from "../../shared/errors/index.js";
+import { activityLogService } from "../../services/activity-log.service.js";
 import {
   formatPaginationResponse,
   getPaginationOptions,
@@ -50,6 +51,40 @@ const walletSelect = {
     },
   },
 } satisfies Prisma.WalletSelect;
+
+const formatDecimalValue = (value: Prisma.Decimal | null | undefined) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  return value.toFixed(value.decimalPlaces());
+};
+
+const formatWalletRecord = <
+  T extends {
+    balance: Prisma.Decimal;
+  },
+>(
+  wallet: T
+) => ({
+  ...wallet,
+  balance: formatDecimalValue(wallet.balance) ?? "0",
+});
+
+const formatWalletTransactionRecord = <
+  T extends {
+    amount: Prisma.Decimal;
+    balanceBefore: Prisma.Decimal | null;
+    balanceAfter: Prisma.Decimal | null;
+  },
+>(
+  transaction: T
+) => ({
+  ...transaction,
+  amount: formatDecimalValue(transaction.amount) ?? "0",
+  balanceBefore: formatDecimalValue(transaction.balanceBefore),
+  balanceAfter: formatDecimalValue(transaction.balanceAfter),
+});
 
 const getExistingUser = async (userId: string, tx?: TransactionClient) => {
   const db = tx ?? prisma;
@@ -215,9 +250,10 @@ export const createWallet = async (
 };
 
 export const createWalletService = async (input: CreateWalletInput, createdBy?: string) =>
-  createWallet(input.userId, createdBy);
+  formatWalletRecord(await createWallet(input.userId, createdBy));
 
-export const getWalletByUserId = async (userId: string) => getWalletOrThrow(userId);
+export const getWalletByUserId = async (userId: string) =>
+  formatWalletRecord(await getWalletOrThrow(userId));
 
 export const getBalance = async (userId: string) => {
   const wallet = await getWalletOrThrow(userId);
@@ -226,7 +262,7 @@ export const getBalance = async (userId: string) => {
   return {
     walletId: wallet.id,
     userId: wallet.userId,
-    balance: wallet.balance,
+    balance: formatDecimalValue(wallet.balance) ?? "0",
     currency: wallet.currency,
     status: wallet.status,
   };
@@ -271,7 +307,12 @@ export const getWalletTransactions = async (
     prisma.walletTransaction.count({ where }),
   ]);
 
-  return formatPaginationResponse(transactions, totalRecords, page, pageSize);
+  return formatPaginationResponse(
+    transactions.map((transaction) => formatWalletTransactionRecord(transaction)),
+    totalRecords,
+    page,
+    pageSize
+  );
 };
 
 export const addBalance = async (input: AddBalanceInput) => {
@@ -281,8 +322,8 @@ export const addBalance = async (input: AddBalanceInput) => {
 
   const wallet = await createWallet(input.userId, input.createdBy);
 
-  return prisma.$transaction(async (tx) =>
-    updateWalletBalanceWithTransaction(tx, {
+  return prisma.$transaction(async (tx) => {
+    const updatedWallet = await updateWalletBalanceWithTransaction(tx, {
       walletId: wallet.id,
       userId: input.userId,
       amount,
@@ -290,8 +331,30 @@ export const addBalance = async (input: AddBalanceInput) => {
       description: buildWalletDescription("Wallet credit", input.description),
       createdBy: input.createdBy,
       referenceId: input.referenceId,
-    })
-  );
+    });
+
+    await activityLogService.log(
+      {
+        activityType:
+          input.createdBy && input.createdBy !== input.userId
+            ? ActivityType.CREDIT_GRANTED
+            : ActivityType.WALLET_TOPUP,
+        entityType: "WALLET",
+        entityId: updatedWallet.id,
+        actorId: input.createdBy ?? input.userId,
+        userId: input.userId,
+        metadata: {
+          amount: amount.toString(),
+          balance: updatedWallet.balance.toString(),
+          currency: updatedWallet.currency,
+          referenceId: input.referenceId ?? null,
+        },
+      },
+      tx
+    );
+
+    return formatWalletRecord(updatedWallet);
+  });
 };
 
 export const addBalanceToOwnWallet = async (
@@ -308,7 +371,8 @@ export const deductBalance = async (input: DeductBalanceInput) => {
   const wallet = await getWalletOrThrow(input.userId);
 
   return prisma.$transaction(async (tx) =>
-    updateWalletBalanceWithTransaction(tx, {
+    formatWalletRecord(
+      await updateWalletBalanceWithTransaction(tx, {
       walletId: wallet.id,
       userId: input.userId,
       amount,
@@ -317,7 +381,8 @@ export const deductBalance = async (input: DeductBalanceInput) => {
       createdBy: input.createdBy,
       referenceId: input.referenceId,
       inferenceRequestId: input.inferenceRequestId,
-    })
+      })
+    )
   );
 };
 
@@ -325,8 +390,8 @@ export const refundBalance = async (input: RefundBalanceInput) => {
   const amount = assertPositiveAmount(input.amount);
   const wallet = await getWalletOrThrow(input.userId);
 
-  return prisma.$transaction(async (tx) =>
-    updateWalletBalanceWithTransaction(tx, {
+  return prisma.$transaction(async (tx) => {
+    const updatedWallet = await updateWalletBalanceWithTransaction(tx, {
       walletId: wallet.id,
       userId: input.userId,
       amount,
@@ -335,8 +400,27 @@ export const refundBalance = async (input: RefundBalanceInput) => {
       createdBy: input.createdBy,
       referenceId: input.referenceId,
       inferenceRequestId: input.inferenceRequestId,
-    })
-  );
+    });
+
+    await activityLogService.log(
+      {
+        activityType: ActivityType.REFUND_ISSUED,
+        entityType: "WALLET",
+        entityId: updatedWallet.id,
+        actorId: input.createdBy ?? input.userId,
+        userId: input.userId,
+        metadata: {
+          amount: amount.toString(),
+          balance: updatedWallet.balance.toString(),
+          referenceId: input.referenceId ?? null,
+          inferenceRequestId: input.inferenceRequestId ?? null,
+        },
+      },
+      tx
+    );
+
+    return formatWalletRecord(updatedWallet);
+  });
 };
 
 export const deductCredits = async (input: {
@@ -376,7 +460,7 @@ export const refundCredits = async (input: {
 export const freezeWallet = async (userId: string, updatedBy?: string) => {
   const wallet = await getWalletOrThrow(userId);
 
-  return prisma.wallet.update({
+  return formatWalletRecord(await prisma.wallet.update({
     where: {
       id: wallet.id,
     },
@@ -385,13 +469,13 @@ export const freezeWallet = async (userId: string, updatedBy?: string) => {
       updatedBy,
     },
     select: walletSelect,
-  });
+  }));
 };
 
 export const unfreezeWallet = async (userId: string, updatedBy?: string) => {
   const wallet = await getWalletOrThrow(userId);
 
-  return prisma.wallet.update({
+  return formatWalletRecord(await prisma.wallet.update({
     where: {
       id: wallet.id,
     },
@@ -400,5 +484,5 @@ export const unfreezeWallet = async (userId: string, updatedBy?: string) => {
       updatedBy,
     },
     select: walletSelect,
-  });
+  }));
 };
