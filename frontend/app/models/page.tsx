@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -61,7 +61,7 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 30 } },
 };
 
-export default function ModelsPage() {
+function ModelsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -432,5 +432,13 @@ export default function ModelsPage() {
         onClear={handleClearSelection}
       />
     </motion.div>
+  );
+}
+
+export default function ModelsPage() {
+  return (
+    <Suspense>
+      <ModelsContent />
+    </Suspense>
   );
 }
