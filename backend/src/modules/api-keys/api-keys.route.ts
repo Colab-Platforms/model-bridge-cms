@@ -6,6 +6,7 @@ import {
   deleteApiKeyController,
   getAllApiKeysController,
   getApiKeyByIdController,
+  getMyApiKeysController,
   getApiKeysByProjectIdController,
   getApiKeysByUserIdController,
   updateApiKeyController,
@@ -23,6 +24,7 @@ const router = Router();
 
 router.post("/", auth("USER", "ADMIN"), createApiKeyValidator, createApiKeyController);
 router.get("/", auth("USER", "ADMIN"), getAllApiKeysQueryValidator, getAllApiKeysController);
+router.get("/my", auth("USER", "ADMIN"), getMyApiKeysController);
 router.get("/project/:projectId", auth("USER", "ADMIN"), apiKeyProjectIdParamsValidator, getApiKeysByProjectIdController);
 router.get("/user/:userId", auth("USER", "ADMIN"), apiKeyUserIdParamsValidator, getApiKeysByUserIdController);
 router.get("/:id", auth("USER", "ADMIN"), apiKeyIdParamsValidator, getApiKeyByIdController);
