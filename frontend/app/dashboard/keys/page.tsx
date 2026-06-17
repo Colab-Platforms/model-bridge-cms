@@ -2,8 +2,19 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, Plus, Key } from "lucide-react";
+import {
+  MoreHorizontal,
+  Plus,
+  Key,
+  Shield,
+  RefreshCw,
+  Trash2,
+  Edit3,
+  Copy,
+  DollarSign
+} from "lucide-react";
 import { toast } from "sonner";
+import { motion } from "motion/react";
 
 import {
   Table,
@@ -14,7 +25,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -49,6 +59,8 @@ import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/store/projectStore";
 import type { ApiKey } from "@/types";
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function fmt(str: string | null | undefined) {
   if (!str) return "Never";
   return new Date(str).toLocaleDateString(undefined, {
@@ -58,23 +70,55 @@ function fmt(str: string | null | undefined) {
   });
 }
 
-const STATUS_STYLES: Record<ApiKey["status"], string> = {
-  ACTIVE:    "bg-green-100 text-green-700 border-green-200",
-  REVOKED:   "bg-red-100 text-red-700 border-red-200",
-  INACTIVE:  "bg-zinc-100 text-zinc-500 border-zinc-200",
-  EXPIRED:   "bg-zinc-100 text-zinc-500 border-zinc-200",
-  EXHAUSTED: "bg-orange-100 text-orange-700 border-orange-200",
+
+const STATUS_CONFIG: Record<ApiKey["status"], { bg: string; text: string; dot: string }> = {
+  ACTIVE:    { bg: "bg-emerald-500/10 border-emerald-500/20", text: "text-emerald-600", dot: "bg-emerald-500" },
+  REVOKED:   { bg: "bg-red-500/10 border-red-500/20", text: "text-red-600", dot: "bg-red-500" },
+  INACTIVE:  { bg: "bg-zinc-500/10 border-zinc-500/20", text: "text-zinc-500", dot: "bg-zinc-500" },
+  EXPIRED:   { bg: "bg-amber-500/10 border-amber-500/20", text: "text-amber-600", dot: "bg-amber-500" },
+  EXHAUSTED: { bg: "bg-orange-500/10 border-orange-500/20", text: "text-orange-600", dot: "bg-orange-500" },
 };
+
+function StatusBadge({ status }: { status: ApiKey["status"] }) {
+  const cfg = STATUS_CONFIG[status];
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1.5 rounded-none px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight border",
+      cfg.bg,
+      cfg.text
+    )}>
+      <span className={cn("size-1.5 rounded-full animate-pulse", cfg.dot)} />
+      {status}
+    </span>
+  );
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 30 } },
+};
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function KeysPage() {
   const qc = useQueryClient();
   const activeProject = useProjectStore((s) => s.activeProject);
 
-  const [createOpen, setCreateOpen]     = useState(false);
-  const [editKey, setEditKey]           = useState<ApiKey | null>(null);
-  const [revokeKey, setRevokeKey]       = useState<ApiKey | null>(null);
-  const [rotateKey, setRotateKey]       = useState<ApiKey | null>(null);
+  const [createOpen, setCreateOpen]       = useState(false);
+  const [editKey, setEditKey]             = useState<ApiKey | null>(null);
+  const [revokeKey, setRevokeKey]         = useState<ApiKey | null>(null);
+  const [rotateKey, setRotateKey]         = useState<ApiKey | null>(null);
   const [rotatedApiKey, setRotatedApiKey] = useState<string | null>(null);
+  // Full keys stored in memory for this session only (cleared on page refresh)
+  const [sessionKeys, setSessionKeys]     = useState<Record<string, string>>({});
+
+  const storeSessionKey = (keyId: string, fullKey: string) =>
+    setSessionKeys((prev) => ({ ...prev, [keyId]: fullKey }));
 
   const { data: keys = [], isLoading } = useQuery<ApiKey[]>({
     queryKey: ["keys", activeProject?.id],
@@ -99,6 +143,9 @@ export default function KeysPage() {
     onSuccess: (data) => {
       setRotatedApiKey(data.apiKey);
       qc.invalidateQueries({ queryKey: ["keys"] });
+      if (rotateKey && data.apiKey) {
+        storeSessionKey(rotateKey.id, data.apiKey);
+      }
     },
     onError: () => toast.error("Failed to rotate key. Please try again."),
   });
@@ -109,180 +156,234 @@ export default function KeysPage() {
   };
 
   return (
-    <div className="space-y-5">
-      {/* Page header */}
-      <div className="flex items-start justify-between gap-4">
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-8"
+    >
+      {/* ── Page Header ── */}
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">API Keys</h2>
-          <p className="text-sm text-muted-foreground">
-            Manage keys that authenticate requests to the API.
+          <h2 className="text-3xl font-bold tracking-tight text-foreground/90">Security Keys</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Authenticate your application requests with secure project keys.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-          <Plus className="size-4" />
-          Create new key
+        <Button 
+          onClick={() => setCreateOpen(true)} 
+          className="shrink-0 rounded-none bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 h-10 px-5 font-bold uppercase text-xs tracking-wider"
+        >
+          <Plus className="size-4 mr-2" />
+          Generate New Key
         </Button>
-      </div>
+      </motion.div>
 
-      {/* Content */}
-      {isLoading ? (
-        <div className="space-y-2 rounded-2xl border border-border p-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded-xl" />
-          ))}
-        </div>
-      ) : keys.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/20 py-20 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-muted">
-            <Key className="size-6 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="font-medium text-foreground">No API keys yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Create your first key to start making API requests.
+      {/* ── Info Banner ── */}
+      <motion.div variants={itemVariants} className="rounded-none border border-primary/20 bg-primary/5 p-6 flex items-start gap-4">
+         <div className="flex size-10 items-center justify-center rounded-none bg-primary/10 text-primary shrink-0">
+            <Shield className="size-5" />
+         </div>
+         <div className="space-y-1">
+            <p className="text-sm font-bold text-foreground">Protect your secrets</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              API keys carry significant privileges. Never share them in public repositories or client-side code that isn't obfuscated. We recommend rotating keys every 90 days for maximum security.
             </p>
+         </div>
+      </motion.div>
+
+      {/* ── Main Content ── */}
+      <motion.div variants={itemVariants}>
+        {isLoading ? (
+          <div className="space-y-3 rounded-none border border-border/40 bg-card/60 backdrop-blur-md p-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-2xl" />
+            ))}
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            Create your first key
-          </Button>
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-2xl border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Key</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Credit limit</TableHead>
-                <TableHead>Last used</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {keys.map((key) => (
-                <TableRow key={key.id}>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {key.keyPrefix}
-                  </TableCell>
-                  <TableCell className="font-medium">{key.name}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn("text-xs font-medium", STATUS_STYLES[key.status])}
-                    >
-                      {key.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {key.creditLimit
-                      ? `$${key.creditLimit} / ${key.limitType?.toLowerCase() ?? "period"}`
-                      : "No limit"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{fmt(key.lastUsedAt)}</TableCell>
-                  <TableCell className="text-muted-foreground">{fmt(key.createdAt)}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          aria-label="Key actions"
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setEditKey(key)}>
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => setRotateKey(key)}
-                          disabled={key.status !== "ACTIVE"}
-                        >
-                          Rotate
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onSelect={() => setRevokeKey(key)}
-                          disabled={key.status !== "ACTIVE"}
-                        >
-                          Revoke
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+        ) : keys.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-6 rounded-none border border-dashed border-border/60 bg-muted/10 py-24 text-center backdrop-blur-sm">
+            <div className="flex size-20 items-center justify-center rounded-none bg-muted shadow-inner">
+              <Key className="size-10 text-muted-foreground/40" />
+            </div>
+            <div className="max-w-xs">
+              <p className="font-bold text-foreground text-xl">No API keys active</p>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                You haven't created any keys for this project yet. Start by generating a new one.
+              </p>
+            </div>
+            <Button 
+              onClick={() => setCreateOpen(true)}
+              className="rounded-none font-bold px-6"
+            >
+              <Plus className="size-4 mr-2" />
+              Create First Key
+            </Button>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-none border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-xl">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-border/40 bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="py-5 pl-8 text-[11px] font-black uppercase tracking-widest text-muted-foreground">Key Prefix</TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Identity</TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Balance Limit</TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Activity</TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Created</TableHead>
+                  <TableHead className="w-12 pr-8" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+              </TableHeader>
+              <TableBody>
+                {keys.map((key) => (
+                  <TableRow key={key.id} className="group/row transition-colors hover:bg-primary/5 cursor-default border-b border-border/10">
+                    <TableCell className="pl-8">
+                       <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs bg-muted/60 border border-border/50 rounded px-2 py-1 text-muted-foreground group-hover/row:text-primary transition-colors">
+                            {key.keyPrefix}••••••••
+                          </span>
+                          <button
+                            onClick={() => {
+                               const toCopy = sessionKeys[key.id] ?? key.keyPrefix;
+                               navigator.clipboard.writeText(toCopy);
+                               toast.success(sessionKeys[key.id] ? "API key copied" : "Key prefix copied");
+                            }}
+                            className="opacity-0 group-hover/row:opacity-100 p-1 hover:bg-primary/10 rounded transition-all"
+                            title={sessionKeys[key.id] ? "Copy full API key" : "Copy key prefix"}
+                          >
+                             <Copy className="size-3 text-primary" />
+                          </button>
+                       </div>
+                    </TableCell>
+                    <TableCell>
+                       <span className="text-sm font-bold text-foreground truncate max-w-[150px] inline-block">
+                          {key.name}
+                       </span>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={key.status} />
+                    </TableCell>
+                    <TableCell>
+                       <div className="flex items-center gap-1.5">
+                          <DollarSign className="size-3.5 text-muted-foreground" />
+                          <span className="text-xs font-bold text-foreground">
+                            {key.creditLimit
+                              ? `${key.creditLimit} / ${key.limitType?.toLowerCase()}`
+                              : "Unlimited"}
+                          </span>
+                       </div>
+                    </TableCell>
+                    <TableCell>
+                       <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">Last used</span>
+                          <span className="text-xs font-bold text-foreground/80">{fmt(key.lastUsedAt)}</span>
+                       </div>
+                    </TableCell>
+                    <TableCell>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">Issue date</span>
+                          <span className="text-xs font-medium text-muted-foreground">{fmt(key.createdAt)}</span>
+                       </div>
+                    </TableCell>
+                    <TableCell className="pr-8">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="size-10 rounded-none hover:bg-primary/10 hover:text-primary"
+                          >
+                            <MoreHorizontal className="size-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 rounded-none p-2 bg-popover/90 backdrop-blur-md border-border/60">
+                          <DropdownMenuItem onSelect={() => setEditKey(key)} className="rounded-xl px-3 py-2.5 gap-3 cursor-pointer">
+                            <Edit3 className="size-4 text-muted-foreground" />
+                            <span className="font-bold text-xs uppercase tracking-wider">Configure Key</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => setRotateKey(key)}
+                            disabled={key.status !== "ACTIVE"}
+                            className="rounded-xl px-3 py-2.5 gap-3 cursor-pointer"
+                          >
+                            <RefreshCw className="size-4 text-muted-foreground" />
+                            <span className="font-bold text-xs uppercase tracking-wider">Rotate Secret</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="mx-2 bg-border/40" />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => setRevokeKey(key)}
+                            disabled={key.status !== "ACTIVE"}
+                            className="rounded-xl px-3 py-2.5 gap-3 cursor-pointer"
+                          >
+                            <Trash2 className="size-4" />
+                            <span className="font-bold text-xs uppercase tracking-wider">Revoke Access</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </motion.div>
 
       {/* ── Modals ── */}
-      <CreateKeyModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateKeyModal open={createOpen} onClose={() => setCreateOpen(false)} onKeyCreated={storeSessionKey} />
       {editKey && <EditKeyModal apiKey={editKey} onClose={() => setEditKey(null)} />}
 
-      {/* Revoke — AlertDialog prevents accidental dismiss */}
       <AlertDialog open={!!revokeKey} onOpenChange={(v) => !v && setRevokeKey(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-[2.5rem] border-border/60 bg-card/90 backdrop-blur-xl max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke API key?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <strong>{revokeKey?.name}</strong> will be permanently revoked.
-              Any application using this key will lose access immediately. This
-              cannot be undone.
+            <AlertDialogTitle className="text-2xl font-bold">Revoke key access?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground pt-2">
+              The key <span className="font-bold text-foreground">"{revokeKey?.name}"</span> will be permanently deactivated. All applications currently using this credential will fail immediately.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="pt-6">
+            <AlertDialogCancel className="rounded-none border-border/60 font-bold uppercase text-[10px] tracking-widest h-11">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="rounded-none bg-red-600 text-white hover:bg-red-700 font-bold uppercase text-[10px] tracking-widest h-11 shadow-lg shadow-red-600/20"
               disabled={revokeMutation.isPending}
               onClick={() => revokeKey && revokeMutation.mutate(revokeKey.id)}
             >
-              {revokeMutation.isPending ? "Revoking…" : "Revoke key"}
+              {revokeMutation.isPending ? "Revoking…" : "Revoke Access"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Rotate — Dialog (two-step: confirm → show new key) */}
       <Dialog open={!!rotateKey} onOpenChange={(v) => !v && closeRotateDialog()}>
-        <DialogContent>
+        <DialogContent className="rounded-[2.5rem] border-border/60 bg-card/90 backdrop-blur-xl max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {rotatedApiKey ? "Your new API key" : "Rotate API key?"}
+            <DialogTitle className="text-2xl font-bold">
+              {rotatedApiKey ? "New Credential Generated" : "Rotate Secret?"}
             </DialogTitle>
             {!rotatedApiKey && (
-              <DialogDescription>
-                A new secret will be generated for{" "}
-                <strong>{rotateKey?.name}</strong>. The current key will stop
-                working immediately.
+              <DialogDescription className="text-sm leading-relaxed text-muted-foreground pt-2">
+                A new private secret will be generated for <span className="font-bold text-foreground">"{rotateKey?.name}"</span>. The existing secret will reach end-of-life immediately.
               </DialogDescription>
             )}
           </DialogHeader>
           {rotatedApiKey ? (
             <OneTimeKeyDisplay apiKey={rotatedApiKey} onDismiss={closeRotateDialog} />
           ) : (
-            <DialogFooter>
-              <Button variant="outline" onClick={closeRotateDialog}>
-                Cancel
+            <DialogFooter className="pt-6">
+              <Button variant="outline" onClick={closeRotateDialog} className="rounded-none border-border/60 font-bold uppercase text-[10px] tracking-widest h-11">
+                Keep Current
               </Button>
               <Button
                 disabled={rotateMutation.isPending}
                 onClick={() => rotateKey && rotateMutation.mutate(rotateKey.id)}
+                className="rounded-none font-bold uppercase text-[10px] tracking-widest h-11 shadow-lg shadow-primary/20"
               >
-                {rotateMutation.isPending ? "Rotating…" : "Rotate key"}
+                {rotateMutation.isPending ? "Rotating…" : "Generate New Secret"}
               </Button>
             </DialogFooter>
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }

@@ -26,6 +26,7 @@ import type { Project } from "@/types";
 
 const ROUTE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
+  overview: "Overview",
   keys: "API Keys",
   usage: "Usage Logs",
   activity: "Activity Log",

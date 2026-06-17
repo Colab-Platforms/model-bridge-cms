@@ -307,3 +307,37 @@ export const mockSessions = [
     createdAt: "2026-05-25T00:00:00Z",
   },
 ];
+// ── Stacked Chart Data ────────────────────────────────────────────────────────
+export const mockModelUsageTimeseries = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date("2026-06-01");
+  d.setDate(d.getDate() + i);
+  return {
+    date: d.toISOString().split("T")[0],
+    "gpt-4o": Math.floor(Math.random() * 5) + 2,
+    "claude-3-5-sonnet": Math.floor(Math.random() * 4) + 1,
+    "gemini-1.5-flash": Math.floor(Math.random() * 3) + 1,
+    "llama-3-70b": Math.floor(Math.random() * 2) + 0.5,
+    others: Math.floor(Math.random() * 1) + 0.2,
+  };
+});
+
+export const mockKeyUsageTimeseries = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date("2026-06-01");
+  d.setDate(d.getDate() + i);
+  return {
+    date: d.toISOString().split("T")[0],
+    "mb-sk-abc12": Math.floor(Math.random() * 8) + 3,
+    "mb-sk-def34": Math.floor(Math.random() * 5) + 2,
+    "mb-sk-jkl78": Math.floor(Math.random() * 3) + 1,
+  };
+});
+
+export const mockAppUsageTimeseries = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date("2026-06-01");
+  d.setDate(d.getDate() + i);
+  return {
+    date: d.toISOString().split("T")[0],
+    "Personal": Math.floor(Math.random() * 6) + 2,
+    "Startup App": Math.floor(Math.random() * 10) + 5,
+  };
+});

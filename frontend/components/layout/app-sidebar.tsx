@@ -24,7 +24,7 @@ import {
 const navMain = [
   {
     title: "Overview",
-    url: "/dashboard",
+    url: "/dashboard/overview",
     icon: <LayoutDashboard />,
   },
   // {
@@ -45,14 +45,6 @@ const navMain = [
       { title: "API Keys",    url: "/dashboard/keys" },
       { title: "Usage Logs",  url: "/dashboard/usage" },
       { title: "Activity Log", url: "/dashboard/activity" },
-    ],
-  },
-  {
-    title: "Analytics",
-    url: "#",
-    icon: <BarChart2 />,
-    items: [
-      { title: "Statistics", url: "/dashboard/stats" },
     ],
   },
   {

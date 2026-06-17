@@ -7,57 +7,43 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Loader2, Monitor, Smartphone, Shield } from "lucide-react";
+import { motion } from "motion/react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell,
+  TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import api from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 import type { Session, User } from "@/types";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
 const profileSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  phoneNo: z.string().optional(),
-  countryCode: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  country: z.string().optional(),
-  timezone: z.string().optional(),
-  profileImage: z
-    .string()
-    .url("Must be a valid URL")
-    .optional()
-    .or(z.literal("")),
+  firstName:    z.string().min(1, "First name is required"),
+  lastName:     z.string().min(1, "Last name is required"),
+  phoneNo:      z.string().optional(),
+  countryCode:  z.string().optional(),
+  city:         z.string().optional(),
+  state:        z.string().optional(),
+  country:      z.string().optional(),
+  timezone:     z.string().optional(),
+  profileImage: z.string().url("Must be a valid URL").optional().or(z.literal("")),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
 
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(8, "At least 8 characters"),
+    newPassword:     z.string().min(8, "At least 8 characters"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
   .refine((d) => d.newPassword === d.confirmPassword, {
@@ -71,21 +57,58 @@ type PasswordValues = z.infer<typeof passwordSchema>;
 function fmtDate(ts?: string | null) {
   if (!ts) return "—";
   return new Date(ts).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+    month: "short", day: "numeric", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
   });
 }
 
 function parseUserAgent(ua?: string) {
   if (!ua) return "Unknown device";
-  if (ua.includes("Chrome")) return "Chrome";
+  if (ua.includes("Chrome"))  return "Chrome";
   if (ua.includes("Firefox")) return "Firefox";
-  if (ua.includes("Safari")) return "Safari";
-  if (ua.includes("Edge")) return "Edge";
+  if (ua.includes("Safari"))  return "Safari";
+  if (ua.includes("Edge"))    return "Edge";
   return ua.slice(0, 36);
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show:   { opacity: 1, transition: { staggerChildren: 0.08 } },
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show:   { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 30 } },
+};
+
+// ── Section label ─────────────────────────────────────────────────────────────
+
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <div className="size-1 bg-primary shrink-0" />
+      <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// ── Field wrapper ─────────────────────────────────────────────────────────────
+
+function Field({
+  id, label, error, children,
+}: {
+  id?: string; label: string; error?: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id} className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </Label>
+      {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
 }
 
 // ── Profile Tab ───────────────────────────────────────────────────────────────
@@ -96,41 +119,29 @@ function ProfileTab() {
 
   const { data: profile, isLoading } = useQuery<User>({
     queryKey: ["profile"],
-    queryFn: () => api.get("/users/me").then((r) => r.data),
+    queryFn:  () => api.get("/users/me").then((r) => r.data),
   });
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    formState: { errors },
-  } = useForm<ProfileValues>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      phoneNo: "",
-      countryCode: "",
-      city: "",
-      state: "",
-      country: "",
-      timezone: "",
-      profileImage: "",
-    },
-  });
+  const { register, handleSubmit, reset, watch, formState: { errors } } =
+    useForm<ProfileValues>({
+      resolver: zodResolver(profileSchema),
+      defaultValues: {
+        firstName: "", lastName: "", phoneNo: "", countryCode: "",
+        city: "", state: "", country: "", timezone: "", profileImage: "",
+      },
+    });
 
   useEffect(() => {
     if (profile) {
       reset({
-        firstName: profile.firstName ?? "",
-        lastName: profile.lastName ?? "",
-        phoneNo: profile.phoneNo ?? "",
-        countryCode: profile.countryCode ?? "",
-        city: profile.city ?? "",
-        state: profile.state ?? "",
-        country: profile.country ?? "",
-        timezone: profile.timezone ?? "",
+        firstName:    profile.firstName    ?? "",
+        lastName:     profile.lastName     ?? "",
+        phoneNo:      profile.phoneNo      ?? "",
+        countryCode:  profile.countryCode  ?? "",
+        city:         profile.city         ?? "",
+        state:        profile.state        ?? "",
+        country:      profile.country      ?? "",
+        timezone:     profile.timezone     ?? "",
         profileImage: profile.profileImage ?? "",
       });
     }
@@ -148,177 +159,161 @@ function ProfileTab() {
     onError: () => toast.error("Failed to update profile"),
   });
 
-  const imageUrl = watch("profileImage");
+  const imageUrl    = watch("profileImage");
   const displayUser = profile ?? user;
-  const initials = displayUser
+  const initials    = displayUser
     ? `${displayUser.firstName?.[0] ?? ""}${displayUser.lastName?.[0] ?? ""}`.toUpperCase()
     : "??";
 
   if (isLoading) {
     return (
-      <div className="space-y-4 pt-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full rounded-xl" />
+      <div className="space-y-3 pt-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full rounded-none" />
         ))}
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-4 pt-4">
-      {/* Avatar */}
-      <Card>
-        <CardContent className="flex items-center gap-5 pt-6">
-          <Avatar className="h-16 w-16 rounded-2xl shrink-0">
-            {imageUrl && <AvatarImage src={imageUrl} alt="Profile" />}
-            <AvatarFallback className="rounded-2xl text-xl font-semibold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 space-y-1.5">
-            <Label htmlFor="profileImage">Profile image URL</Label>
+    <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-5 pt-6">
+
+      {/* ── Hero: avatar + account snapshot ── */}
+      <Card className="rounded-none border-border/40 bg-gradient-to-br from-primary/10 via-background to-background shadow-sm overflow-hidden">
+        <CardContent className="pt-6 pb-5">
+          <div className="flex items-center gap-5">
+            <Avatar className="h-20 w-20 rounded-none shrink-0 ring-2 ring-primary/20">
+              {imageUrl && <AvatarImage src={imageUrl} alt="Profile" />}
+              <AvatarFallback className="rounded-none text-2xl font-black bg-primary/10 text-primary">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-xl font-bold text-foreground leading-tight truncate">
+                {displayUser?.firstName} {displayUser?.lastName}
+              </p>
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                {displayUser?.email}
+              </p>
+              <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                <span className={cn(
+                  "inline-flex items-center gap-1.5 rounded-none px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight border",
+                  displayUser?.status === "ACTIVE"
+                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"
+                    : "bg-zinc-500/10 border-zinc-500/20 text-zinc-500"
+                )}>
+                  <span className={cn(
+                    "size-1.5 rounded-full",
+                    displayUser?.status === "ACTIVE" ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"
+                  )} />
+                  {displayUser?.status?.toLowerCase() ?? "—"}
+                </span>
+                <span className="inline-flex items-center rounded-none px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight border border-primary/20 bg-primary/10 text-primary">
+                  {displayUser?.role?.toLowerCase() ?? "—"}
+                </span>
+                {profile?.createdAt && (
+                  <span className="text-[10px] text-muted-foreground font-medium">
+                    Member since {new Date(profile.createdAt).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Avatar URL ── */}
+      <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+        <CardContent className="pt-5 pb-5">
+          <SectionLabel label="Profile image" />
+          <Field id="profileImage" label="Image URL" error={errors.profileImage?.message}>
             <Input
               id="profileImage"
               placeholder="https://example.com/avatar.png"
+              className="rounded-none"
               {...register("profileImage")}
             />
-            {errors.profileImage && (
-              <p className="text-xs text-destructive">
-                {errors.profileImage.message}
-              </p>
-            )}
-          </div>
+          </Field>
         </CardContent>
       </Card>
 
-      {/* Personal info */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">
-            Personal Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="firstName">First name</Label>
-              <Input id="firstName" {...register("firstName")} />
-              {errors.firstName && (
-                <p className="text-xs text-destructive">
-                  {errors.firstName.message}
-                </p>
-              )}
+      {/* ── Personal info ── */}
+      <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+        <CardContent className="pt-5 pb-5">
+          <SectionLabel label="Personal information" />
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="firstName" label="First name" error={errors.firstName?.message}>
+                <Input id="firstName" className="rounded-none" {...register("firstName")} />
+              </Field>
+              <Field id="lastName" label="Last name" error={errors.lastName?.message}>
+                <Input id="lastName" className="rounded-none" {...register("lastName")} />
+              </Field>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="lastName">Last name</Label>
-              <Input id="lastName" {...register("lastName")} />
-              {errors.lastName && (
-                <p className="text-xs text-destructive">
-                  {errors.lastName.message}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="countryCode">Country code</Label>
-              <Input
-                id="countryCode"
-                placeholder="+1"
-                {...register("countryCode")}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="phoneNo">Phone number</Label>
-              <Input
-                id="phoneNo"
-                placeholder="555 000 1234"
-                {...register("phoneNo")}
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="countryCode" label="Country code">
+                <Input id="countryCode" placeholder="+1" className="rounded-none" {...register("countryCode")} />
+              </Field>
+              <Field id="phoneNo" label="Phone number">
+                <Input id="phoneNo" placeholder="555 000 1234" className="rounded-none" {...register("phoneNo")} />
+              </Field>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Location */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Location</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="city">City</Label>
-              <Input id="city" {...register("city")} />
+      {/* ── Location ── */}
+      <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+        <CardContent className="pt-5 pb-5">
+          <SectionLabel label="Location" />
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="city" label="City">
+                <Input id="city" className="rounded-none" {...register("city")} />
+              </Field>
+              <Field id="state" label="State / Province">
+                <Input id="state" className="rounded-none" {...register("state")} />
+              </Field>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="state">State / Province</Label>
-              <Input id="state" {...register("state")} />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="country">Country</Label>
-              <Input id="country" {...register("country")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="timezone">Timezone</Label>
-              <Input
-                id="timezone"
-                placeholder="America/New_York"
-                {...register("timezone")}
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="country" label="Country">
+                <Input id="country" className="rounded-none" {...register("country")} />
+              </Field>
+              <Field id="timezone" label="Timezone">
+                <Input id="timezone" placeholder="America/New_York" className="rounded-none" {...register("timezone")} />
+              </Field>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Read-only account info */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Account Info</CardTitle>
-          <CardDescription className="text-xs">
+      {/* ── Account info (read-only) ── */}
+      <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+        <CardContent className="pt-5 pb-2">
+          <SectionLabel label="Account info" />
+          <div className="divide-y divide-border/40">
+            {[
+              { label: "Email", value: displayUser?.email ?? "—" },
+              { label: "Auth provider", value: displayUser?.authProvider?.toLowerCase() ?? "local" },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-center justify-between py-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+                <span className="text-sm font-medium text-foreground">{value}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-3 pb-2">
             Contact support to change your email address.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-0">
-          <div className="flex items-center justify-between py-2.5">
-            <span className="text-sm text-muted-foreground">Email</span>
-            <span className="text-sm font-medium">
-              {displayUser?.email ?? "—"}
-            </span>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between py-2.5">
-            <span className="text-sm text-muted-foreground">Role</span>
-            <Badge variant="outline" className="capitalize text-xs">
-              {displayUser?.role?.toLowerCase() ?? "—"}
-            </Badge>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between py-2.5">
-            <span className="text-sm text-muted-foreground">Status</span>
-            <Badge
-              variant="outline"
-              className={
-                displayUser?.status === "ACTIVE"
-                  ? "text-green-600 border-green-300 bg-green-50 text-xs"
-                  : "text-zinc-500 text-xs"
-              }
-            >
-              {displayUser?.status?.toLowerCase() ?? "—"}
-            </Badge>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between py-2.5">
-            <span className="text-sm text-muted-foreground">Member since</span>
-            <span className="text-sm">{fmtDate(profile?.createdAt)}</span>
-          </div>
+          </p>
         </CardContent>
       </Card>
 
-      <div className="flex justify-end pb-4">
-        <Button type="submit" disabled={isPending}>
+      <div className="flex justify-end pb-2">
+        <Button
+          type="submit"
+          disabled={isPending}
+          className="rounded-none font-bold uppercase text-xs tracking-wider h-10 px-6 shadow-lg shadow-primary/20"
+        >
           {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
           Save changes
         </Button>
@@ -330,84 +325,39 @@ function ProfileTab() {
 // ── Password Section ──────────────────────────────────────────────────────────
 
 function PasswordSection() {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<PasswordValues>({ resolver: zodResolver(passwordSchema) });
+  const { register, handleSubmit, reset, formState: { errors } } =
+    useForm<PasswordValues>({ resolver: zodResolver(passwordSchema) });
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: PasswordValues) =>
       api.patch("/users/me/password", {
         currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
+        newPassword:     data.newPassword,
       }),
-    onSuccess: () => {
-      toast.success("Password changed successfully");
-      reset();
-    },
-    onError: () =>
-      toast.error("Failed to change password — check your current password"),
+    onSuccess: () => { toast.success("Password changed successfully"); reset(); },
+    onError:   () => toast.error("Failed to change password — check your current password"),
   });
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium">Change Password</CardTitle>
-        <CardDescription className="text-xs">
-          Use a strong password you don't use elsewhere.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          onSubmit={handleSubmit((d) => mutate(d))}
-          className="space-y-4"
-        >
-          <div className="space-y-1.5">
-            <Label htmlFor="currentPassword">Current password</Label>
-            <Input
-              id="currentPassword"
-              type="password"
-              autoComplete="current-password"
-              {...register("currentPassword")}
-            />
-            {errors.currentPassword && (
-              <p className="text-xs text-destructive">
-                {errors.currentPassword.message}
-              </p>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="newPassword">New password</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              autoComplete="new-password"
-              {...register("newPassword")}
-            />
-            {errors.newPassword && (
-              <p className="text-xs text-destructive">
-                {errors.newPassword.message}
-              </p>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="confirmPassword">Confirm new password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              {...register("confirmPassword")}
-            />
-            {errors.confirmPassword && (
-              <p className="text-xs text-destructive">
-                {errors.confirmPassword.message}
-              </p>
-            )}
-          </div>
+    <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+      <CardContent className="pt-5 pb-5">
+        <SectionLabel label="Change password" />
+        <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-4">
+          <Field id="currentPassword" label="Current password" error={errors.currentPassword?.message}>
+            <Input id="currentPassword" type="password" autoComplete="current-password" className="rounded-none" {...register("currentPassword")} />
+          </Field>
+          <Field id="newPassword" label="New password" error={errors.newPassword?.message}>
+            <Input id="newPassword" type="password" autoComplete="new-password" className="rounded-none" {...register("newPassword")} />
+          </Field>
+          <Field id="confirmPassword" label="Confirm new password" error={errors.confirmPassword?.message}>
+            <Input id="confirmPassword" type="password" autoComplete="new-password" className="rounded-none" {...register("confirmPassword")} />
+          </Field>
           <div className="flex justify-end pt-2">
-            <Button type="submit" disabled={isPending}>
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="rounded-none font-bold uppercase text-xs tracking-wider h-10 px-6"
+            >
               {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Update password
             </Button>
@@ -425,133 +375,122 @@ function SessionsSection() {
 
   const { data: sessions = [], isLoading } = useQuery<Session[]>({
     queryKey: ["sessions"],
-    queryFn: () => api.get("/sessions").then((r) => r.data),
+    queryFn:  () => api.get("/sessions").then((r) => r.data),
   });
 
   const revokeOne = useMutation({
     mutationFn: (id: string) => api.delete(`/sessions/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      toast.success("Session revoked");
-    },
-    onError: () => toast.error("Failed to revoke session"),
+    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["sessions"] }); toast.success("Session revoked"); },
+    onError:    () => toast.error("Failed to revoke session"),
   });
 
   const revokeAll = useMutation({
     mutationFn: () => api.delete("/sessions"),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      toast.success("All other sessions revoked");
-    },
-    onError: () => toast.error("Failed to revoke sessions"),
+    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["sessions"] }); toast.success("All other sessions revoked"); },
+    onError:    () => toast.error("Failed to revoke sessions"),
   });
 
   const otherSessions = sessions.filter((s) => !s.isCurrent);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-3">
-        <div>
-          <CardTitle className="text-sm font-medium">Active Sessions</CardTitle>
-          <CardDescription className="text-xs mt-0.5">
-            Devices currently signed in to your account.
-          </CardDescription>
+    <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+      <CardContent className="pt-5">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <SectionLabel label="Active sessions" />
+          {otherSessions.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={revokeAll.isPending}
+              onClick={() => revokeAll.mutate()}
+              className="rounded-none text-[10px] font-black uppercase tracking-wider border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive shrink-0 -mt-1"
+            >
+              {revokeAll.isPending && <Loader2 className="mr-1.5 size-3 animate-spin" />}
+              Revoke all other
+            </Button>
+          )}
         </div>
-        {otherSessions.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={revokeAll.isPending}
-            onClick={() => revokeAll.mutate()}
-            className="shrink-0 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
-          >
-            {revokeAll.isPending && (
-              <Loader2 className="mr-1.5 size-3 animate-spin" />
-            )}
-            Revoke all other sessions
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent>
+
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-xl" />
+              <Skeleton key={i} className="h-14 w-full rounded-none" />
             ))}
           </div>
         ) : sessions.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-8 text-center">
-            <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-              <Shield className="size-4 text-muted-foreground" />
+          <div className="flex flex-col items-center gap-3 py-12 text-center">
+            <div className="flex size-12 items-center justify-center rounded-none bg-muted">
+              <Shield className="size-5 text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground">
-              No active sessions found.
-            </p>
+            <p className="text-sm text-muted-foreground">No active sessions found.</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Device</TableHead>
-                <TableHead>IP Address</TableHead>
-                <TableHead>Last used</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sessions.map((session) => (
-                <TableRow key={session.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                        {session.deviceName
-                          ?.toLowerCase()
-                          .includes("mobile") ? (
-                          <Smartphone className="size-3.5 text-muted-foreground" />
-                        ) : (
-                          <Monitor className="size-3.5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium leading-none">
-                          {session.deviceName ??
-                            parseUserAgent(session.userAgent)}
-                        </p>
-                        {session.isCurrent && (
-                          <span className="mt-1 inline-flex items-center rounded-full border border-green-300 bg-green-50 px-1.5 py-px text-[10px] font-medium text-green-600">
-                            Current session
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {session.ipAddress ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {fmtDate(session.lastUsedAt)}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {fmtDate(session.expiresAt)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {!session.isCurrent && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={revokeOne.isPending}
-                        onClick={() => revokeOne.mutate(session.id)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/5"
-                      >
-                        Revoke
-                      </Button>
-                    )}
-                  </TableCell>
+          <div className="overflow-hidden rounded-none border border-border/40">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-border/40 bg-muted/40 hover:bg-muted/40">
+                  {["Device", "IP Address", "Last used", "Expires", ""].map((h) => (
+                    <TableHead key={h} className="text-[11px] font-black uppercase tracking-widest text-muted-foreground py-4">
+                      {h}
+                    </TableHead>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {sessions.map((session) => (
+                  <TableRow
+                    key={session.id}
+                    className="group/row border-b border-border/10 hover:bg-primary/5 transition-colors"
+                  >
+                    <TableCell className="py-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-none bg-muted border border-border/40">
+                          {session.deviceName?.toLowerCase().includes("mobile") ? (
+                            <Smartphone className="size-3.5 text-muted-foreground" />
+                          ) : (
+                            <Monitor className="size-3.5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-foreground leading-none">
+                            {session.deviceName ?? parseUserAgent(session.userAgent)}
+                          </p>
+                          {session.isCurrent && (
+                            <span className="mt-1.5 inline-flex items-center gap-1 rounded-none border border-emerald-300/50 bg-emerald-500/10 px-1.5 py-px text-[10px] font-black uppercase tracking-tight text-emerald-600">
+                              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Current
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {session.ipAddress ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {fmtDate(session.lastUsedAt)}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {fmtDate(session.expiresAt)}
+                    </TableCell>
+                    <TableCell className="text-right pr-4">
+                      {!session.isCurrent && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={revokeOne.isPending}
+                          onClick={() => revokeOne.mutate(session.id)}
+                          className="rounded-none text-[10px] font-black uppercase tracking-wider text-destructive hover:text-destructive hover:bg-destructive/5 opacity-0 group-hover/row:opacity-100 transition-opacity"
+                        >
+                          Revoke
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -562,7 +501,7 @@ function SessionsSection() {
 
 function SecurityTab() {
   return (
-    <div className="space-y-4 pt-4">
+    <div className="space-y-5 pt-6">
       <PasswordSection />
       <SessionsSection />
     </div>
@@ -573,30 +512,46 @@ function SecurityTab() {
 
 export default function SettingsPage() {
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">
-          Account Settings
-        </h2>
-        <p className="text-sm text-muted-foreground">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="max-w-3xl space-y-6"
+    >
+      {/* Page header */}
+      <motion.div variants={itemVariants}>
+        <h2 className="text-3xl font-bold tracking-tight text-foreground/90">Account Settings</h2>
+        <p className="text-sm text-muted-foreground mt-1">
           Manage your profile information and account security.
         </p>
-      </div>
+      </motion.div>
 
-      <Tabs defaultValue="profile">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-        </TabsList>
+      {/* Tabs */}
+      <motion.div variants={itemVariants}>
+        <Tabs defaultValue="profile">
+          <TabsList className="rounded-none border border-border/50 bg-background/60 p-0 h-10 w-full grid grid-cols-2">
+            <TabsTrigger
+              value="profile"
+              className="rounded-none text-[11px] font-black uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none transition-all"
+            >
+              Profile
+            </TabsTrigger>
+            <TabsTrigger
+              value="security"
+              className="rounded-none text-[11px] font-black uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none transition-all"
+            >
+              Security
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="profile">
-          <ProfileTab />
-        </TabsContent>
-
-        <TabsContent value="security">
-          <SecurityTab />
-        </TabsContent>
-      </Tabs>
-    </div>
+          <TabsContent value="profile">
+            <ProfileTab />
+          </TabsContent>
+          <TabsContent value="security">
+            <SecurityTab />
+          </TabsContent>
+        </Tabs>
+      </motion.div>
+    </motion.div>
   );
 }
