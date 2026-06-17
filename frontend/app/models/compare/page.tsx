@@ -1,6 +1,7 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -34,9 +35,8 @@ function formatReleaseDate(dateStr: string | null): string {
 
 const LABEL_CELL = "w-48 bg-background font-medium text-muted-foreground sticky left-0";
 
-export default function ComparePage() {
+function CompareContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const raw = searchParams.get("ids") ?? "";
   const slugs = raw ? raw.split(",").slice(0, 4) : [];
@@ -81,15 +81,15 @@ export default function ComparePage() {
   }
 
   // ── Derived comparison values ────────────────────────────────────────────
-  const maxContext = Math.max(...selectedModels.map((m) => m.contextWindow));
+  const maxContext = Math.max(...selectedModels.map((m) => m.contextLength ?? 0));
   const minInputPrice = Math.min(
-    ...selectedModels.map((m) => parseFloat(m.inputPricePer1M))
+    ...selectedModels.map((m) => parseFloat(m.inputPricePer1m))
   );
   const minOutputPrice = Math.min(
-    ...selectedModels.map((m) => parseFloat(m.outputPricePer1M))
+    ...selectedModels.map((m) => parseFloat(m.outputPricePer1m))
   );
   const allCapabilities = Array.from(
-    new Set(selectedModels.flatMap((m) => m.capabilities))
+    new Set(selectedModels.flatMap((m) => m.defaultForCapabilities))
   ) as CapabilityType[];
 
   const winClass = "font-semibold text-green-600 dark:text-green-400";
@@ -156,10 +156,10 @@ export default function ComparePage() {
                 <TableCell
                   key={model.id}
                   className={cn(
-                    model.contextWindow === maxContext && winClass
+                    model.contextLength === maxContext && winClass
                   )}
                 >
-                  {formatContextWindow(model.contextWindow)}
+                  {formatContextWindow(model.contextLength)}
                 </TableCell>
               ))}
             </TableRow>
@@ -171,11 +171,11 @@ export default function ComparePage() {
                 <TableCell
                   key={model.id}
                   className={cn(
-                    parseFloat(model.inputPricePer1M) === minInputPrice &&
+                    parseFloat(model.inputPricePer1m) === minInputPrice &&
                       winClass
                   )}
                 >
-                  {formatPrice(model.inputPricePer1M)}
+                  {formatPrice(model.inputPricePer1m)}
                 </TableCell>
               ))}
             </TableRow>
@@ -187,11 +187,11 @@ export default function ComparePage() {
                 <TableCell
                   key={model.id}
                   className={cn(
-                    parseFloat(model.outputPricePer1M) === minOutputPrice &&
+                    parseFloat(model.outputPricePer1m) === minOutputPrice &&
                       winClass
                   )}
                 >
-                  {formatPrice(model.outputPricePer1M)}
+                  {formatPrice(model.outputPricePer1m)}
                 </TableCell>
               ))}
             </TableRow>
@@ -204,7 +204,7 @@ export default function ComparePage() {
                 </TableCell>
                 {selectedModels.map((model) => (
                   <TableCell key={model.id}>
-                    {model.capabilities.includes(cap) ? (
+                    {model.defaultForCapabilities.includes(cap) ? (
                       <span className="text-green-600 dark:text-green-400">
                         ✓
                       </span>
@@ -271,5 +271,13 @@ export default function ComparePage() {
         </Table>
       </div>
     </div>
+  );
+}
+
+export default function ComparePage() {
+  return (
+    <Suspense>
+      <CompareContent />
+    </Suspense>
   );
 }

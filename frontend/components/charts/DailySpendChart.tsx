@@ -37,7 +37,7 @@ export function DailySpendChart({ data }: Props) {
                     width={56}
                 />
                 <Tooltip
-                    formatter={(v: number) => [`$${v.toFixed(4)}`, "Spend"]}
+                    formatter={(v) => [`$${Number(v ?? 0).toFixed(4)}`, "Spend"]}
                     contentStyle={{
                         background: "hsl(var(--popover))",
                         border: "1px solid hsl(var(--border))",

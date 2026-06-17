@@ -207,7 +207,7 @@ export default function ModelDetailPage() {
          <div className="rounded-2xl bg-muted/30 p-4 flex flex-col justify-center border border-border/40 hover:bg-muted/50 transition-colors shadow-sm">
            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex justify-between items-center">
               Context
-              {model.contextLength <= 32000 && <span className="text-[9px] font-bold text-muted-foreground">Low</span>}
+              {model.contextLength != null && model.contextLength <= 32000 && <span className="text-[9px] font-bold text-muted-foreground">Low</span>}
            </div>
            <div className="text-sm font-semibold text-foreground">
              {formatContextWindow(model.contextLength)}
