@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import Link from "next/link";
 
 import {
   Dialog,
@@ -18,18 +19,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 import OneTimeKeyDisplay from "./OneTimeKeyDisplay";
 import api from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
+import { useProjectStore } from "@/store/projectStore";
 
-const SCOPES = ["FULL", "CHAT", "IMAGE", "AUDIO", "VIDEO", "READ_ONLY"] as const;
+const LIMIT_TYPES = ["DAILY", "WEEKLY", "MONTHLY", "QUATERLY", "YEARLY"] as const;
 
 const schema = z.object({
-  name: z.string().min(1, "Name is required"),
-  scopes: z.array(z.enum(SCOPES)).min(1, "Select at least one scope"),
-  rateLimit: z.coerce.number().int().min(1, "Must be at least 1"),
-  monthlyLimit: z.string().optional(),  
-
+  name:        z.string().min(1, "Name is required"),
+  projectId:   z.string().min(1, "Please select a project"),
+  creditLimit: z.string().optional(),
+  limitType:   z.enum(LIMIT_TYPES).optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -37,30 +38,57 @@ type FormValues = z.infer<typeof schema>;
 interface Props {
   open: boolean;
   onClose: () => void;
+  onKeyCreated?: (keyId: string, fullApiKey: string) => void;
 }
 
-export default function CreateKeyModal({ open, onClose }: Props) {
-  const qc = useQueryClient();
+export default function CreateKeyModal({ open, onClose, onKeyCreated }: Props) {
+  const qc            = useQueryClient();
+  const projects      = useProjectStore((s) => s.projects);
+  const activeProject = useProjectStore((s) => s.activeProject);
+  const user          = useAuthStore((s) => s.user);
+
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [apiError, setApiError]       = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
-    control,
     reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { scopes: [], rateLimit: 60, monthlyLimit: "" },
+    defaultValues: { name: "", projectId: "", creditLimit: "", limitType: undefined },
   });
+
+  // Pre-select activeProject every time the modal opens
+  useEffect(() => {
+    if (open) {
+      reset({
+        name:        "",
+        projectId:   activeProject?.id ?? projects[0]?.id ?? "",
+        creditLimit: "",
+        limitType:   undefined,
+      });
+      setRevealedKey(null);
+      setApiError(null);
+    }
+  }, [open, activeProject?.id]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: (d: FormValues) =>
-      api.post("/api/v1/keys", d).then((r) => r.data),
+      api.post("/api-keys", {
+        userId:      user!.id,
+        name:        d.name,
+        projectId:   d.projectId,
+        creditLimit: d.creditLimit || undefined,
+        limitType:   d.limitType   || undefined,
+      }).then((r) => r.data),
     onSuccess: (data) => {
-      setRevealedKey(data.key);
+      setRevealedKey(data.apiKey);
       qc.invalidateQueries({ queryKey: ["keys"] });
+      if (data.id && data.apiKey) {
+        onKeyCreated?.(data.id, data.apiKey);
+      }
     },
     onError: (err) => {
       if (axios.isAxiosError(err)) {
@@ -85,12 +113,21 @@ export default function CreateKeyModal({ open, onClose }: Props) {
           </DialogTitle>
           {!revealedKey && (
             <DialogDescription>
-              Give your key a name and configure its permissions.
+              Give your key a name, pick a project, and optionally set a spend limit.
             </DialogDescription>
           )}
         </DialogHeader>
 
-        {revealedKey ? (
+        {projects.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              You need at least one project before creating an API key.
+            </p>
+            <Button asChild variant="outline" onClick={handleClose}>
+              <Link href="/dashboard/projects">Go to Projects</Link>
+            </Button>
+          </div>
+        ) : revealedKey ? (
           <OneTimeKeyDisplay apiKey={revealedKey} onDismiss={handleClose} />
         ) : (
           <form
@@ -100,9 +137,9 @@ export default function CreateKeyModal({ open, onClose }: Props) {
             })}
             className="flex flex-col gap-4"
           >
-            {/* Name */}
+            {/* Key name */}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ck-name">Project name</Label>
+              <Label htmlFor="ck-name">Key name</Label>
               <Input
                 id="ck-name"
                 placeholder="e.g. My Production App"
@@ -114,108 +151,60 @@ export default function CreateKeyModal({ open, onClose }: Props) {
               )}
             </div>
 
-            {/* Scopes */}
+            {/* Project selector */}
             <div className="flex flex-col gap-1.5">
-              <Label>Scopes</Label>
-              <Controller
-                name="scopes"
-                control={control}
-                render={({ field }) => (
-                  <div className="grid grid-cols-2 gap-2">
-                    {SCOPES.map((scope) => {
-                      const checked = field.value.includes(scope);
-                      return (
-                        <label
-                          key={scope}
-                          className={cn(
-                            "flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors select-none",
-                            checked
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border text-muted-foreground hover:bg-accent"
-                          )}
-                        >
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={checked}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.checked
-                                  ? [...field.value, scope]
-                                  : field.value.filter((s) => s !== scope)
-                              )
-                            }
-                          />
-                          <span
-                            className={cn(
-                              "flex size-4 shrink-0 items-center justify-center rounded-md border transition-colors",
-                              checked
-                                ? "border-primary bg-primary"
-                                : "border-border bg-background"
-                            )}
-                          >
-                            {checked && (
-                              <svg
-                                className="size-3 text-primary-foreground"
-                                fill="none"
-                                viewBox="0 0 12 12"
-                              >
-                                <path
-                                  d="M2 6l3 3 5-5"
-                                  stroke="currentColor"
-                                  strokeWidth="1.5"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            )}
-                          </span>
-                          {scope}
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              />
-              {errors.scopes && (
-                <p className="text-xs text-destructive">{errors.scopes.message}</p>
+              <Label htmlFor="ck-project">Project</Label>
+              <select
+                id="ck-project"
+                className="h-10 rounded-xl border border-border bg-background px-2.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                aria-invalid={!!errors.projectId}
+                {...register("projectId")}
+              >
+                <option value="">Select a project…</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              {errors.projectId && (
+                <p className="text-xs text-destructive">{errors.projectId.message}</p>
               )}
             </div>
 
-            {/* Rate limit + Monthly limit */}
-               <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ek-rate">Rate limit (req / min)</Label>
-              <Input
-                id="ek-rate"
-                type="number"
-                min={1}
-                aria-invalid={!!errors.rateLimit}
-                {...register("rateLimit")}
-              />
-              {errors.rateLimit && (
-                <p className="text-xs text-destructive">
-                  {errors.rateLimit.message}
-                </p>
-              )}
-            </div>
+            {/* Credit limit + period */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="ck-limit">
+                  Credit limit{" "}
+                  <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
+                <Input
+                  id="ck-limit"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="No limit"
+                  {...register("creditLimit")}
+                />
+              </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ek-monthly">
-                Monthly limit{" "}
-                <span className="font-normal text-muted-foreground">
-                  (optional)
-                </span>
-              </Label>
-              <Input
-                id="ek-monthly"
-                type="number"
-                min={1}
-                placeholder="No limit"
-                {...register("monthlyLimit")}
-              />
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="ck-limit-type">Limit period</Label>
+                <select
+                  id="ck-limit-type"
+                  className="h-10 rounded-xl border border-border bg-background px-2.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                  {...register("limitType")}
+                >
+                  <option value="">No period</option>
+                  {LIMIT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t.charAt(0) + t.slice(1).toLowerCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
 
             {apiError && (
               <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">

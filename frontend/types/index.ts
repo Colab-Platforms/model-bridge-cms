@@ -1,14 +1,26 @@
 export type UserRole = "USER" | "ADMIN";
 export type UserStatus = "ACTIVE" | "SUSPENDED" | "DELETED";
-export type ApiKeyStatus = "ACTIVE" | "REVOKED" | "EXPIRED";
-export type ApiKeyScope = "FULL" | "CHAT" | "IMAGE" | "AUDIO" | "VIDEO" | "READ_ONLY";
-export type RequestStatus = "PENDING" | "SUCCESS" | "FAILED" | "PARTIAL";
+export type ApiKeyStatus = "ACTIVE" | "REVOKED" | "INACTIVE" | "EXPIRED" | "EXHAUSTED";
+export type LimitType = "DAILY" | "WEEKLY" | "MONTHLY" | "QUATERLY" | "YEARLY";
+export type RequestStatus = "SUCCESS" | "FAILED" | "PARTIAL" | "STOPPED";
 export type TransactionType =
-  | "CREDIT_PURCHASE"
+  | "TOPUP"
   | "CREDIT_GRANT"
   | "USAGE_DEDUCTION"
   | "REFUND"
   | "ADJUSTMENT";
+
+export interface Project {
+  id: string;
+  name: string;
+  slug?: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AuthProvider = "LOCAL" | "GOOGLE" | "GITHUB";
 
 export interface User {
   id: string;
@@ -19,31 +31,76 @@ export interface User {
   status: UserStatus;
   creditBalance: number;
   createdAt: string;
+  phoneNo?: string;
+  countryCode?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  profileImage?: string;
+  timezone?: string;
+  authProvider?: AuthProvider;
+}
+
+export interface Session {
+  id: string;
+  deviceName?: string;
+  userAgent?: string;
+  ipAddress?: string;
+  lastUsedAt?: string;
+  expiresAt: string;
+  absoluteExpiresAt?: string;
+  revokedAt?: string | null;
+  createdAt: string;
+  isCurrent?: boolean;
 }
 
 export interface ApiKey {
   id: string;
+  projectId: string;
   keyPrefix: string;
   name: string;
   status: ApiKeyStatus;
-  scopes: ApiKeyScope[];
-  rateLimit: number;
-  monthlyLimit?: number;
+  creditLimit?: string;
+  limitType?: LimitType;
   lastUsedAt?: string;
   createdAt: string;
+}
+
+export type CapabilityType =
+  | "TEXT"
+  | "IMAGE"
+  | "EMBEDDING"
+  | "AUDIO"
+  | "VIDEO"
+  | "SPEECH"
+  | "RESEARCH";
+
+export interface ModelProvider {
+  id: string;
+  slug: string;
+  displayName: string;
 }
 
 export interface Model {
   id: string;
   slug: string;
   displayName: string;
-  providerId: string;
-  provider: { slug: string; displayName: string };
-  capabilities: string[];
-  contextWindow: number;
-  inputPricePer1M: number;
-  outputPricePer1M: number;
+  description: string | null;
+  parameterCount: string | null;
+  contextLength: number | null;
+  inputModalities: string[];
+  outputModalities: string[];
+  inputPricePerToken?: string;
+  outputPricePerToken?: string;
+  inputPricePer1m: string;       // computed = inputPricePerToken × 1,000,000
+  outputPricePer1m: string;      // computed = outputPricePerToken × 1,000,000
+  pricePerImage: string | null;
   isActive: boolean;
+  releaseDate: string | null;
+  createdAt: string;
+  defaultForCapabilities: string[];
+  provider: ModelProvider;
+
 }
 
 export interface UsageLog {
@@ -65,9 +122,50 @@ export interface UsageLog {
 export interface CreditTransaction {
   id: string;
   type: TransactionType;
-  amountUsd: number;
-  balanceBefore: number;
-  balanceAfter: number;
+  amount: string;
+  balanceBefore?: string;
+  balanceAfter?: string;
   description?: string;
   createdAt: string;
+}
+
+export interface ModelFilters {
+  q?: string;
+  providerId?: string[];
+  capability?: CapabilityType[];
+  minContext?: number;
+  maxContext?: number;
+  maxInputPrice?: number;
+  maxOutputPrice?: number;
+  sort?:
+  | "newest"
+  | "price_input_asc"
+  | "price_input_desc"
+  | "price_output_asc"
+  | "price_output_desc"
+  | "context_asc"
+  | "context_desc"
+  | "name_asc";
+  inputModality?: string[];
+  outputModality?: string[];
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedModels {
+  data: Model[];
+  totalRecords: number;
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface ModelUsageStats {
+  totalRequests: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalCostUsd: string;
+  lastUsedAt: string | null;
 }

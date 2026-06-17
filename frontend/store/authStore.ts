@@ -1,14 +1,6 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import { persist } from "zustand/middleware";
-
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: "USER" | "ADMIN";
-  creditBalance: number;
-}
+import type { User } from "@/types";
 
 interface AuthStore {
   user: User | null;
@@ -29,7 +21,17 @@ export const useAuthStore = create<AuthStore>()(
       setAuth: (user, accessToken, refreshToken) =>
         set({ user, accessToken, refreshToken }),
       setUser: (user) => set({ user }),
-      logout: () => set({ user: null, accessToken: null, refreshToken: null }),
+      logout: () => {
+        const { refreshToken } = get();
+        if (typeof window !== "undefined" && refreshToken) {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken }),
+          }).catch(() => {});
+        }
+        set({ user: null, accessToken: null, refreshToken: null });
+      },
       isAdmin: () => get().user?.role === "ADMIN",
     }),
     { name: "auth-storage" }

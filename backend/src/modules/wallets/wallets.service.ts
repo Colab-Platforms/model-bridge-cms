@@ -256,7 +256,21 @@ export const getWalletByUserId = async (userId: string) =>
   formatWalletRecord(await getWalletOrThrow(userId));
 
 export const getBalance = async (userId: string) => {
-  const wallet = await getWalletOrThrow(userId);
+  const wallet = await prisma.wallet.findFirst({
+    where: { userId, isDeleted: false },
+    select: walletSelect,
+  });
+
+  if (!wallet) {
+    return {
+      walletId: null,
+      userId,
+      balance: "0",
+      currency: DEFAULT_WALLET_CURRENCY,
+      status: ACTIVE_WALLET_STATUS,
+    };
+  }
+
   assertWalletUsable(wallet);
 
   return {
