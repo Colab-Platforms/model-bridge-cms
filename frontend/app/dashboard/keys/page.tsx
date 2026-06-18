@@ -267,7 +267,7 @@ export default function KeysPage() {
                           <DollarSign className="size-3.5 text-muted-foreground" />
                           <span className="text-xs font-bold text-foreground">
                             {key.creditLimit
-                              ? `${key.creditLimit} / ${key.limitType?.toLowerCase()}`
+                              ? `${String(key.creditLimit)} / ${key.limitType?.toLowerCase()}`
                               : "Unlimited"}
                           </span>
                        </div>
