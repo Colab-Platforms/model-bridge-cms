@@ -892,7 +892,868 @@ Notes:
 
 ---
 
-## 8. Providers APIs
+## 8. Admin Revenue APIs
+
+Auth:
+
+```http
+Authorization: Bearer <ADMIN_ACCESS_TOKEN>
+```
+
+Notes:
+- these endpoints are admin-only
+- mounted under `/admin/revenue`
+- revenue is calculated from `inference_requests`
+- `providerCost` = actual upstream provider spend
+- `platformMarkup` = platform-added markup amount
+- `totalRevenue` = billed amount charged for requests in the selected range
+
+Common optional query params:
+- `userId`
+- `projectId`
+- `apiKeyId`
+- `modelId`
+- `providerId`
+- `status`
+- `requestType`
+- `stream=true|false`
+- `search`
+- `dateRangePreset`
+- `from`
+- `to`
+
+Extra query params:
+- `granularity=hour|day|week|month` for `/admin/revenue/timeseries`
+- `page`
+- `pageSize` for grouped endpoints
+
+Supported `dateRangePreset` values:
+- `today`
+- `past_24h`
+- `weekly`
+- `monthly`
+- `yearly`
+- `custom`
+
+Examples:
+
+```txt
+GET /admin/revenue/summary?dateRangePreset=weekly
+GET /admin/revenue/timeseries?dateRangePreset=monthly&granularity=day
+GET /admin/revenue/by-users?dateRangePreset=monthly&page=1&pageSize=10
+GET /admin/revenue/by-models?providerId=cm_provider_123&dateRangePreset=custom&from=2026-06-01T00:00:00.000Z&to=2026-06-15T23:59:59.000Z
+```
+
+### GET `/admin/revenue/summary`
+
+Get aggregate revenue totals for the selected range.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    },
+    "totals": {
+      "totalRequests": 42,
+      "providerCost": "0.10200000",
+      "platformMarkup": "0.03500000",
+      "totalRevenue": "0.13700000",
+      "averageMarkupPercent": 34.31
+    }
+  },
+  "message": "Admin revenue summary fetched successfully"
+}
+```
+
+### GET `/admin/revenue/timeseries`
+
+Get revenue chart data for the selected range.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    },
+    "granularity": "day",
+    "series": [
+      {
+        "bucket": "2026-06-14T05:30:00.000+05:30",
+        "requests": 12,
+        "providerCost": "0.03180000",
+        "platformMarkup": "0.01500000",
+        "totalRevenue": "0.04680000"
+      }
+    ]
+  },
+  "message": "Admin revenue timeseries fetched successfully"
+}
+```
+
+### GET `/admin/revenue/by-users`
+
+Get grouped revenue by user.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "userId": "cm_user_123",
+        "email": "john@example.com",
+        "firstName": "John",
+        "lastName": "Doe",
+        "status": "ACTIVE",
+        "requests": 42,
+        "providerCost": "0.10200000",
+        "platformMarkup": "0.03500000",
+        "totalRevenue": "0.13700000"
+      }
+    ],
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    }
+  },
+  "message": "Admin revenue by users fetched successfully"
+}
+```
+
+### GET `/admin/revenue/by-models`
+
+Get grouped revenue by model.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "modelId": "cm_model_123",
+        "slug": "gpt-4o",
+        "displayName": "GPT-4o",
+        "provider": {
+          "id": "cm_provider_123",
+          "slug": "openai",
+          "displayName": "OpenAI"
+        },
+        "requests": 42,
+        "providerCost": "0.10200000",
+        "platformMarkup": "0.03500000",
+        "totalRevenue": "0.13700000"
+      }
+    ],
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    }
+  },
+  "message": "Admin revenue by models fetched successfully"
+}
+```
+
+### GET `/admin/revenue/by-providers`
+
+Get grouped revenue by provider.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "providerId": "cm_provider_123",
+        "provider": {
+          "id": "cm_provider_123",
+          "slug": "openai",
+          "displayName": "OpenAI"
+        },
+        "requests": 42,
+        "providerCost": "0.10200000",
+        "platformMarkup": "0.03500000",
+        "totalRevenue": "0.13700000"
+      }
+    ],
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    }
+  },
+  "message": "Admin revenue by providers fetched successfully"
+}
+```
+
+### GET `/admin/revenue/by-projects`
+
+Get grouped revenue by project.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "projectId": "cm_project_123",
+        "name": "AI Colab Chat",
+        "slug": "ai-colab-chat",
+        "isActive": true,
+        "user": {
+          "id": "cm_user_123",
+          "email": "john@example.com",
+          "firstName": "John",
+          "lastName": "Doe"
+        },
+        "requests": 42,
+        "providerCost": "0.10200000",
+        "platformMarkup": "0.03500000",
+        "totalRevenue": "0.13700000"
+      }
+    ],
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    }
+  },
+  "message": "Admin revenue by projects fetched successfully"
+}
+```
+
+### GET `/admin/revenue/by-api-keys`
+
+Get grouped revenue by API key.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "apiKeyId": "cm_key_123",
+        "name": "Frontend Key",
+        "keyPrefix": "mb_live_xxx",
+        "status": "ACTIVE",
+        "project": {
+          "id": "cm_project_123",
+          "name": "AI Colab Chat",
+          "slug": "ai-colab-chat"
+        },
+        "user": {
+          "id": "cm_user_123",
+          "email": "john@example.com",
+          "firstName": "John",
+          "lastName": "Doe"
+        },
+        "requests": 42,
+        "providerCost": "0.10200000",
+        "platformMarkup": "0.03500000",
+        "totalRevenue": "0.13700000"
+      }
+    ],
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    }
+  },
+  "message": "Admin revenue by API keys fetched successfully"
+}
+```
+
+Search behavior:
+- matches requested model slug
+- matches resolved model slug
+- matches user email
+- matches user first name
+- matches user last name
+- matches API key name
+- matches API key prefix
+- matches project name
+- matches model display name
+- matches provider display name
+
+Notes:
+- `page` defaults to `1`
+- default `pageSize` is `20`
+- max `pageSize` is `100`
+
+---
+
+## 9. Admin Overview API
+
+Auth:
+
+```http
+Authorization: Bearer <ADMIN_ACCESS_TOKEN>
+```
+
+Notes:
+- this is the top-level dashboard API for the whole platform
+- mounted under `/admin/overview`
+- this endpoint is admin-only
+- date/time values are formatted by the backend response formatter
+
+### GET `/admin/overview`
+
+Get a single dashboard payload for the admin panel overview page.
+
+Optional query params:
+- `dateRangePreset`
+- `from`
+- `to`
+
+Supported `dateRangePreset` values:
+- `today`
+- `past_24h`
+- `weekly`
+- `monthly`
+- `yearly`
+- `custom`
+
+Examples:
+
+```txt
+GET /admin/overview
+GET /admin/overview?dateRangePreset=weekly
+GET /admin/overview?dateRangePreset=monthly
+GET /admin/overview?dateRangePreset=custom&from=2026-06-01T00:00:00.000Z&to=2026-06-15T23:59:59.000Z
+```
+
+Response sections:
+- `summary`
+- `usage`
+- `charts`
+- `topUsers`
+- `topModels`
+- `topProviders`
+
+Current response also includes:
+- `topProjects`
+- `apiKeys`
+- `wallet`
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "summary": {
+      "totalUsers": 120,
+      "activeUsers": 102,
+      "suspendedUsers": 8,
+      "inactiveUsers": 10,
+      "totalProjects": 86,
+      "activeProjects": 74,
+      "totalApiKeys": 143,
+      "activeApiKeys": 131,
+      "totalProviders": 6,
+      "activeProviders": 4,
+      "totalModels": 58,
+      "activeModels": 52,
+      "totalWallets": 110,
+      "activeWallets": 107,
+      "totalWalletBalance": "1250.50000000",
+      "totalRequests": 4210,
+      "totalTokens": 1840200,
+      "totalRevenue": "55.49000000",
+      "totalProviderCost": "193.42000000",
+      "totalBilledAmount": "248.91000000",
+      "successRate": 94.82,
+      "avgLatencyMs": 641.2
+    },
+    "usage": {
+      "requestsByStatus": {
+        "success": 3992,
+        "failed": 121,
+        "stopped": 56,
+        "pending": 17,
+        "partial": 24
+      },
+      "tokensBreakdown": {
+        "prompt": 1100000,
+        "completion": 740200,
+        "total": 1840200
+      },
+      "costBreakdown": {
+        "totalProviderCost": "193.42000000",
+        "totalRevenue": "55.49000000",
+        "totalBilledAmount": "248.91000000"
+      },
+      "streamVsNonStream": {
+        "stream": 1620,
+        "nonStream": 2590
+      },
+      "dateRange": {
+        "preset": "weekly",
+        "from": "2026-06-08T15:30:00.000+05:30",
+        "to": "2026-06-15T12:45:00.000+05:30"
+      }
+    },
+    "topUsers": [
+      {
+        "userId": "cm_user_123",
+        "email": "john@example.com",
+        "firstName": "John",
+        "lastName": "Doe",
+        "status": "ACTIVE",
+        "requests": 420,
+        "totalTokens": 184000,
+        "totalCost": "24.81000000"
+      }
+    ],
+    "topModels": [
+      {
+        "modelId": "cm_model_123",
+        "slug": "gpt-4o",
+        "displayName": "GPT-4o",
+        "provider": {
+          "id": "cm_provider_123",
+          "slug": "openai",
+          "displayName": "OpenAI"
+        },
+        "requests": 980,
+        "totalTokens": 420000,
+        "totalCost": "61.32000000"
+      }
+    ],
+    "topProviders": [
+      {
+        "providerId": "cm_provider_123",
+        "provider": {
+          "id": "cm_provider_123",
+          "slug": "openai",
+          "displayName": "OpenAI"
+        },
+        "requests": 1880,
+        "totalTokens": 790000,
+        "totalCost": "112.54000000"
+      }
+    ],
+    "charts": {
+      "granularity": "day",
+      "usageTrend": [
+        {
+          "bucket": "2026-06-14T05:30:00.000+05:30",
+          "requests": 612,
+          "totalTokens": 270000,
+          "providerCost": "28.40000000",
+          "revenue": "8.20000000",
+          "totalBilledAmount": "36.60000000"
+        }
+      ]
+    }
+  },
+  "message": "Admin overview fetched successfully"
+}
+```
+
+Recommended dashboard mapping:
+- `summary` covers top-level counts and KPIs
+- `usage.requestsByStatus` covers request quality mix
+- `usage.tokensBreakdown` covers prompt/completion/total token totals
+- `usage.costBreakdown` covers provider cost, platform revenue, and billed amount
+- `charts.usageTrend` can be used for both usage trend and revenue trend visualizations
+- `topUsers` supports top users by spend
+- `topModels` supports top models by usage
+- `topProviders` supports top providers by usage
+
+---
+
+## 10. Admin Activity APIs
+
+Auth:
+
+```http
+Authorization: Bearer <ADMIN_ACCESS_TOKEN>
+```
+
+Notes:
+- these endpoints are admin-only
+- mounted under `/admin/activity`
+- data is grouped from `inference_requests` for the selected filter range
+- all date/time values are returned through the backend formatter
+
+Common optional query params for all endpoints:
+- `userId`
+- `projectId`
+- `apiKeyId`
+- `modelId`
+- `providerId`
+- `status`
+- `requestType`
+- `stream=true|false`
+- `search`
+- `dateRangePreset`
+- `from`
+- `to`
+- `page`
+- `pageSize`
+
+Supported `dateRangePreset` values:
+- `today`
+- `past_24h`
+- `weekly`
+- `monthly`
+- `yearly`
+- `custom`
+
+Supported `status` values:
+- `SUCCESS`
+- `FAILED`
+- `STOPPED`
+- `PENDING`
+- `PARTIAL`
+
+Examples:
+
+```txt
+GET /admin/activity/by-users?dateRangePreset=weekly
+GET /admin/activity/by-models?providerId=cm_provider_123&dateRangePreset=monthly
+GET /admin/activity/by-projects?status=SUCCESS&page=1&pageSize=10
+GET /admin/activity/by-api-keys?search=frontend&dateRangePreset=custom&from=2026-06-01T00:00:00.000Z&to=2026-06-15T23:59:59.000Z
+```
+
+### GET `/admin/activity/by-users`
+
+Get grouped activity by user for the selected range.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 2,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "userId": "cm_user_123",
+        "email": "john@example.com",
+        "firstName": "John",
+        "lastName": "Doe",
+        "status": "ACTIVE",
+        "requests": 42,
+        "successRequests": 38,
+        "failedRequests": 2,
+        "stoppedRequests": 1,
+        "pendingRequests": 0,
+        "partialRequests": 1,
+        "promptTokens": 12000,
+        "completionTokens": 8400,
+        "totalTokens": 20400,
+        "totalCost": "0.13700000",
+        "averageLatencyMs": 721.5,
+        "averageResponseCompletionTimeMs": 1880.2,
+        "firstActivityAt": "2026-06-08T15:30:00.000+05:30",
+        "lastActivityAt": "2026-06-15T12:45:00.000+05:30"
+      }
+    ],
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    }
+  },
+  "message": "Admin activity by users fetched successfully"
+}
+```
+
+### GET `/admin/activity/by-models`
+
+Get grouped activity by model.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "modelId": "cm_model_123",
+        "slug": "gpt-4o",
+        "displayName": "GPT-4o",
+        "provider": {
+          "id": "cm_provider_123",
+          "slug": "openai",
+          "displayName": "OpenAI"
+        },
+        "requests": 42,
+        "successRequests": 38,
+        "failedRequests": 2,
+        "stoppedRequests": 1,
+        "pendingRequests": 0,
+        "partialRequests": 1,
+        "promptTokens": 12000,
+        "completionTokens": 8400,
+        "totalTokens": 20400,
+        "totalCost": "0.13700000",
+        "averageLatencyMs": 721.5,
+        "averageResponseCompletionTimeMs": 1880.2,
+        "firstActivityAt": "2026-06-08T15:30:00.000+05:30",
+        "lastActivityAt": "2026-06-15T12:45:00.000+05:30"
+      }
+    ],
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    }
+  },
+  "message": "Admin activity by models fetched successfully"
+}
+```
+
+### GET `/admin/activity/by-providers`
+
+Get grouped activity by provider.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "providerId": "cm_provider_123",
+        "provider": {
+          "id": "cm_provider_123",
+          "slug": "openai",
+          "displayName": "OpenAI"
+        },
+        "requests": 42,
+        "successRequests": 38,
+        "failedRequests": 2,
+        "stoppedRequests": 1,
+        "pendingRequests": 0,
+        "partialRequests": 1,
+        "promptTokens": 12000,
+        "completionTokens": 8400,
+        "totalTokens": 20400,
+        "totalCost": "0.13700000",
+        "averageLatencyMs": 721.5,
+        "averageResponseCompletionTimeMs": 1880.2,
+        "firstActivityAt": "2026-06-08T15:30:00.000+05:30",
+        "lastActivityAt": "2026-06-15T12:45:00.000+05:30"
+      }
+    ],
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    }
+  },
+  "message": "Admin activity by providers fetched successfully"
+}
+```
+
+### GET `/admin/activity/by-projects`
+
+Get grouped activity by project.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "projectId": "cm_project_123",
+        "name": "AI Colab Chat",
+        "slug": "ai-colab-chat",
+        "isActive": true,
+        "user": {
+          "id": "cm_user_123",
+          "email": "john@example.com",
+          "firstName": "John",
+          "lastName": "Doe"
+        },
+        "requests": 42,
+        "successRequests": 38,
+        "failedRequests": 2,
+        "stoppedRequests": 1,
+        "pendingRequests": 0,
+        "partialRequests": 1,
+        "promptTokens": 12000,
+        "completionTokens": 8400,
+        "totalTokens": 20400,
+        "totalCost": "0.13700000",
+        "averageLatencyMs": 721.5,
+        "averageResponseCompletionTimeMs": 1880.2,
+        "firstActivityAt": "2026-06-08T15:30:00.000+05:30",
+        "lastActivityAt": "2026-06-15T12:45:00.000+05:30"
+      }
+    ],
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    }
+  },
+  "message": "Admin activity by projects fetched successfully"
+}
+```
+
+### GET `/admin/activity/by-api-keys`
+
+Get grouped activity by API key.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "apiKeyId": "cm_key_123",
+        "name": "Frontend Key",
+        "keyPrefix": "mb_live_xxx",
+        "status": "ACTIVE",
+        "project": {
+          "id": "cm_project_123",
+          "name": "AI Colab Chat",
+          "slug": "ai-colab-chat"
+        },
+        "user": {
+          "id": "cm_user_123",
+          "email": "john@example.com",
+          "firstName": "John",
+          "lastName": "Doe"
+        },
+        "requests": 42,
+        "successRequests": 38,
+        "failedRequests": 2,
+        "stoppedRequests": 1,
+        "pendingRequests": 0,
+        "partialRequests": 1,
+        "promptTokens": 12000,
+        "completionTokens": 8400,
+        "totalTokens": 20400,
+        "totalCost": "0.13700000",
+        "averageLatencyMs": 721.5,
+        "averageResponseCompletionTimeMs": 1880.2,
+        "firstActivityAt": "2026-06-08T15:30:00.000+05:30",
+        "lastActivityAt": "2026-06-15T12:45:00.000+05:30"
+      }
+    ],
+    "range": {
+      "from": "2026-06-08T15:30:00.000+05:30",
+      "to": "2026-06-15T12:45:00.000+05:30",
+      "preset": "weekly"
+    }
+  },
+  "message": "Admin activity by API keys fetched successfully"
+}
+```
+
+Search behavior:
+- matches requested model slug
+- matches resolved model slug
+- matches user email
+- matches user first name
+- matches user last name
+- matches API key name
+- matches API key prefix
+- matches project name
+- matches model display name
+- matches provider display name
+
+Notes:
+- `page` defaults to `1`
+- default `pageSize` is `20`
+- max `pageSize` is `100`
+- provider grouping is aggregated from model-level usage linked to providers
+
+---
+
+## 11. Providers APIs
 
 Auth:
 
@@ -948,7 +1809,7 @@ Soft delete provider.
 
 ---
 
-## 9. Chat Completions API
+## 12. Chat Completions API
 
 This is the main AI generation endpoint.
 
@@ -1048,7 +1909,7 @@ data: [DONE]
 
 ---
 
-## 10. Root / Health
+## 13. Root / Health
 
 ### GET `/`
 

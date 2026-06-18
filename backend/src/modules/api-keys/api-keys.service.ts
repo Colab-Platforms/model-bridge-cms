@@ -10,6 +10,25 @@ import type {
   UpdateApiKeyInput,
 } from "./api-keys.types.js";
 
+const formatDecimalValue = (value: Prisma.Decimal | null | undefined) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  return value.toFixed(Math.max(value.decimalPlaces(), 2));
+};
+
+const formatApiKeyRecord = <
+  T extends {
+    creditLimit: Prisma.Decimal | null;
+  },
+>(
+  apiKey: T
+) => ({
+  ...apiKey,
+  creditLimit: formatDecimalValue(apiKey.creditLimit),
+});
+
 const apiKeySelect = {
   id: true,
   userId: true,
@@ -103,17 +122,19 @@ export const createApiKeyService = async (body: CreateApiKeyInput) => {
   });
 
   return {
-    ...apiKey,
+    ...formatApiKeyRecord(apiKey),
     apiKey: generatedKey.apiKey,
   };
 };
 
 export const getAllApiKeysService = async (query: GetAllApiKeysQuery) => {
-  return prisma.apiKey.findMany({
+  const apiKeys = await prisma.apiKey.findMany({
     where: apiKeyWhere(query),
     select: apiKeySelect,
     orderBy: { createdAt: "desc" },
   });
+
+  return apiKeys.map((apiKey) => formatApiKeyRecord(apiKey));
 };
 
 export const getApiKeyByIdService = async (id: string) => {
@@ -129,7 +150,7 @@ export const getApiKeyByIdService = async (id: string) => {
     throw new AppError("API key not found", STATUS_CODES.NOT_FOUND);
   }
 
-  return apiKey;
+  return formatApiKeyRecord(apiKey);
 };
 
 export const updateApiKeyService = async (id: string, body: UpdateApiKeyInput) => {
@@ -145,7 +166,7 @@ export const updateApiKeyService = async (id: string, body: UpdateApiKeyInput) =
     throw new AppError("API key not found", STATUS_CODES.NOT_FOUND);
   }
 
-  return prisma.apiKey.update({
+  const apiKey = await prisma.apiKey.update({
     where: { id },
     data: {
       ...(body.name !== undefined ? { name: body.name } : {}),
@@ -156,22 +177,28 @@ export const updateApiKeyService = async (id: string, body: UpdateApiKeyInput) =
     },
     select: apiKeySelect,
   });
+
+  return formatApiKeyRecord(apiKey);
 };
 
 export const getApiKeysByProjectIdService = async (projectId: string) => {
-  return prisma.apiKey.findMany({
+  const apiKeys = await prisma.apiKey.findMany({
     where: apiKeyWhere({ projectId }),
     select: apiKeySelect,
     orderBy: { createdAt: "desc" },
   });
+
+  return apiKeys.map((apiKey) => formatApiKeyRecord(apiKey));
 };
 
 export const getApiKeysByUserIdService = async (userId: string) => {
-  return prisma.apiKey.findMany({
+  const apiKeys = await prisma.apiKey.findMany({
     where: apiKeyWhere({ userId }),
     select: apiKeySelect,
     orderBy: { createdAt: "desc" },
   });
+
+  return apiKeys.map((apiKey) => formatApiKeyRecord(apiKey));
 };
 
 export const deleteApiKeyService = async (id: string) => {
@@ -187,7 +214,7 @@ export const deleteApiKeyService = async (id: string) => {
     throw new AppError("API key not found", STATUS_CODES.NOT_FOUND);
   }
 
-  return prisma.apiKey.update({
+  const apiKey = await prisma.apiKey.update({
     where: { id },
     data: {
       isDeleted: true,
@@ -195,4 +222,6 @@ export const deleteApiKeyService = async (id: string) => {
     },
     select: apiKeySelect,
   });
+
+  return formatApiKeyRecord(apiKey);
 };

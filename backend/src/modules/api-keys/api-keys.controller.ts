@@ -20,6 +20,11 @@ import type {
   UpdateApiKeyInput,
 } from "./api-keys.types.js";
 
+const getActorId = (req: Request) => {
+  const actor = (req as Request & { user?: { id?: string } }).user;
+  return actor?.id;
+};
+
 export const createApiKeyController = async (req: Request, res: Response) => {
   const body = req.body as CreateApiKeyInput;
   const result = await createApiKeyService(body);
@@ -32,6 +37,13 @@ export const getAllApiKeysController = async (req: Request, res: Response) => {
   const result = await getAllApiKeysService(query);
 
   return sendResponse(res, true, result, "API keys fetched successfully", STATUS_CODES.OK);
+};
+
+export const getMyApiKeysController = async (req: Request, res: Response) => {
+  const actorId = getActorId(req) as string;
+  const result = await getApiKeysByUserIdService(actorId);
+
+  return sendResponse(res, true, result, "User API keys fetched successfully", STATUS_CODES.OK);
 };
 
 export const getApiKeyByIdController = async (req: Request, res: Response) => {
