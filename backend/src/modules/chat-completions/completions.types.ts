@@ -32,6 +32,7 @@ export interface ApiKeyRequestContext {
     platformFee: number;
     platformMarkupPercent: number;
     totalEstimatedCost: number;
+    isFreeModel: boolean;
   };
 }
 
