@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -77,8 +77,12 @@ useEffect(() => {
 
 
   useEffect(() => {
-    if (mounted && !user) {
-      router.replace("/auth/login");
+    if (mounted) {
+      if (!user) {
+        router.replace("/auth/login");
+      } else if (user.role === "ADMIN") {
+        router.replace("/admin/statistics");
+      }
     }
   }, [mounted, user, router]);
 

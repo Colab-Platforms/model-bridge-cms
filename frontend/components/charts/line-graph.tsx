@@ -29,12 +29,13 @@ interface TokenData {
 
 interface LineGraphProps {
   data: TokenData[];
+  ticks?: string[];
   title?: string;
   subtitle?: string;
   className?: string;
 }
 
-export default function LineGraph({ data, title = "Token Consumption", subtitle, className }: LineGraphProps) {
+export default function LineGraph({ data, ticks, title = "Token Consumption", subtitle, className }: LineGraphProps) {
   const chartConfig = {
     totalTokens: {
       label: "Total Tokens",
@@ -42,13 +43,8 @@ export default function LineGraph({ data, title = "Token Consumption", subtitle,
     },
   } satisfies ChartConfig;
 
-  // Format date for X-axis
-  const fmtChartDate = (ts: string) => {
-    return new Date(ts).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const fmtChartDate = (ts: string) =>
+    new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
   const lastValue = data.length > 0 ? data[data.length - 1].totalTokens : 0;
   const prevValue = data.length > 1 ? data[data.length - 2].totalTokens : 0;
@@ -81,6 +77,7 @@ export default function LineGraph({ data, title = "Token Consumption", subtitle,
               <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis
                 dataKey="bucket"
+                ticks={ticks}
                 tickLine={false}
                 axisLine={false}
                 tickMargin={12}

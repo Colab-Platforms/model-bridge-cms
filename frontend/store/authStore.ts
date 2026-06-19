@@ -30,9 +30,12 @@ export const useAuthStore = create<AuthStore>()(
             body: JSON.stringify({ refreshToken }),
           }).catch(() => {});
         }
-        set({ user: null, accessToken: null, refreshToken: null });
+        set({ user: null, accessToken: null, refreshToken: null }); 
       },
-      isAdmin: () => get().user?.role === "ADMIN",
+      isAdmin: () => {
+        const role = get().user?.role;
+        return role?.toLowerCase() === "admin";
+      },
     }),
     { name: "auth-storage" }
   )

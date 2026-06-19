@@ -21,12 +21,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { ChevronsUpDownIcon, CircleUserRoundIcon, CoinsIcon, LogOutIcon } from "lucide-react"
+import { ChevronsUpDownIcon, CircleUserRoundIcon, CoinsIcon, LogOutIcon, ShieldIcon } from "lucide-react"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
   const router = useRouter()
   const user = useAuthStore((s) => s.user)
+  const isAdmin = useAuthStore((s) => s.isAdmin)
   const logout = useAuthStore((s) => s.logout)
 
   const initials = user
@@ -35,8 +36,6 @@ export function NavUser() {
 
   const handleLogout = () => {
     logout()
-    localStorage.removeItem("access_token")
-    localStorage.removeItem("refresh_token")
     router.push("/auth/login")
   }
 
@@ -102,6 +101,12 @@ export function NavUser() {
                 <CircleUserRoundIcon />
                 Settings
               </DropdownMenuItem>
+              {isAdmin() && (
+                <DropdownMenuItem onSelect={() => router.push("/admin/statistics")}>
+                  <ShieldIcon />
+                  Admin Panel
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
 
             <DropdownMenuSeparator />

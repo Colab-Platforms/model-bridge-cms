@@ -716,9 +716,9 @@ export default function CreditsPage() {
               <TableRow className="border-b border-border/60 bg-muted/30 hover:bg-muted/30">
                 <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date</TableHead>
                 <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Type</TableHead>
-                <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</TableHead>
-                <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Balance Before</TableHead>
-                <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Balance After</TableHead>
+                <TableHead className=" text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</TableHead>
+                <TableHead className=" text-xs font-semibold uppercase tracking-wider text-muted-foreground">Balance Before</TableHead>
+                <TableHead className=" text-xs font-semibold uppercase tracking-wider text-muted-foreground">Balance After</TableHead>
                 <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description</TableHead>
                 <TableHead className="w-8" />
               </TableRow>
@@ -745,7 +745,7 @@ export default function CreditsPage() {
 
                     <TableCell
                       className={cn(
-                        "text-right tabular-nums font-medium",
+                        " tabular-nums font-medium",
                         credit ? "text-green-600" : "text-red-500"
                       )}
                     >
@@ -753,11 +753,11 @@ export default function CreditsPage() {
                       {fmtUsd(tx.amount)}
                     </TableCell>
 
-                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                    <TableCell className=" tabular-nums text-muted-foreground">
                       {fmtUsd(tx.balanceBefore)}
                     </TableCell>
 
-                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                    <TableCell className=" tabular-nums text-muted-foreground">
                       {fmtUsd(tx.balanceAfter)}
                     </TableCell>
 

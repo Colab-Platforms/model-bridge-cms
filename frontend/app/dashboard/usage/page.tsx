@@ -961,7 +961,7 @@ export default function UsagePage() {
                                       </div>
 
                                       {/* ── Cost breakdown ── */}
-                                      <div className="rounded-xl border border-border/50 bg-background/60 p-4">
+                                      {/* <div className="rounded-xl border border-border/50 bg-background/60 p-4">
                                         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                                           <DollarSign className="size-3" />
                                           Cost Breakdown
@@ -988,7 +988,7 @@ export default function UsagePage() {
                                             }
                                           />
                                         </div>
-                                      </div>
+                                      </div> */}
 
                                       {/* ── Request payload ── */}
                                       {detail?.requestPayload && (

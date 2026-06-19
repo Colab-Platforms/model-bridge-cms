@@ -186,12 +186,6 @@ function fmtDate(ts: string) {
   });
 }
 
-function fmtChartDate(ts: string) {
-  return new Date(ts).toLocaleDateString(undefined, {
-    month: "short", day: "numeric",
-  });
-}
-
 function useClickOutside(ref: React.RefObject<HTMLElement | null>, cb: () => void) {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -641,6 +635,94 @@ export default function ActivityPage() {
 
   // ── Chart data ─────────────────────────────────────────────────────────────
 
+  // Zero-fill: generate every expected bucket in the selected range.
+  // The API only returns buckets where there IS activity, so quiet days/hours
+  // are simply absent. This memo merges API data with a full generated range,
+  // inserting zeros for any missing slot. Both charts consume this instead of
+  // the raw API series so they always span the full selected period.
+  const filledSeries = useMemo((): TimeseriesBucket[] => {
+    const series = timeseries?.series ?? [];
+    const granularity = timeseries?.granularity ?? "day";
+    const { startDate, endDate } = dateRange;
+
+    // Nothing to fill if dates aren't resolved yet (e.g. custom preset mid-entry)
+    if (!startDate || !endDate) return series;
+
+    // Build a fast lookup: normalized ISO key → API bucket
+    // Hourly key: "2026-06-12T14"  (slice 0-13 of ISO string)
+    // Daily key:  "2026-06-12"     (slice 0-10 of ISO string)
+    const apiMap = new Map<string, TimeseriesBucket>();
+    for (const b of series) {
+      const iso = new Date(b.bucket).toISOString();
+      const key = granularity === "hour" ? iso.slice(0, 13) : iso.slice(0, 10);
+      apiMap.set(key, b);
+    }
+
+    // Walk every slot from startDate 00:00 UTC → endDate 23:59 UTC
+    const result: TimeseriesBucket[] = [];
+    const cursor = new Date(startDate + "T00:00:00.000Z");
+    const rangeEnd = new Date(endDate + "T23:59:59.999Z");
+
+    while (cursor <= rangeEnd) {
+      const iso = cursor.toISOString();
+      const key = granularity === "hour" ? iso.slice(0, 13) : iso.slice(0, 10);
+      result.push(
+        apiMap.get(key) ?? {
+          bucket: iso,
+          requests: 0,
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          totalCost: "0",
+        }
+      );
+      if (granularity === "hour") {
+        cursor.setUTCHours(cursor.getUTCHours() + 1);
+      } else {
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
+    }
+
+    return result;
+  }, [timeseries, dateRange]);
+
+  // Bar chart: one bar per day, requests summed across all hourly slots for that day.
+  // Uses filledSeries so days with zero activity still get a 0-height bar.
+  const dailyRequestData = useMemo(() => {
+    // filledSeries already has every day in range; we just group by UTC date
+    const series = filledSeries;
+    const map = new Map<string, { label: string; requests: number }>();
+    for (const { bucket, requests } of series) {
+      const d = new Date(bucket);
+      const isoDay = d.toISOString().split("T")[0];
+      if (!map.has(isoDay)) {
+        map.set(isoDay, {
+          label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+          requests: 0,
+        });
+      }
+      map.get(isoDay)!.requests += requests;
+    }
+    return Array.from(map.values());
+  }, [filledSeries]);
+
+  // Line chart: one tick per unique day so the X-axis shows "Jun 10", "Jun 11"…
+  // for every day in range, even days with no activity (they're in filledSeries as zeros).
+  const xAxisTicks = useMemo(() => {
+    if (timeseries?.granularity !== "hour") return filledSeries.map((d) => d.bucket);
+    // Hourly mode: pick the first bucket of each calendar day as the tick position
+    const series = filledSeries;
+    const seen = new Set<string>();
+    return series
+      .filter(({ bucket }) => {
+        const day = new Date(bucket).toDateString();
+        if (seen.has(day)) return false;
+        seen.add(day);
+        return true;
+      })
+      .map(({ bucket }) => bucket);
+  }, [filledSeries, timeseries?.granularity]);
+
   const requestChartConfig: ChartConfig = {
     requests: { label: "Requests", color: "hsl(var(--primary))" },
   };
@@ -787,13 +869,12 @@ export default function ActivityPage() {
         <ChartSection title="Requests Over Time" icon={BarChart3} className="lg:col-span-8">
           <ChartContainer config={requestChartConfig} className="h-full w-full">
             <BarChart
-              data={timeseries?.series ?? []}
+              data={dailyRequestData}
               margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis
-                dataKey="bucket"
-                tickFormatter={fmtChartDate}
+                dataKey="label"
                 axisLine={false}
                 tickLine={false}
                 fontSize={11}
@@ -804,9 +885,10 @@ export default function ActivityPage() {
                 tickLine={false}
                 fontSize={11}
                 tick={{ fill: "hsl(var(--muted-foreground))" }}
+                allowDecimals={false}
               />
-              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-              <Bar dataKey="requests" fill="var(--color-requests)" radius={[6, 6, 0, 0]} barSize={28} />
+              <ChartTooltip content={<ChartTooltipContent hideLabel={false} />} />
+              <Bar dataKey="requests" fill="var(--color-requests)" radius={[6, 6, 0, 0]} barSize={36} />
             </BarChart>
           </ChartContainer>
         </ChartSection>
@@ -854,7 +936,8 @@ export default function ActivityPage() {
 
         <div className="lg:col-span-12">
           <LineGraph
-            data={timeseries?.series ?? []}
+            data={filledSeries}
+            ticks={xAxisTicks}
             subtitle={`${dateRange.startDate} – ${dateRange.endDate}`}
           />
         </div>
