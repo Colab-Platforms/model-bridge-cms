@@ -23,7 +23,7 @@ interface ActivityAndWalletProps {
     totalCredits: string;
     totalUsage: string;
     totalRefunded: string;
-    totalTransactions: number;
+    totalTransactions: string;
   };
   isLoading?: boolean;
 }
@@ -120,7 +120,7 @@ export function ActivityAndWallet({ transactions, wallet, isLoading }: ActivityA
             <SummaryItem label="Total Credits Added" value={`$${wallet.totalCredits}`} icon={Plus} color="text-slate-400" isLoading={isLoading} />
             <SummaryItem label="Total Usage Deducted" value={`-$${wallet.totalUsage}`} icon={MinusCircle} color="text-rose-500" isLoading={isLoading} />
             <SummaryItem label="Total Refunded" value={`+$${wallet.totalRefunded}`} icon={RefreshCw} color="text-emerald-500" isLoading={isLoading} />
-            <SummaryItem label="Total Transactions" value={wallet.totalTransactions.toString()} icon={History} color="text-slate-400" isLoading={isLoading} />
+            <SummaryItem label="Total Transactions" value={`$${wallet.totalTransactions}`} icon={History} color="text-slate-400" isLoading={isLoading} />
           </div>
           <Button className="w-full h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold shadow-sm shadow-indigo-200">
             View wallet

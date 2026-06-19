@@ -50,7 +50,7 @@ export default function OverviewPage() {
       <div className="space-y-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Good morning, {user?.firstName || "Tech"}! 👋
+            {getGreeting()}, {user?.firstName || "Tech"}! 👋
           </h1>
           <p className="text-slate-500 text-sm mt-1">
             Here&apos;s what&apos;s happening with your API usage today.
@@ -64,7 +64,7 @@ export default function OverviewPage() {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <MetricCard
           title="Wallet Balance"
-          value={`$${parseFloat(summary?.walletBalance)?.toFixed(2)}`}
+          value={`$${parseFloat(summary?.walletBalance || "0").toFixed(2)}`}
           subValue={summary?.currency || "USD"}
           icon={Wallet}
           variant="primary"
@@ -80,7 +80,7 @@ export default function OverviewPage() {
         />
         <MetricCard
           title="Total Spend"
-          value={`$${parseFloat(summary?.totalSpend)?.toFixed(3)}`}
+          value={`$${parseFloat(summary?.totalSpend || "0").toFixed(3)}`}
           subValue="This week"
           icon={DollarSign}
           variant="success"
@@ -251,6 +251,13 @@ export default function OverviewPage() {
 }
 
 // Helpers
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 function formatTokens(n: number): string {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`;
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;

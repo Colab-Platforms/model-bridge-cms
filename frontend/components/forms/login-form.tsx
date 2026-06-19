@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -42,7 +42,15 @@ export function LoginForm({ className }: React.ComponentProps<"form">) {
       // After envelope unwrap: data = { user, tokens: { accessToken, refreshToken } }
       setAuth(data.user, data.tokens.accessToken, data.tokens.refreshToken);
       toast.success("Welcome back!");
-      router.push("/dashboard");
+      // DEBUG: remove after confirming
+      console.log("[Login] user from API:", data.user);
+      console.log("[Login] role:", data.user.role, "| isAdmin:", data.user.role === "Admin");
+      if (data.user.role === "Admin") {
+        router.push("/admin/statistics");
+
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const msg = err.response?.data?.message ?? "Login failed. Please try again.";
