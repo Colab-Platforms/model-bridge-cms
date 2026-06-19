@@ -13,7 +13,13 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
@@ -23,7 +29,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { NavMain } from "@/components/layout/nav-main";
 import { NavUser } from "@/components/layout/nav-user";
 import Link from "next/link";
 import {
@@ -37,31 +42,11 @@ import {
 } from "lucide-react";
 
 const adminNav = [
-  {
-    title: "Statistics",
-    url: "/admin/statistics",
-    icon: <BarChart2 />,
-  },
-  {
-    title: "Users",
-    url: "/admin/users",
-    icon: <Users />,
-  },
-  {
-    title: "Models",
-    url: "/admin/models",
-    icon: <BrainCircuit />,
-  },
-  {
-    title: "Providers",
-    url: "/admin/providers",
-    icon: <Server />,
-  },
-  {
-    title: "Credits",
-    url: "/admin/credits",
-    icon: <CreditCard />,
-  },
+  { title: "Statistics", url: "/admin/statistics", icon: BarChart2 },
+  { title: "Users",      url: "/admin/users",      icon: Users },
+  { title: "Models",     url: "/admin/models",     icon: BrainCircuit },
+  { title: "Providers",  url: "/admin/providers",  icon: Server },
+  { title: "Revenue",    url: "/admin/credits",    icon: CreditCard },
 ];
 
 const ROUTE_LABELS: Record<string, string> = {
@@ -83,6 +68,30 @@ function useBreadcrumbs() {
   }));
 }
 
+function AdminNav() {
+  const pathname = usePathname();
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarMenu>
+        {adminNav.map(({ title, url, icon: Icon }) => {
+          const isActive = pathname === url || pathname.startsWith(url + "/");
+          return (
+            <SidebarMenuItem key={title}>
+              <SidebarMenuButton asChild isActive={isActive} tooltip={title}>
+                <Link href={url}>
+                  <Icon className="size-4 shrink-0" />
+                  <span>{title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          );
+        })}
+      </SidebarMenu>
+    </SidebarGroup>
+  );
+}
+
 function AdminSidebar() {
   return (
     <Sidebar collapsible="icon">
@@ -98,10 +107,10 @@ function AdminSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={adminNav} />
+        <AdminNav />
         <div className="mt-auto px-2 pb-2">
           <Link
-            href="/admin/statistics"
+            href="/dashboard/overview"
             className="flex items-center gap-2 rounded-none px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <ArrowLeft className="size-3.5" />

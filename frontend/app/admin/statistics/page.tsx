@@ -83,7 +83,7 @@ function StatCard({
 }
 
 function fmtUsd(v: string | number) {
-  return `$${parseFloat(String(v)).toFixed(2)}`;
+  return `$${parseFloat(String(v)).toFixed(4)}`;
 }
 
 function fmtNum(v: number) {
