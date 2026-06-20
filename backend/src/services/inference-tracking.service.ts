@@ -87,15 +87,17 @@ export class InferenceTrackingService {
     let creditsDeducted = false;
 
     try {
-      await deductCredits({
-        userId: input.userId,
-        amount: billing.totalCost,
-        inferenceRequestId: input.inferenceRequestId,
-        createdBy: input.walletCreatedBy,
-        referenceId: input.walletReferenceId,
-        description: input.walletDeductionDescription ?? "AI Model Usage",
-      });
-      creditsDeducted = true;
+      if (billing.totalCost > 0) {
+        await deductCredits({
+          userId: input.userId,
+          amount: billing.totalCost,
+          inferenceRequestId: input.inferenceRequestId,
+          createdBy: input.walletCreatedBy,
+          referenceId: input.walletReferenceId,
+          description: input.walletDeductionDescription ?? "AI Model Usage",
+        });
+        creditsDeducted = true;
+      }
 
       const updatedRequest = await prisma.inferenceRequest.update({
         where: {

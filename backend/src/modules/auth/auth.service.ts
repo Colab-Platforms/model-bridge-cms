@@ -24,6 +24,19 @@ const authUserSelect = {
 	timezone: true,
 	createdAt: true,
 	updatedAt: true,
+	userRoles: {
+		where: {
+			deletedAt: null,
+		},
+		select: {
+			role: {
+				select: {
+					name: true,
+				},
+			},
+		},
+		take: 1,
+	},
 } satisfies Prisma.UserSelect;
 
 const authUserWithPasswordSelect = {
@@ -31,7 +44,11 @@ const authUserWithPasswordSelect = {
 	passwordHash: true,
 } satisfies Prisma.UserSelect;
 
-export type AuthUser = Prisma.UserGetPayload<{ select: typeof authUserSelect }>;
+type AuthUserRecord = Prisma.UserGetPayload<{ select: typeof authUserSelect }>;
+
+export type AuthUser = Omit<AuthUserRecord, "userRoles"> & {
+	role: string | null;
+};
 
 export type AuthTokens = {
 	accessToken: string;
@@ -48,6 +65,11 @@ type SessionContext = {
 	userAgent?: string;
 	ipAddress?: string;
 };
+
+const mapAuthUser = ({ userRoles, ...user }: AuthUserRecord): AuthUser => ({
+	...user,
+	role: userRoles[0]?.role.name ?? null,
+});
 
 const mapRegisterData = (body: RegisterInput) => ({
 	email: body.email,
@@ -137,19 +159,20 @@ export const loginService = async (
 	}
 
 	const { passwordHash: _passwordHash, ...safeUser } = user;
+	const authUser = mapAuthUser(safeUser);
 
 	return prisma.$transaction(async (tx) => {
 		const tokens = await issueTokensAndCreateSession(
 			tx,
 			{
-				id: safeUser.id,
-				email: safeUser.email,
+				id: authUser.id,
+				email: authUser.email,
 			},
 			context
 		);
 
 		return {
-			user: safeUser,
+			user: authUser,
 			tokens,
 		};
 	});
@@ -190,7 +213,7 @@ export const registerService = async (
 			await createWallet(user.id, user.id, tx);
 
 			return {
-				user: user,
+				user: mapAuthUser(user),
 				tokens: await issueTokensAndCreateSession(
 					tx,
 					{
@@ -258,7 +281,7 @@ export const refreshService = async (
 		});
 
 		return {
-			user,
+			user: mapAuthUser(user),
 			tokens,
 		};
 	});

@@ -892,7 +892,276 @@ Notes:
 
 ---
 
-## 8. Admin Revenue APIs
+## 8. Admin User Management APIs
+
+Auth:
+
+```http
+Authorization: Bearer <ADMIN_ACCESS_TOKEN>
+```
+
+Notes:
+- these endpoints are admin-only
+- mounted under `/admin/users`
+- accessible to `Admin` and `SuperAdmin`
+- `SuperAdmin` accounts can only be managed by `SuperAdmin`
+- `Admin` accounts can only be managed by `SuperAdmin`
+- admins cannot manage or delete their own account from these endpoints
+
+### GET `/admin/users`
+
+Get a paginated list of users for the admin panel.
+
+Optional query params:
+- `page`
+- `pageSize`
+- `search`
+- `status=ACTIVE|SUSPENDED|INACTIVE`
+- `role=User|Admin|SuperAdmin`
+- `isDeleted=true|false`
+
+Examples:
+
+```txt
+GET /admin/users
+GET /admin/users?page=1&pageSize=20
+GET /admin/users?search=john
+GET /admin/users?status=ACTIVE&role=User
+GET /admin/users?isDeleted=true
+```
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "id": "cm_user_123",
+        "email": "john@example.com",
+        "firstName": "John",
+        "lastName": "Doe",
+        "phoneNo": "9876543210",
+        "countryCode": "+91",
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "country": "India",
+        "profileImage": null,
+        "status": "ACTIVE",
+        "authProvider": "LOCAL",
+        "timezone": "Asia/Kolkata",
+        "createdAt": "2026-06-15T10:30:00.000+05:30",
+        "updatedAt": "2026-06-18T08:10:00.000+05:30",
+        "isDeleted": false,
+        "deletedBy": null,
+        "userRoles": [
+          {
+            "role": {
+              "id": "cm_role_user",
+              "name": "User"
+            }
+          }
+        ],
+        "roles": [
+          {
+            "id": "cm_role_user",
+            "name": "User"
+          }
+        ]
+      }
+    ]
+  },
+  "message": "Users fetched successfully"
+}
+```
+
+Notes:
+- search matches `email`, `firstName`, and `lastName`
+- default `page` is `1`
+- default `pageSize` is `20`
+- by default only non-deleted users are returned unless `isDeleted` is provided
+
+### GET `/admin/users/:id`
+
+Get a single user by id for the admin panel.
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "id": "cm_user_123",
+    "email": "john@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "phoneNo": "9876543210",
+    "countryCode": "+91",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "country": "India",
+    "profileImage": null,
+    "status": "ACTIVE",
+    "authProvider": "LOCAL",
+    "timezone": "Asia/Kolkata",
+    "createdAt": "2026-06-15T10:30:00.000+05:30",
+    "updatedAt": "2026-06-18T08:10:00.000+05:30",
+    "isDeleted": false,
+    "deletedBy": null,
+    "userRoles": [
+      {
+        "role": {
+          "id": "cm_role_user",
+          "name": "User"
+        }
+      }
+    ],
+    "roles": [
+      {
+        "id": "cm_role_user",
+        "name": "User"
+      }
+    ]
+  },
+  "message": "User fetched successfully"
+}
+```
+
+### PATCH `/admin/users/:id`
+
+Update editable user fields.
+
+Allowed body fields:
+- `firstName`
+- `lastName`
+- `phoneNo`
+- `countryCode`
+- `city`
+- `state`
+- `country`
+- `timezone`
+- `status`
+
+Notes:
+- at least one field is required
+- nullable string fields may be sent as `null`
+- `status` must be one of `ACTIVE`, `SUSPENDED`, or `INACTIVE`
+
+Example body:
+
+```json
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "city": "Surat",
+  "timezone": "Asia/Kolkata",
+  "status": "ACTIVE"
+}
+```
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "id": "cm_user_123",
+    "email": "john@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "phoneNo": "9876543210",
+    "countryCode": "+91",
+    "city": "Surat",
+    "state": "Gujarat",
+    "country": "India",
+    "profileImage": null,
+    "status": "ACTIVE",
+    "authProvider": "LOCAL",
+    "timezone": "Asia/Kolkata",
+    "createdAt": "2026-06-15T10:30:00.000+05:30",
+    "updatedAt": "2026-06-19T09:20:00.000+05:30",
+    "isDeleted": false,
+    "deletedBy": null,
+    "userRoles": [
+      {
+        "role": {
+          "id": "cm_role_user",
+          "name": "User"
+        }
+      }
+    ],
+    "roles": [
+      {
+        "id": "cm_role_user",
+        "name": "User"
+      }
+    ]
+  },
+  "message": "User updated successfully"
+}
+```
+
+### DELETE `/admin/users/:id`
+
+Soft delete a user account.
+
+Notes:
+- this marks `isDeleted=true`
+- it also sets `status=INACTIVE`
+- `deletedBy` and `updatedBy` are set to the acting admin id
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "id": "cm_user_123",
+    "email": "john@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "phoneNo": "9876543210",
+    "countryCode": "+91",
+    "city": "Surat",
+    "state": "Gujarat",
+    "country": "India",
+    "profileImage": null,
+    "status": "INACTIVE",
+    "authProvider": "LOCAL",
+    "timezone": "Asia/Kolkata",
+    "createdAt": "2026-06-15T10:30:00.000+05:30",
+    "updatedAt": "2026-06-19T09:25:00.000+05:30",
+    "isDeleted": true,
+    "deletedBy": "cm_admin_123",
+    "userRoles": [
+      {
+        "role": {
+          "id": "cm_role_user",
+          "name": "User"
+        }
+      }
+    ],
+    "roles": [
+      {
+        "id": "cm_role_user",
+        "name": "User"
+      }
+    ]
+  },
+  "message": "User deleted successfully"
+}
+```
+
+---
+
+## 9. Admin Revenue APIs
 
 Auth:
 
@@ -1234,7 +1503,7 @@ Notes:
 
 ---
 
-## 9. Admin Overview API
+## 10. Admin Overview API
 
 Auth:
 
@@ -1415,7 +1684,7 @@ Recommended dashboard mapping:
 
 ---
 
-## 10. Admin Activity APIs
+## 11. Admin Activity APIs
 
 Auth:
 

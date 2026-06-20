@@ -91,47 +91,47 @@ export const checkCredits = async (
 
     const totalEstimatedCost =
       estimatedCost + platformFee;
+    const isFreeModel = totalEstimatedCost === 0;
 
-    const wallet = await prisma.wallet.findFirst({
-      where: {
-        userId: user.id,
-        isDeleted: false,
-      },
-    });
+    if (!isFreeModel) {
+      const wallet = await prisma.wallet.findFirst({
+        where: {
+          userId: user.id,
+          isDeleted: false,
+        },
+      });
 
-    if (!wallet) {
-      return sendResponse(
-        res,
-        false,
-        null,
-        "Wallet not found",
-        STATUS_CODES.NOT_FOUND
-      );
-    }
+      if (!wallet) {
+        return sendResponse(
+          res,
+          false,
+          null,
+          "Wallet not found",
+          STATUS_CODES.NOT_FOUND
+        );
+      }
 
-    if (wallet.status !== WalletStatus.ACTIVE) {
-      return sendResponse(
-        res,
-        false,
-        null,
-        "Wallet is inactive",
-        STATUS_CODES.FORBIDDEN
-      );
-    }
+      if (wallet.status !== WalletStatus.ACTIVE) {
+        return sendResponse(
+          res,
+          false,
+          null,
+          "Wallet is inactive",
+          STATUS_CODES.FORBIDDEN
+        );
+      }
 
-    if (
-      Number(wallet.balance) <
-      totalEstimatedCost
-    ) {
-      return sendResponse(
-        res,
-        false,
-        null,
-        `Insufficient credits. Required: $${totalEstimatedCost.toFixed(
-          6
-        )}`,
-        STATUS_CODES.PAYMENT_REQUIRED
-      );
+      if (Number(wallet.balance) < totalEstimatedCost) {
+        return sendResponse(
+          res,
+          false,
+          null,
+          `Insufficient credits. Required: $${totalEstimatedCost.toFixed(
+            6
+          )}`,
+          STATUS_CODES.PAYMENT_REQUIRED
+        );
+      }
     }
 
     (req as any).creditCheck = {
@@ -142,6 +142,7 @@ export const checkCredits = async (
       platformFee,
       platformMarkupPercent: PLATFORM_FEE_PERCENT,
       totalEstimatedCost,
+      isFreeModel,
     };
 
     next();
