@@ -3,13 +3,27 @@ import { Request, Response } from "express";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import { sendResponse } from "../../utils/responseUtils.js";
 import {
+	googleCallbackService,
+	getGoogleAuthorizationUrlService,
 	loginService,
 	logoutAllService,
 	logoutService,
 	refreshService,
+	resendEmailOtpService,
 	registerService,
+	verifyEmailOtpService,
 } from "./auth.service.js";
-import type { LoginInput, LogoutInput, RegisterInput, RefreshInput } from "./auth.types.js";
+import type {
+	GoogleCallbackQueryInput,
+	GoogleStartQueryInput,
+	LoginInput,
+	LogoutInput,
+	ResendEmailOtpInput,
+	RegisterInput,
+	RefreshInput,
+	VerifyEmailOtpInput,
+} from "./auth.types.js";
+import { buildFrontendGoogleCallbackUrl, verifyGoogleOAuthState } from "./auth.utils.js";
 
 const getSessionContext = (req: Request) => ({
 	deviceName: req.headers["x-device-name"]?.toString(),
@@ -62,4 +76,55 @@ export const logoutAllController = async (req: Request, res: Response) => {
 	const result = await logoutAllService(user?.id as string);
 
 	return sendResponse(res, true, result, "Logged out from all sessions", STATUS_CODES.OK);
+};
+
+export const googleStartController = async (req: Request, res: Response) => {
+	const query = req.query as GoogleStartQueryInput;
+	const redirectUrl = getGoogleAuthorizationUrlService(query);
+
+	return res.redirect(302, redirectUrl);
+};
+
+export const googleCallbackController = async (req: Request, res: Response) => {
+	const query = req.query as GoogleCallbackQueryInput;
+
+	try {
+		const result = await googleCallbackService(query, getSessionContext(req));
+		return res.redirect(302, result.redirectUrl);
+	} catch (error) {
+		const redirect =
+			typeof query.state === "string"
+				? (() => {
+						try {
+							return verifyGoogleOAuthState(query.state);
+						} catch {
+							return "/";
+						}
+				  })()
+				: "/";
+		const message = error instanceof Error ? error.message : "Google authentication failed";
+
+		return res.redirect(
+			302,
+			buildFrontendGoogleCallbackUrl({
+				error: message,
+				redirect,
+			})
+		);
+	}
+};
+
+
+export const verifyEmailOtpController = async (req: Request, res: Response) => {
+	const body = req.body as VerifyEmailOtpInput;
+	const result = await verifyEmailOtpService(body, getSessionContext(req));
+	
+	return sendResponse(res, true, result, "Email OTP verified successfully", STATUS_CODES.OK);
+};
+
+export const resendEmailOtpController = async (req: Request, res: Response) => {
+	const body = req.body as ResendEmailOtpInput;
+	const result = await resendEmailOtpService(body);
+
+	return sendResponse(res, true, result, "Email OTP resent successfully", STATUS_CODES.OK);
 };

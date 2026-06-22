@@ -18,6 +18,11 @@ export type AuthTokenPayload<TKind extends TokenKind = TokenKind> = {
 	tokenKind: TKind;
 };
 
+type GoogleOAuthStatePayload = {
+	redirect: string;
+	purpose: "google-oauth-state";
+};
+
 const getJwtSecret = () => {
 	const jwtSecret = process.env.JWT_SECRET;
 
@@ -28,6 +33,15 @@ const getJwtSecret = () => {
 	return jwtSecret;
 };
 
+const getRequiredEnv = (key: string) => {
+	const value = process.env[key];
+
+	if (!value) {
+		throw new AppError(`${key} is not configured`, STATUS_CODES.SERVER_ERROR);
+	}
+
+	return value;
+};
 
 const getTokenExpiresIn = (kind: TokenKind) => {
 	if (kind === "access") {
@@ -48,8 +62,6 @@ export const generateToken = <TKind extends TokenKind>(
 	const options: SignOptions = {
 		expiresIn: getTokenExpiresIn(kind) as SignOptions["expiresIn"],
 	};
-
-	console.log("Generating token with payload:", tokenPayload, "and options:", options, "using secret:", getJwtSecret());
 
 	return jwt.sign(tokenPayload, getJwtSecret() as jwt.Secret, options);
 };
@@ -99,4 +111,115 @@ export const getTokenExpiryDate = (token: string) => {
 	}
 
 	return new Date(decoded.exp * 1000);
+};
+
+export const sanitizeRedirectPath = (redirect?: string | null) => {
+	if (!redirect) {
+		return "/";
+	}
+
+	const trimmedRedirect = redirect.trim();
+
+	if (!trimmedRedirect.startsWith("/") || trimmedRedirect.startsWith("//")) {
+		return "/";
+	}
+
+	return trimmedRedirect;
+};
+
+export const createGoogleOAuthState = (redirect?: string | null) =>
+	jwt.sign(
+		{
+			redirect: sanitizeRedirectPath(redirect),
+			purpose: "google-oauth-state",
+		} satisfies GoogleOAuthStatePayload,
+		getJwtSecret(),
+		{
+			expiresIn: "10m",
+		}
+	);
+
+export const verifyGoogleOAuthState = (state: string) => {
+	try {
+		const decoded = jwt.verify(state, getJwtSecret()) as JwtPayload & Partial<GoogleOAuthStatePayload>;
+
+		if (decoded.purpose !== "google-oauth-state") {
+			throw new AppError("Invalid OAuth state", STATUS_CODES.UNAUTHORIZED);
+		}
+
+		return sanitizeRedirectPath(decoded.redirect);
+	} catch (error) {
+		const jwtError = error as
+			| TokenExpiredError
+			| JsonWebTokenError
+			| NotBeforeError;
+
+		if (
+			jwtError?.name === "TokenExpiredError" ||
+			jwtError?.name === "NotBeforeError" ||
+			jwtError?.name === "JsonWebTokenError"
+		) {
+			throw new AppError("Invalid or expired OAuth state", STATUS_CODES.UNAUTHORIZED);
+		}
+
+		throw error;
+	}
+};
+
+export const getGoogleOAuthConfig = () => ({
+	clientId: getRequiredEnv("GOOGLE_CLIENT_ID"),
+	clientSecret: getRequiredEnv("GOOGLE_CLIENT_SECRET"),
+	callbackUrl: getRequiredEnv("GOOGLE_CALLBACK_URL"),
+	frontendCallbackUrl:
+		process.env.FRONTEND_GOOGLE_CALLBACK_URL ??
+		(process.env.FRONTEND_URL
+			? `${process.env.FRONTEND_URL.replace(/\/+$/, "")}/auth/google/callback`
+			: getRequiredEnv("FRONTEND_GOOGLE_CALLBACK_URL")),
+});
+
+export const buildGoogleAuthorizationUrl = (redirect?: string | null) => {
+	const { clientId, callbackUrl } = getGoogleOAuthConfig();
+	const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+
+	url.searchParams.set("client_id", clientId);
+	url.searchParams.set("redirect_uri", callbackUrl);
+	url.searchParams.set("response_type", "code");
+	url.searchParams.set("scope", "openid email profile");
+	url.searchParams.set("state", createGoogleOAuthState(redirect));
+	url.searchParams.set("access_type", "offline");
+	url.searchParams.set("include_granted_scopes", "true");
+	url.searchParams.set("prompt", "select_account");
+
+	return url.toString();
+};
+
+export const buildFrontendGoogleCallbackUrl = (params: {
+	token?: string;
+	refreshToken?: string;
+	redirect?: string | null;
+	newUser?: boolean;
+	error?: string;
+}) => {
+	const { frontendCallbackUrl } = getGoogleOAuthConfig();
+	const url = new URL(frontendCallbackUrl);
+
+	if (params.token) {
+		url.searchParams.set("token", params.token);
+	}
+
+	if (params.refreshToken) {
+		url.searchParams.set("refreshToken", params.refreshToken);
+	}
+
+	url.searchParams.set("redirect", sanitizeRedirectPath(params.redirect));
+
+	if (params.newUser) {
+		url.searchParams.set("newUser", "1");
+	}
+
+	if (params.error) {
+		url.searchParams.set("error", params.error);
+	}
+
+	return url.toString();
 };
