@@ -1,7 +1,8 @@
-import { ApiKeyStatus, Prisma } from "@prisma/client";
+import { ActivityType, ApiKeyStatus, Prisma } from "@prisma/client";
 
 import prisma from "../../../prisma.js";
 import AppError from "../../shared/errors/index.js";
+import { activityLogService } from "../../services/activity-log.service.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import type {
   CreateProjectInput,
@@ -99,17 +100,38 @@ export const createProjectService = async (
 
   const slug = await ensureProjectSlug(userId, body.slug ?? body.name);
 
-  return prisma.project.create({
-    data: {
-      userId,
-      slug,
-      name: body.name,
-      description: body.description,
-      isActive: body.isActive ?? true,
-      createdBy: actorId ?? userId,
-      updatedBy: actorId ?? userId,
-    },
-    select: projectSelect,
+  return prisma.$transaction(async (tx) => {
+    const project = await tx.project.create({
+      data: {
+        userId,
+        slug,
+        name: body.name,
+        description: body.description,
+        isActive: body.isActive ?? true,
+        createdBy: actorId ?? userId,
+        updatedBy: actorId ?? userId,
+      },
+      select: projectSelect,
+    });
+
+    await activityLogService.log(
+      {
+        activityType: ActivityType.PROJECT_CREATED,
+        entityType: "PROJECT",
+        entityId: project.id,
+        actorId: actorId ?? userId,
+        userId,
+        projectId: project.id,
+        metadata: {
+          name: project.name,
+          slug: project.slug,
+          isActive: project.isActive,
+        },
+      },
+      tx
+    );
+
+    return project;
   });
 };
 
@@ -145,7 +167,7 @@ export const updateProjectService = async (
   body: UpdateProjectInput,
   actorId?: string
 ) => {
-  await getOwnedProjectOrThrow(userId, projectId);
+  const existingProject = await getOwnedProjectOrThrow(userId, projectId);
 
   const nextSlug =
     body.slug === undefined
@@ -154,16 +176,46 @@ export const updateProjectService = async (
         ? await ensureProjectSlug(userId, body.name ?? "project", projectId)
         : await ensureProjectSlug(userId, body.slug, projectId);
 
-  return prisma.project.update({
-    where: { id: projectId },
-    data: {
-      ...(body.name !== undefined ? { name: body.name } : {}),
-      ...(body.description !== undefined ? { description: body.description } : {}),
-      ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
-      ...(nextSlug !== undefined ? { slug: nextSlug } : {}),
-      updatedBy: actorId ?? userId,
-    },
-    select: projectSelect,
+  return prisma.$transaction(async (tx) => {
+    const project = await tx.project.update({
+      where: { id: projectId },
+      data: {
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.description !== undefined ? { description: body.description } : {}),
+        ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
+        ...(nextSlug !== undefined ? { slug: nextSlug } : {}),
+        updatedBy: actorId ?? userId,
+      },
+      select: projectSelect,
+    });
+
+    await activityLogService.log(
+      {
+        activityType: ActivityType.PROJECT_UPDATED,
+        entityType: "PROJECT",
+        entityId: project.id,
+        actorId: actorId ?? userId,
+        userId,
+        projectId: project.id,
+        metadata: {
+          before: {
+            name: existingProject.name,
+            slug: existingProject.slug,
+            description: existingProject.description,
+            isActive: existingProject.isActive,
+          },
+          after: {
+            name: project.name,
+            slug: project.slug,
+            description: project.description,
+            isActive: project.isActive,
+          },
+        },
+      },
+      tx
+    );
+
+    return project;
   });
 };
 
@@ -192,6 +244,23 @@ export const deleteProjectService = async (userId: string, projectId: string, ac
         status: ApiKeyStatus.REVOKED,
       },
     });
+
+    await activityLogService.log(
+      {
+        activityType: ActivityType.PROJECT_DELETED,
+        entityType: "PROJECT",
+        entityId: project.id,
+        actorId: actorId ?? userId,
+        userId,
+        projectId: project.id,
+        metadata: {
+          name: project.name,
+          slug: project.slug,
+          isActive: project.isActive,
+        },
+      },
+      tx
+    );
 
     return project;
   });

@@ -13,3 +13,4 @@ router.use("/activity", activityRoutes);
 router.use("/users", usersRoutes);
 
 export default router;
+

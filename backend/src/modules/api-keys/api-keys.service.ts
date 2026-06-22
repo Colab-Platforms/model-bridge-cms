@@ -1,7 +1,8 @@
-import { ApiKeyStatus, Prisma } from "@prisma/client";
+import { ActivityType, ApiKeyStatus, Prisma } from "@prisma/client";
 
 import prisma from "../../../prisma.js";
 import AppError from "../../shared/errors/index.js";
+import { activityLogService } from "../../services/activity-log.service.js";
 import { generateApiKey } from "../../utils/generateApiKey.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import type {
@@ -101,24 +102,46 @@ const ensureUserAndProject = async (userId: string, projectId: string) => {
   }
 };
 
-export const createApiKeyService = async (body: CreateApiKeyInput) => {
+export const createApiKeyService = async (body: CreateApiKeyInput, actorId?: string) => {
   await ensureUserAndProject(body.userId, body.projectId);
 
   const generatedKey = generateApiKey();
 
-  const apiKey = await prisma.apiKey.create({
-    data: {
-      userId: body.userId,
-      projectId: body.projectId,
-      name: body.name,
-      keyPrefix: generatedKey.keyPrefix,
-      keyHash: generatedKey.keyHash,
-      creditLimit: body.creditLimit,
-      limitType: body.limitType,
-      status: body.status ?? ApiKeyStatus.ACTIVE,
-      expiresAt: body.expiresAt,
-    },
-    select: apiKeySelect,
+  const apiKey = await prisma.$transaction(async (tx) => {
+    const createdApiKey = await tx.apiKey.create({
+      data: {
+        userId: body.userId,
+        projectId: body.projectId,
+        name: body.name,
+        keyPrefix: generatedKey.keyPrefix,
+        keyHash: generatedKey.keyHash,
+        creditLimit: body.creditLimit,
+        limitType: body.limitType,
+        status: body.status ?? ApiKeyStatus.ACTIVE,
+        expiresAt: body.expiresAt,
+      },
+      select: apiKeySelect,
+    });
+
+    await activityLogService.log(
+      {
+        activityType: ActivityType.API_KEY_CREATED,
+        entityType: "API_KEY",
+        entityId: createdApiKey.id,
+        actorId: actorId ?? body.userId,
+        userId: createdApiKey.userId,
+        projectId: createdApiKey.projectId,
+        metadata: {
+          name: createdApiKey.name,
+          keyPrefix: createdApiKey.keyPrefix,
+          status: createdApiKey.status,
+          expiresAt: createdApiKey.expiresAt?.toISOString() ?? null,
+        },
+      },
+      tx
+    );
+
+    return createdApiKey;
   });
 
   return {
@@ -153,13 +176,13 @@ export const getApiKeyByIdService = async (id: string) => {
   return formatApiKeyRecord(apiKey);
 };
 
-export const updateApiKeyService = async (id: string, body: UpdateApiKeyInput) => {
+export const updateApiKeyService = async (id: string, body: UpdateApiKeyInput, actorId?: string) => {
   const existingApiKey = await prisma.apiKey.findFirst({
     where: {
       id,
       isDeleted: false,
     },
-    select: { id: true },
+    select: apiKeySelect,
   });
 
   if (!existingApiKey) {
@@ -201,13 +224,13 @@ export const getApiKeysByUserIdService = async (userId: string) => {
   return apiKeys.map((apiKey) => formatApiKeyRecord(apiKey));
 };
 
-export const deleteApiKeyService = async (id: string) => {
+export const deleteApiKeyService = async (id: string, actorId?: string) => {
   const existingApiKey = await prisma.apiKey.findFirst({
     where: {
       id,
       isDeleted: false,
     },
-    select: { id: true },
+    select: apiKeySelect,
   });
 
   if (!existingApiKey) {

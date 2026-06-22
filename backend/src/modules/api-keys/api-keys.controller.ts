@@ -26,8 +26,9 @@ const getActorId = (req: Request) => {
 };
 
 export const createApiKeyController = async (req: Request, res: Response) => {
+  const actor = (req as Request & { user?: { id?: string } }).user;
   const body = req.body as CreateApiKeyInput;
-  const result = await createApiKeyService(body);
+  const result = await createApiKeyService(body, actor?.id);
 
   return sendResponse(res, true, result, "API key created successfully", STATUS_CODES.CREATED);
 };
@@ -54,9 +55,10 @@ export const getApiKeyByIdController = async (req: Request, res: Response) => {
 };
 
 export const updateApiKeyController = async (req: Request, res: Response) => {
+  const actor = (req as Request & { user?: { id?: string } }).user;
   const { id } = req.params as ApiKeyIdParams;
   const body = req.body as UpdateApiKeyInput;
-  const result = await updateApiKeyService(id, body);
+  const result = await updateApiKeyService(id, body, actor?.id);
 
   return sendResponse(res, true, result, "API key updated successfully", STATUS_CODES.OK);
 };
@@ -82,8 +84,9 @@ export const getApiKeysByUserIdController = async (req: Request, res: Response) 
 };
 
 export const deleteApiKeyController = async (req: Request, res: Response) => {
+  const actor = (req as Request & { user?: { id?: string } }).user;
   const { id } = req.params as ApiKeyIdParams;
-  const result = await deleteApiKeyService(id);
+  const result = await deleteApiKeyService(id, actor?.id);
 
   return sendResponse(res, true, result, "API key deleted successfully", STATUS_CODES.OK);
 };
