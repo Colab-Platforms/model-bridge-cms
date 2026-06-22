@@ -4,23 +4,25 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ChevronDown,
-  ChevronRight,
   Download,
-  FileText,
   RefreshCw,
-  ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  ArrowUpDown,
   Clock,
   Zap,
   DollarSign,
   Copy,
   Check,
   Activity,
+  FileText,
+  ChevronDown,
+  ChevronRight,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -29,16 +31,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/store/projectStore";
 import type { ApiKey } from "@/types";
 
-// ── Local types ────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-type LogStatus = "SUCCESS" | "FAILED" | "PARTIAL" | "STOPPED";
+type LogStatus = "SUCCESS" | "ERROR" | "PENDING";
 
 interface UsageLogItem {
   id: string;
@@ -51,6 +52,7 @@ interface UsageLogItem {
     provider: { slug: string; displayName: string };
   };
   apiKey: { name: string; keyPrefix: string; status: string };
+  project: { name: string };
   requestType: string;
   status: LogStatus;
   stream: boolean;
@@ -97,12 +99,15 @@ function presetDates(days: number) {
 }
 
 function fmtTimestamp(ts: string) {
-  return new Date(ts).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const d = new Date(ts);
+  return {
+    date: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    time: d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+    full: d.toLocaleString(undefined, {
+      month: "short", day: "numeric", year: "numeric",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    }),
+  };
 }
 
 function fmtLatency(ms: number | null | undefined) {
@@ -114,122 +119,98 @@ function fmtCost(usd: string | null | undefined) {
   if (usd == null) return "—";
   const n = parseFloat(usd);
   if (isNaN(n)) return "—";
-  return n < 0.0001 ? "<$0.0001" : `$${n.toFixed(4)}`;
+  if (n === 0) return "—";
+  if (n < 0.0001) return "<$0.0001";
+  if (n < 0.01) return `$${n.toFixed(4)}`;
+  return `$${n.toFixed(2)}`;
 }
 
-function fmtTokens(n: number | null | undefined) {
+function fmtTokensShort(n: number | null | undefined) {
+  if (n == null) return "—";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return String(n);
+}
+
+function fmtTokensFull(n: number | null | undefined) {
   if (n == null) return "—";
   return n.toLocaleString();
 }
 
-function latencyColor(ms: number | null | undefined) {
-  if (ms == null) return "text-muted-foreground";
-  if (ms < 1000) return "text-emerald-600 dark:text-emerald-400";
-  if (ms < 5000) return "text-amber-600 dark:text-amber-400";
-  return "text-red-600 dark:text-red-400";
+function latencyColor(ms: number | null | undefined): string {
+  if (ms == null) return "text-[#94A3B8]";
+  if (ms >= 1000) return "text-[#D97706]";
+  return "text-[#475569]";
 }
 
-function costColor(usd: string | null | undefined) {
-  if (usd == null) return "text-muted-foreground";
-  const n = parseFloat(usd);
-  if (isNaN(n) || n === 0) return "text-muted-foreground";
-  if (n < 0.001) return "text-emerald-600 dark:text-emerald-400";
-  if (n < 0.05) return "text-foreground";
-  return "text-amber-600 dark:text-amber-400";
+function costColor(usd: string | null | undefined): string {
+  if (usd == null) return "text-[#94A3B8]";
+  const n = parseFloat(usd ?? "0");
+  if (isNaN(n) || n === 0) return "text-[#94A3B8]";
+  return "text-[#16A34A]";
+}
+
+function calcThroughput(completionTokens: number, completionTimeMs: number): string {
+  if (!completionTimeMs || !completionTokens) return "—";
+  return `${Math.round(completionTokens / (completionTimeMs / 1000)).toLocaleString()} tok/s`;
 }
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<
-  LogStatus,
-  { dot: string; bg: string; text: string; label: string }
-> = {
-  SUCCESS: {
-    dot: "bg-emerald-500",
-    bg: "bg-emerald-500/10 border border-emerald-500/20",
-    text: "text-emerald-600 dark:text-emerald-400",
-    label: "Success",
-  },
-  FAILED: {
-    dot: "bg-red-500",
-    bg: "bg-red-500/10 border border-red-500/20",
-    text: "text-red-600 dark:text-red-400",
-    label: "Failed",
-  },
-  PARTIAL: {
-    dot: "bg-amber-500",
-    bg: "bg-amber-500/10 border border-amber-500/20",
-    text: "text-amber-600 dark:text-amber-400",
-    label: "Partial",
-  },
-  STOPPED: {
-    dot: "bg-zinc-400",
-    bg: "bg-zinc-500/10 border border-zinc-500/20",
-    text: "text-zinc-500 dark:text-zinc-400",
-    label: "Stopped",
-  },
+const STATUS_CFG: Record<string, { dot: string; bg: string; text: string; border: string; label: string }> = {
+  SUCCESS: { dot: "#16A34A", bg: "#DCFCE7", text: "#15803D", border: "#BBF7D0", label: "Success" },
+  ERROR:   { dot: "#DC2626", bg: "#FEE2E2", text: "#DC2626", border: "#FECACA", label: "Error"   },
+  PENDING: { dot: "#D97706", bg: "#FEF3C7", text: "#B45309", border: "#FDE68A", label: "Pending" },
 };
 
-function StatusBadge({ status }: { status: LogStatus }) {
-  const cfg = STATUS_CONFIG[status];
+const STATUS_FALLBACK = { dot: "#94A3B8", bg: "#F1F5F9", text: "#475569", border: "#CBD5E1", label: "Unknown" };
+
+function StatusBadge({ status, size = "sm" }: { status: LogStatus; size?: "sm" | "md" }) {
+  const cfg = STATUS_CFG[status] ?? STATUS_FALLBACK;
+  if (size === "sm") {
+    return (
+      <span className="inline-flex items-center gap-[6px] flex-shrink-0" style={{ color: cfg.dot }}>
+        <span className="w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
+        <span className="text-[12px] font-semibold">{cfg.label}</span>
+      </span>
+    );
+  }
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-none px-2.5 py-0.5 text-xs font-medium",
-        cfg.bg,
-        cfg.text
-      )}
+      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold border flex-shrink-0"
+      style={{ background: cfg.bg, color: cfg.text, borderColor: cfg.border }}
     >
-      <span className={cn("size-1.5 rounded-full", cfg.dot)} />
+      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
       {cfg.label}
     </span>
   );
 }
 
-// ── Capability badge ──────────────────────────────────────────────────────────
+// ── Type badge ────────────────────────────────────────────────────────────────
 
-const CAPABILITY_CONFIG: Record<string, { bg: string; text: string }> = {
-  CHAT: {
-    bg: "bg-violet-500/10 border border-violet-500/20",
-    text: "text-violet-600 dark:text-violet-400",
-  },
-  IMAGE: {
-    bg: "bg-rose-500/10 border border-rose-500/20",
-    text: "text-rose-600 dark:text-rose-400",
-  },
-  AUDIO: {
-    bg: "bg-sky-500/10 border border-sky-500/20",
-    text: "text-sky-600 dark:text-sky-400",
-  },
-  VIDEO: {
-    bg: "bg-pink-500/10 border border-pink-500/20",
-    text: "text-pink-600 dark:text-pink-400",
-  },
-  EMBEDDING: {
-    bg: "bg-teal-500/10 border border-teal-500/20",
-    text: "text-teal-600 dark:text-teal-400",
-  },
-};
-
-function CapabilityBadge({ type }: { type: string }) {
-  const cfg = CAPABILITY_CONFIG[type] ?? {
-    bg: "bg-muted border border-border",
-    text: "text-muted-foreground",
-  };
+function TypeBadge({ type }: { type: string }) {
+  if (type === "CHAT") {
+    return (
+      <span className="inline-flex items-center rounded-md px-1.5 py-[3px] text-[10px] font-bold flex-shrink-0 uppercase tracking-[0.06em] bg-[#5B4DFF] text-white">
+        CHAT
+      </span>
+    );
+  }
+  if (type === "STREAM") {
+    return (
+      <span className="inline-flex items-center rounded-md px-1.5 py-[3px] text-[10px] font-bold flex-shrink-0 uppercase tracking-[0.06em] border border-[#94A3B8] text-[#64748B]">
+        STREAM
+      </span>
+    );
+  }
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-none px-2 py-0.5 text-xs font-medium",
-        cfg.bg,
-        cfg.text
-      )}
-    >
+    <span className="inline-flex items-center rounded-md px-1.5 py-[3px] text-[10px] font-bold flex-shrink-0 uppercase tracking-[0.06em] bg-[#F1F5F9] text-[#64748B]">
       {type}
     </span>
   );
 }
 
-// ── Copy-to-clipboard button ──────────────────────────────────────────────────
+// ── Copy button ───────────────────────────────────────────────────────────────
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -242,16 +223,422 @@ function CopyButton({ text }: { text: string }) {
           setTimeout(() => setCopied(false), 1500);
         });
       }}
-      className="ml-1.5 inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+      className="ml-1 inline-flex items-center text-[#94A3B8] hover:text-[#475569] transition-colors"
     >
-      {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+      {copied ? <Check className="size-3 text-[#16A34A]" /> : <Copy className="size-3" />}
     </button>
   );
 }
 
-// ── Styled native select ──────────────────────────────────────────────────────
+// ── Sortable header cell ──────────────────────────────────────────────────────
 
-function FilterSelect({
+function SortHead({
+  col, label, current, order, onToggle, align = "left", className,
+}: {
+  col: string; label: string; current: string; order: "asc" | "desc";
+  onToggle: (col: string) => void; align?: "left" | "right"; className?: string;
+}) {
+  const active = current === col;
+  return (
+    <TableHead
+      onClick={() => onToggle(col)}
+      className={cn(
+        "cursor-pointer select-none group/sort text-[11px] font-semibold uppercase tracking-[0.07em] text-[#94A3B8] hover:text-[#475569] transition-colors",
+        align === "right" && "text-right",
+        className
+      )}
+    >
+      <span className={cn("inline-flex items-center gap-1", align === "right" && "justify-end w-full")}>
+        {label}
+        <span className={cn("transition-opacity", active ? "opacity-100 text-[#5B4DFF]" : "opacity-0 group-hover/sort:opacity-50")}>
+          {active
+            ? (order === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)
+            : <ArrowUpDown className="size-3" />}
+        </span>
+      </span>
+    </TableHead>
+  );
+}
+
+// ── KPI card (drawer) ─────────────────────────────────────────────────────────
+
+function KpiCard({
+  icon: Icon, iconColor, label, value, valueClass,
+}: {
+  icon: React.ElementType; iconColor: string; label: string;
+  value: React.ReactNode; valueClass?: string;
+}) {
+  return (
+    <div className="bg-white border border-[#E2E8F0] rounded-xl px-4 py-3.5">
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <Icon className="size-3.5 flex-shrink-0" style={{ color: iconColor }} />
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#94A3B8]">{label}</span>
+      </div>
+      <div className={cn("text-[18px] font-bold text-[#0F172A] tracking-tight leading-none", valueClass)}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+// ── Token breakdown ───────────────────────────────────────────────────────────
+
+function TokenBreakdown({ prompt, completion, total }: { prompt: number; completion: number; total: number }) {
+  const inputPct  = total > 0 ? (prompt / total) * 100 : 0;
+  const outputPct = total > 0 ? (completion / total) * 100 : 0;
+
+  return (
+    <div>
+      {/* Stacked bar */}
+      <div className="h-2.5 rounded-full overflow-hidden bg-[#F1F5F9] flex mb-5">
+        <div
+          className="h-full bg-[#5B4DFF] transition-all duration-700 rounded-l-full"
+          style={{ width: `${inputPct}%` }}
+        />
+        <div
+          className="h-full bg-[#A5B4FC] transition-all duration-700 rounded-r-full"
+          style={{ width: `${outputPct}%` }}
+        />
+      </div>
+      {/* Legend */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { dot: "#5B4DFF", label: "Input",  val: prompt,     pct: inputPct  },
+          { dot: "#A5B4FC", label: "Output", val: completion, pct: outputPct },
+          { dot: "#CBD5E1", label: "Total",  val: total,      pct: 100       },
+        ].map((item) => (
+          <div key={item.label} className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.dot }} />
+              <span className="text-[11px] font-semibold text-[#64748B]">{item.label}</span>
+            </div>
+            <div className="text-[16px] font-bold text-[#0F172A] tracking-tight">{fmtTokensFull(item.val)}</div>
+            <div className="text-[11px] text-[#94A3B8]">{item.pct.toFixed(1)}%</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Drawer meta row ───────────────────────────────────────────────────────────
+
+function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#94A3B8]">{label}</span>
+      <span className="text-[13px] font-medium text-[#0F172A] leading-snug">{children}</span>
+    </div>
+  );
+}
+
+// ── Drawer section wrapper ────────────────────────────────────────────────────
+
+function DrawerSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="px-6 py-5 border-b border-[#F1F5F9]">
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#94A3B8] mb-4">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+// ── JSON accordion ────────────────────────────────────────────────────────────
+
+function JsonAccordion({ label, data }: { label: string; data: Record<string, unknown> }) {
+  const [open, setOpen] = useState(false);
+  const keyCount = Object.keys(data).length;
+  return (
+    <div className="rounded-xl border border-[#E2E8F0] overflow-hidden bg-white">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-[12.5px] font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          {open ? (
+            <ChevronDown className="size-3.5 text-[#94A3B8]" />
+          ) : (
+            <ChevronRight className="size-3.5 text-[#94A3B8]" />
+          )}
+          {label}
+        </span>
+        <span className="text-[10px] font-medium text-[#94A3B8] bg-[#F1F5F9] px-2 py-0.5 rounded-md">
+          {keyCount} {keyCount === 1 ? "key" : "keys"}
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-[#E2E8F0]">
+          <pre className="max-h-64 overflow-auto px-4 py-3.5 text-[11.5px] font-mono text-[#475569] bg-[#F8FAFC] leading-relaxed">
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Inline row expansion ─────────────────────────────────────────────────────
+
+function InlineDetail({
+  log,
+  onViewFull,
+}: {
+  log: UsageLogItem;
+  onViewFull: () => void;
+}) {
+  return (
+    <div className="bg-[#F8FAFC] border-t border-[#EEF2FF] px-6 py-3.5">
+      <div className="grid grid-cols-[2fr_2fr_2fr_1fr] gap-x-6 items-start mb-3">
+        {/* Request ID */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-[#94A3B8] mb-1">Request ID</p>
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="font-mono text-[11.5px] text-[#475569] truncate">{log.id}</span>
+            <CopyButton text={log.id} />
+          </div>
+        </div>
+        {/* API Key */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-[#94A3B8] mb-1">API Key</p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[12px] text-[#475569]">{log.apiKey?.name ?? "—"}</span>
+            {log.apiKey?.keyPrefix && (
+              <span className="font-mono text-[11px] text-[#94A3B8]">· {log.apiKey.keyPrefix}</span>
+            )}
+            {log.apiKey?.status === "REVOKED" && (
+              <span className="inline-flex items-center rounded px-1.5 py-[2px] text-[10px] font-bold uppercase tracking-[0.05em] bg-[#FEE2E2] text-[#DC2626]">
+                Revoked
+              </span>
+            )}
+          </div>
+        </div>
+        {/* Resolved Model */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-[#94A3B8] mb-1">Resolved Model</p>
+          <span className="font-mono text-[11.5px] text-[#475569]">{log.resolvedModelSlug ?? "—"}</span>
+        </div>
+        {/* Completion Time */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-[#94A3B8] mb-1">Completion Time</p>
+          <span className="font-mono text-[12px] text-[#475569]">{fmtLatency(log.responseCompletionTimeMs)}</span>
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <button
+          onClick={(e) => { e.stopPropagation(); onViewFull(); }}
+          className="text-[12px] font-semibold text-[#5B4DFF] hover:text-[#4338CA] flex items-center gap-1 transition-colors"
+        >
+          Full details
+          <ChevronRight className="size-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Log detail drawer ─────────────────────────────────────────────────────────
+
+function LogDrawer({
+  open,
+  onClose,
+  log,
+  detail,
+  detailLoading,
+}: {
+  open: boolean;
+  onClose: () => void;
+  log: UsageLogItem | null;
+  detail: UsageLogDetail | undefined;
+  detailLoading: boolean;
+}) {
+  if (!log) return null;
+
+  const ts = fmtTimestamp(log.createdAt);
+  const throughput = calcThroughput(log.completionTokens, log.responseCompletionTimeMs);
+  const activeDetail = detail ?? (log as UsageLogDetail);
+
+  return (
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="!w-full sm:!w-[560px] !max-w-[96vw] p-0 overflow-hidden flex flex-col"
+        style={{ backgroundColor: "#F8FAFC", borderLeft: "1px solid #E2E8F0" }}
+      >
+        <SheetTitle className="sr-only">Generation Details</SheetTitle>
+
+        {/* ── Sticky header ─────────────────────────────────────── */}
+        <div
+          className="flex-shrink-0 sticky top-0 z-10 border-b border-[#E2E8F0] px-6 pt-5 pb-4"
+          style={{ background: "white" }}
+        >
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="min-w-0">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#94A3B8] mb-1">
+                Generation Details
+              </p>
+              <h3 className="text-[17px] font-bold text-[#0F172A] tracking-tight leading-snug truncate">
+                {log.model?.displayName ?? log.requestedModelSlug}
+              </h3>
+              <p className="text-[12px] text-[#64748B] mt-0.5">
+                {log.model?.provider?.displayName ?? "—"}
+                <span className="mx-1.5 text-[#CBD5E1]">·</span>
+                {ts.full}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 w-8 h-8 rounded-xl border border-[#E2E8F0] bg-white flex items-center justify-center text-[#94A3B8] hover:text-[#475569] hover:border-[#CBD5E1] hover:bg-[#F8FAFC] transition-all"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={log.status} size="md" />
+            <TypeBadge type={log.requestType} />
+            {log.stream && (
+              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold bg-[#F0F9FF] text-[#0369A1] border border-[#BAE6FD]">
+                <Zap className="size-2.5" />
+                Streaming
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ── Scrollable body ───────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto">
+          {detailLoading ? (
+            <div className="px-6 py-5 space-y-3">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-xl" style={{ background: "#E2E8F0" }} />
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* §1 — Performance Metrics */}
+              <DrawerSection title="Performance Metrics">
+                <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+                  <KpiCard
+                    icon={DollarSign} iconColor="#5B4DFF" label="Cost"
+                    value={fmtCost(log.totalCost)} valueClass={costColor(log.totalCost)}
+                  />
+                  <KpiCard
+                    icon={Clock} iconColor="#0369A1" label="Latency"
+                    value={fmtLatency(log.latencyMs)} valueClass={latencyColor(log.latencyMs)}
+                  />
+                  <KpiCard
+                    icon={Activity} iconColor="#0F766E" label="Compl. Time"
+                    value={fmtLatency(log.responseCompletionTimeMs)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <KpiCard
+                    icon={Zap} iconColor="#D97706" label="Throughput"
+                    value={throughput}
+                  />
+                  <KpiCard
+                    icon={Activity} iconColor="#7C3AED" label="Total Tokens"
+                    value={fmtTokensFull(log.totalTokens)}
+                  />
+                </div>
+              </DrawerSection>
+
+              {/* §2 — Token Breakdown */}
+              <DrawerSection title="Token Breakdown">
+                <TokenBreakdown
+                  prompt={log.promptTokens}
+                  completion={log.completionTokens}
+                  total={log.totalTokens}
+                />
+              </DrawerSection>
+
+              {/* §3 — Request Metadata */}
+              <DrawerSection title="Request Metadata">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  <MetaRow label="Request ID">
+                    <span className="flex items-center font-mono text-[12px] text-[#475569]">
+                      {(activeDetail.id ?? log.id).slice(0, 14)}…
+                      <CopyButton text={activeDetail.id ?? log.id} />
+                    </span>
+                  </MetaRow>
+                  <MetaRow label="Timestamp">{ts.date}, {ts.time}</MetaRow>
+                  <MetaRow label="API Key">
+                    <span className="font-mono text-[12px] text-[#475569] bg-white border border-[#E2E8F0] rounded-lg px-2 py-0.5 inline-block">
+                      {log.apiKey?.name ?? "—"}
+                    </span>
+                  </MetaRow>
+                  <MetaRow label="Key Prefix">
+                    <span className="font-mono text-[12px] text-[#475569]">{log.apiKey?.keyPrefix ?? "—"}</span>
+                  </MetaRow>
+                  <MetaRow label="Project">{log.project?.name ?? "—"}</MetaRow>
+                  <MetaRow label="Streaming">
+                    <span className={log.stream ? "text-[#0369A1]" : "text-[#94A3B8]"}>
+                      {log.stream ? "Enabled" : "Disabled"}
+                    </span>
+                  </MetaRow>
+                  {activeDetail.finishReason && (
+                    <MetaRow label="Finish Reason">
+                      <span className="font-mono text-[12px]">{activeDetail.finishReason}</span>
+                    </MetaRow>
+                  )}
+                </div>
+                {activeDetail.errorMessage && (
+                  <div className="mt-4 bg-[#FEF2F2] border border-[#FECACA] rounded-xl px-4 py-3">
+                    <p className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#DC2626] mb-1.5">
+                      Error
+                    </p>
+                    <p className="text-[12.5px] text-[#DC2626] leading-relaxed">
+                      {activeDetail.errorMessage}
+                    </p>
+                  </div>
+                )}
+              </DrawerSection>
+
+              {/* §4 — Model Details */}
+              <DrawerSection title="Model Details">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  <MetaRow label="Display Name">{log.model?.displayName ?? "—"}</MetaRow>
+                  <MetaRow label="Provider">{log.model?.provider?.displayName ?? "—"}</MetaRow>
+                  <MetaRow label="Requested Model">
+                    <span className="font-mono text-[12px] text-[#475569]">{log.requestedModelSlug ?? "—"}</span>
+                  </MetaRow>
+                  <MetaRow label="Resolved Model">
+                    <span className="font-mono text-[12px] text-[#475569]">
+                      {log.resolvedModelSlug ?? log.model?.slug ?? "—"}
+                    </span>
+                  </MetaRow>
+                </div>
+              </DrawerSection>
+
+              {/* §5 — Developer Details (collapsible JSON) */}
+              {(activeDetail.requestPayload || activeDetail.responseMetadata) && (
+                <DrawerSection title="Developer Details">
+                  <div className="space-y-2.5">
+                    {activeDetail.requestPayload && (
+                      <JsonAccordion label="Request Payload" data={activeDetail.requestPayload} />
+                    )}
+                    {activeDetail.responseMetadata && (
+                      <JsonAccordion label="Response Metadata" data={activeDetail.responseMetadata} />
+                    )}
+                  </div>
+                </DrawerSection>
+              )}
+
+              <div className="h-10" />
+            </>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ── Select (styled) ───────────────────────────────────────────────────────────
+
+const SELECT_ARROW =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")";
+
+function StyledSelect({
   value,
   onChange,
   children,
@@ -267,150 +654,64 @@ function FilterSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        "h-8 rounded-none border border-border bg-background px-2.5 text-sm text-foreground outline-none",
-        "focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:border-ring cursor-pointer",
+        "h-9 rounded-xl border border-[#E2E8F0] bg-white pl-3 pr-8 text-[13px] text-[#0F172A] outline-none",
+        "focus:border-[#5B4DFF] focus:ring-2 focus:ring-[#5B4DFF]/10 cursor-pointer appearance-none transition-all",
         className
       )}
+      style={{
+        backgroundImage: SELECT_ARROW,
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "right 10px center",
+      }}
     >
       {children}
     </select>
   );
 }
 
-// ── Sortable table head ───────────────────────────────────────────────────────
-
-function SortHead({
-  col,
-  label,
-  current,
-  order,
-  onToggle,
-  className,
-}: {
-  col: string;
-  label: string;
-  current: string;
-  order: "asc" | "desc";
-  onToggle: (col: string) => void;
-  className?: string;
-}) {
-  const active = current === col;
-  return (
-    <TableHead
-      className={cn(
-        "cursor-pointer select-none group/sort transition-colors hover:text-foreground",
-        "text-xs font-semibold uppercase tracking-wider text-muted-foreground",
-        className
-      )}
-      onClick={() => onToggle(col)}
-    >
-      <span
-        className={cn(
-          "flex items-center gap-1.5",
-          className?.includes("text-right") && "justify-end"
-        )}
-      >
-        {label}
-        <span
-          className={cn(
-            "transition-opacity",
-            active ? "opacity-100 text-primary" : "opacity-0 group-hover/sort:opacity-50"
-          )}
-        >
-          {active ? (
-            order === "asc" ? (
-              <ArrowUp className="size-3" />
-            ) : (
-              <ArrowDown className="size-3" />
-            )
-          ) : (
-            <ArrowUpDown className="size-3" />
-          )}
-        </span>
-      </span>
-    </TableHead>
-  );
-}
-
-// ── Metric card for detail panel ──────────────────────────────────────────────
-
-function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  valueClass,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: React.ReactNode;
-  valueClass?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1 rounded-none border border-border/60 bg-muted/30 px-4 py-3">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Icon className="size-3" />
-        {label}
-      </div>
-      <div className={cn("text-sm font-semibold text-foreground", valueClass)}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
-// ── Detail row ────────────────────────────────────────────────────────────────
-
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <span className="text-sm text-foreground">{value}</span>
-    </div>
-  );
-}
-
-// ── Framer variants ───────────────────────────────────────────────────────────
+// ── Animation variants ────────────────────────────────────────────────────────
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
+  show: { opacity: 1, transition: { staggerChildren: 0.07 } },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 400, damping: 30 },
-  },
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 28 } },
 };
+
+const PRESET_LABELS: { key: Preset; label: string }[] = [
+  { key: "7d", label: "7d" },
+  { key: "30d", label: "30d" },
+  { key: "90d", label: "90d" },
+  { key: "custom", label: "Custom" },
+];
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function UsagePage() {
   const activeProject = useProjectStore((s) => s.activeProject);
-  const [preset, setPreset] = useState<Preset>("7d");
+
+  const [preset, setPreset]         = useState<Preset>("7d");
   const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
-  const [model, setModel] = useState("");
-  const [status, setStatus] = useState("");
-  const [capability, setCapability] = useState("");
-  const [apiKeyId, setApiKeyId] = useState("");
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [showPayload, setShowPayload] = useState(false);
-  const [showResponse, setShowResponse] = useState(false);
-  const [sortBy, setSortBy] = useState("timestamp");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [customEnd, setCustomEnd]     = useState("");
+  const [model, setModel]             = useState("");
+  const [status, setStatus]           = useState("");
+  const [capability, setCapability]   = useState("");
+  const [apiKeyId, setApiKeyId]       = useState("");
+  const [page, setPage]               = useState(1);
+  const [limit, setLimit]             = useState(20);
+  const [selectedId, setSelectedId]   = useState<string | null>(null);
+  const [drawerLogId, setDrawerLogId] = useState<string | null>(null);
+  const [sortBy, setSortBy]           = useState("timestamp");
+  const [sortOrder, setSortOrder]     = useState<"asc" | "desc">("desc");
 
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const requestId = searchParams.get("requestId");
-    if (requestId) setExpandedId(requestId);
+    if (requestId) setSelectedId(requestId);
   }, [searchParams]);
 
   const dateRange = useMemo(() => {
@@ -420,47 +721,32 @@ export default function UsagePage() {
   }, [preset, customStart, customEnd]);
 
   const toggleSort = (col: string) => {
-    if (sortBy === col) {
-      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(col);
-      setSortOrder("desc");
-    }
+    if (sortBy === col) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    else { setSortBy(col); setSortOrder("desc"); }
   };
 
   useEffect(() => {
     setPage(1);
   }, [preset, customStart, customEnd, model, status, apiKeyId, capability, limit]);
 
-  useEffect(() => {
-    setShowPayload(false);
-    setShowResponse(false);
-  }, [expandedId]);
-
   const queryParams = useMemo(() => {
     const p: Record<string, string | number> = { page, pageSize: limit };
     if (activeProject?.id) p.projectId = activeProject.id;
     if (preset === "custom") {
       if (dateRange.startDate) p.from = `${dateRange.startDate}T00:00:00.000Z`;
-      if (dateRange.endDate) p.to = `${dateRange.endDate}T23:59:59.000Z`;
+      if (dateRange.endDate)   p.to   = `${dateRange.endDate}T23:59:59.000Z`;
       if (dateRange.startDate && dateRange.endDate) p.dateRangePreset = "custom";
     } else {
-      const PRESET_MAP: Record<string, string> = {
-        "7d": "past_7d",
-        "30d": "past_30d",
-        "90d": "past_30d",
-      };
+      const PRESET_MAP: Record<string, string> = { "7d": "past_7d", "30d": "past_30d", "90d": "past_30d" };
       p.dateRangePreset = PRESET_MAP[preset] ?? "past_7d";
     }
-    if (model) p.search = model;
-    if (status) p.status = status;
-    if (apiKeyId) p.apiKeyId = apiKeyId;
+    if (model)      p.search      = model;
+    if (status)     p.status      = status;
+    if (apiKeyId)   p.apiKeyId    = apiKeyId;
     if (capability) p.requestType = capability;
     if (sortBy) {
       const SORT_MAP: Record<string, string> = {
-        timestamp: "createdAt",
-        totalTokens: "totalTokens",
-        costUsd: "totalCost",
+        timestamp: "createdAt", totalTokens: "totalTokens", costUsd: "totalCost",
       };
       p.sort = `${SORT_MAP[sortBy] ?? sortBy}:${sortOrder}`;
     }
@@ -475,598 +761,326 @@ export default function UsagePage() {
 
   const { data: keys = [] } = useQuery<ApiKey[]>({
     queryKey: ["keys", activeProject?.id],
-    queryFn: () =>
-      api.get("/api-keys", { params: { projectId: activeProject!.id } }).then((r) => r.data),
+    queryFn: () => api.get("/api-keys", { params: { projectId: activeProject!.id } }).then((r) => r.data),
     enabled: !!activeProject,
   });
 
   const { data: detail, isLoading: detailLoading } = useQuery<UsageLogDetail>({
-    queryKey: ["usage-detail", expandedId],
-    queryFn: () => api.get(`/usage/logs/${expandedId}`).then((r) => r.data),
-    enabled: !!expandedId,
+    queryKey: ["usage-detail", drawerLogId],
+    queryFn: () => api.get(`/usage/logs/${drawerLogId}`).then((r) => r.data),
+    enabled: !!drawerLogId,
   });
 
-  const logs = data?.data ?? [];
-  const total = data?.totalRecords ?? 0;
+  const logs       = data?.data ?? [];
+  const total      = data?.totalRecords ?? 0;
   const totalPages = data?.totalPages ?? 0;
 
-  const toggleRow = (id: string) =>
-    setExpandedId((prev) => (prev === id ? null : id));
-
-  const PRESET_LABELS: { key: Preset; label: string }[] = [
-    { key: "7d", label: "7d" },
-    { key: "30d", label: "30d" },
-    { key: "90d", label: "90d" },
-    { key: "custom", label: "Custom" },
-  ];
+  const selectedLog = useMemo(
+    () => logs.find((l) => l.id === drawerLogId) ?? (detail as UsageLogItem | undefined) ?? null,
+    [drawerLogId, logs, detail]
+  );
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-      className="space-y-6"
-    >
-      {/* ── Page header ─────────────────────────────────────────────────── */}
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-5">
+
+      {/* ── Page header ───────────────────────────────────────────── */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground/90">
-            Usage Logs
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h2 className="text-[22px] font-bold text-[#0F172A] tracking-tight">Usage Logs</h2>
+          <p className="text-[13px] text-[#64748B] mt-0.5">
             Inspect every API request made with your keys.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
             onClick={() => refetch()}
             aria-label="Refresh"
             className={cn(
-              "transition-all hover:bg-muted/50",
-              isFetching && "animate-spin"
+              "w-9 h-9 rounded-xl border border-[#E2E8F0] bg-white flex items-center justify-center text-[#64748B] hover:text-[#0F172A] hover:border-[#CBD5E1] hover:shadow-sm transition-all",
+              isFetching && "animate-spin text-[#5B4DFF]"
             )}
           >
             <RefreshCw className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="transition-all hover:shadow-sm"
+          </button>
+          <button
             onClick={() =>
               toast.info("Export coming soon", {
                 description: "CSV / JSON export will be available in a future update.",
               })
             }
+            className="h-9 px-4 rounded-xl border border-[#E2E8F0] bg-white text-[13px] font-semibold text-[#475569] hover:text-[#0F172A] hover:border-[#CBD5E1] hover:shadow-sm flex items-center gap-2 transition-all"
           >
-            <Download className="size-4 mr-1.5" />
+            <Download className="size-3.5" />
             Export
-          </Button>
+          </button>
         </div>
       </motion.div>
 
-      {/* ── Filter bar ──────────────────────────────────────────────────── */}
+      {/* ── Filter bar ────────────────────────────────────────────── */}
       <motion.div
         variants={itemVariants}
-        className="flex flex-wrap items-end gap-3 rounded-none border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm"
+        className="bg-white border border-[#E2E8F0] rounded-2xl px-5 py-4 shadow-sm"
       >
-        {/* Date presets */}
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">Date range</span>
-          <div className="flex rounded-none border border-border overflow-hidden">
-            {PRESET_LABELS.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setPreset(key)}
-                className={cn(
-                  "px-3 py-1.5 text-sm font-medium transition-colors",
-                  preset === key
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
-                )}
-              >
-                {label}
-              </button>
-            ))}
+        <div className="flex flex-wrap items-end gap-3">
+          {/* Date presets */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#94A3B8]">Date Range</span>
+            <div className="flex rounded-xl border border-[#E2E8F0] overflow-hidden bg-[#F8FAFC] p-0.5 gap-0.5">
+              {PRESET_LABELS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setPreset(key)}
+                  className={cn(
+                    "px-3 py-1.5 text-[12.5px] font-semibold rounded-[9px] transition-all",
+                    preset === key
+                      ? "bg-white text-[#5B4DFF] shadow-sm border border-[#E2E8F0]"
+                      : "text-[#64748B] hover:text-[#0F172A]"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Custom date inputs */}
-        {preset === "custom" && (
-          <>
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-muted-foreground">From</span>
-              <input
-                type="date"
-                value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                className="h-8 rounded-none border border-border bg-background px-2.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-muted-foreground">To</span>
-              <input
-                type="date"
-                value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                className="h-8 rounded-none border border-border bg-background px-2.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              />
-            </div>
-          </>
-        )}
+          {preset === "custom" && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#94A3B8]">From</span>
+                <input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className="h-9 rounded-xl border border-[#E2E8F0] bg-white px-3 text-[13px] text-[#0F172A] outline-none focus:border-[#5B4DFF] focus:ring-2 focus:ring-[#5B4DFF]/10 transition-all"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#94A3B8]">To</span>
+                <input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className="h-9 rounded-xl border border-[#E2E8F0] bg-white px-3 text-[13px] text-[#0F172A] outline-none focus:border-[#5B4DFF] focus:ring-2 focus:ring-[#5B4DFF]/10 transition-all"
+                />
+              </div>
+            </>
+          )}
 
-        <div className="hidden h-8 w-px bg-border sm:block" />
+          <div className="hidden sm:block w-px h-8 bg-[#E2E8F0] self-end" />
 
-        {/* Model */}
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">Model</span>
-          <input
-            type="text"
-            placeholder="e.g. gpt-4o"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="h-8 w-36 rounded-none border border-border bg-background px-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-          />
-        </div>
+          {/* Model */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#94A3B8]">Model</span>
+            <input
+              type="text"
+              placeholder="e.g. gpt-4o"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="h-9 w-36 rounded-xl border border-[#E2E8F0] bg-white px-3 text-[13px] text-[#0F172A] placeholder:text-[#94A3B8] outline-none focus:border-[#5B4DFF] focus:ring-2 focus:ring-[#5B4DFF]/10 transition-all"
+            />
+          </div>
 
-        {/* Status */}
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">Status</span>
-          <FilterSelect value={status} onChange={setStatus}>
-            <option value="">All statuses</option>
-            <option value="SUCCESS">Success</option>
-            <option value="FAILED">Failed</option>
-            <option value="PARTIAL">Partial</option>
-            <option value="STOPPED">Stopped</option>
-          </FilterSelect>
-        </div>
+          {/* Status */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#94A3B8]">Status</span>
+            <StyledSelect value={status} onChange={setStatus}>
+              <option value="">All statuses</option>
+              <option value="SUCCESS">Success</option>
+              <option value="FAILED">Failed</option>
+              <option value="PARTIAL">Partial</option>
+              <option value="STOPPED">Stopped</option>
+            </StyledSelect>
+          </div>
 
-        {/* Capability */}
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">Capability</span>
-          <FilterSelect value={capability} onChange={setCapability}>
-            <option value="">All capabilities</option>
-            <option value="CHAT">Chat</option>
-            <option value="IMAGE">Image</option>
-            <option value="AUDIO">Audio</option>
-            <option value="VIDEO">Video</option>
-            <option value="EMBEDDING">Embedding</option>
-          </FilterSelect>
-        </div>
+          {/* Type */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#94A3B8]">Type</span>
+            <StyledSelect value={capability} onChange={setCapability}>
+              <option value="">All types</option>
+              <option value="CHAT">Chat</option>
+              <option value="IMAGE">Image</option>
+              <option value="AUDIO">Audio</option>
+              <option value="VIDEO">Video</option>
+              <option value="EMBEDDING">Embedding</option>
+            </StyledSelect>
+          </div>
 
-        {/* API key */}
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">API key</span>
-          <FilterSelect value={apiKeyId} onChange={setApiKeyId}>
-            <option value="">All keys</option>
-            {keys.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.name} ({k.keyPrefix})
-              </option>
-            ))}
-          </FilterSelect>
+          {/* API key */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-[#94A3B8]">API Key</span>
+            <StyledSelect value={apiKeyId} onChange={setApiKeyId} className="max-w-[160px]">
+              <option value="">All keys</option>
+              {keys.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.name} ({k.keyPrefix})
+                </option>
+              ))}
+            </StyledSelect>
+          </div>
         </div>
       </motion.div>
 
-      {/* ── Table ───────────────────────────────────────────────────────── */}
+      {/* ── Table ─────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants}>
         {isLoading ? (
-          <div className="space-y-2 rounded-none border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-none" />
+          <div className="bg-white border border-[#E2E8F0] rounded-2xl p-4 space-y-2 shadow-sm">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-xl" style={{ background: "#F1F5F9" }} />
             ))}
           </div>
         ) : logs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-4 rounded-none border border-dashed border-border bg-muted/10 py-24 text-center shadow-sm backdrop-blur-sm">
-            <div className="flex size-16 items-center justify-center rounded-none bg-muted/50 ring-1 ring-border">
-              <FileText className="size-7 text-muted-foreground" />
+          <div className="bg-white border border-[#E2E8F0] rounded-2xl py-24 flex flex-col items-center justify-center gap-4 text-center shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center">
+              <FileText className="size-7 text-[#94A3B8]" />
             </div>
             <div>
-              <p className="font-semibold text-foreground text-lg">No logs found</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Try adjusting your filters or date range.
-              </p>
+              <p className="text-[15px] font-bold text-[#0F172A]">No logs found</p>
+              <p className="text-[13px] text-[#64748B] mt-1">Try adjusting your filters or date range.</p>
             </div>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-none border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md">
-            {/* Live indicator bar */}
+          <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-sm">
+            {/* Fetch progress bar */}
             {isFetching && (
-              <div className="h-0.5 w-full bg-gradient-to-r from-primary/0 via-primary to-primary/0 animate-pulse" />
+              <div className="h-0.5 w-full bg-gradient-to-r from-[#5B4DFF]/0 via-[#5B4DFF] to-[#5B4DFF]/0 animate-pulse" />
             )}
 
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-border/60 bg-muted/30 hover:bg-muted/30">
-                  {/* expand */}
-                  <TableHead className="w-8" />
-                  {/* request id */}
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[110px]">
-                    Request ID
-                  </TableHead>
+                <TableRow
+                  className="border-b border-[#E2E8F0]"
+                  style={{ background: "#FAFAFA" }}
+                >
                   <SortHead
-                    col="timestamp"
-                    label="Timestamp"
-                    current={sortBy}
-                    order={sortOrder}
-                    onToggle={toggleSort}
-                    className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                    col="timestamp" label="Time"
+                    current={sortBy} order={sortOrder} onToggle={toggleSort}
+                    className="w-[88px] pl-4 pr-2 py-3"
                   />
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#94A3B8] px-2 py-3">
                     Model
                   </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Key
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#94A3B8] w-[110px] px-2 py-3">
+                    Project
                   </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Type
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#94A3B8] w-[100px] px-2 py-3">
                     Status
                   </TableHead>
-                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Prompt
-                  </TableHead>
-                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Completion
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#94A3B8] w-[78px] px-2 py-3">
+                    Type
                   </TableHead>
                   <SortHead
-                    col="totalTokens"
-                    label="Total Tokens"
-                    current={sortBy}
-                    order={sortOrder}
-                    onToggle={toggleSort}
-                    className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                    col="totalTokens" label="Tokens"
+                    current={sortBy} order={sortOrder} onToggle={toggleSort} align="right"
+                    className="w-[92px] px-2 py-3"
                   />
                   <SortHead
-                    col="costUsd"
-                    label="Cost"
-                    current={sortBy}
-                    order={sortOrder}
-                    onToggle={toggleSort}
-                    className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                    col="costUsd" label="Cost"
+                    current={sortBy} order={sortOrder} onToggle={toggleSort} align="right"
+                    className="w-[88px] px-2 py-3"
                   />
-                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.07em] text-[#94A3B8] w-[80px] px-2 py-3">
                     Latency
                   </TableHead>
+                  <TableHead className="w-10 pr-4 py-3" />
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {logs.map((log, idx) => {
-                  const isExpanded = expandedId === log.id;
-                  const isEven = idx % 2 === 0;
+                {logs.map((log) => {
+                  const isSelected = selectedId === log.id;
+                  const ts = fmtTimestamp(log.createdAt);
                   return (
                     <React.Fragment key={log.id}>
-                      {/* ── Main row ── */}
-                      <TableRow
-                        aria-expanded={isExpanded}
-                        onClick={() => toggleRow(log.id)}
-                        className={cn(
-                          "cursor-pointer border-b border-border/40 transition-colors duration-150 group/row",
-                          isEven ? "bg-transparent" : "bg-muted/10",
-                          isExpanded
-                            ? "bg-primary/5 border-b-0"
-                            : "hover:bg-accent/40"
-                        )}
-                      >
-                        {/* expand chevron */}
-                        <TableCell className="pl-4 pr-0 w-8">
-                          <span
-                            className={cn(
-                              "flex items-center justify-center size-5 rounded-none transition-all duration-200",
-                              isExpanded
-                                ? "bg-primary/10 text-primary"
-                                : "text-muted-foreground group-hover/row:text-foreground group-hover/row:bg-muted/60"
-                            )}
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="size-3.5" />
-                            ) : (
-                              <ChevronRight className="size-3.5" />
-                            )}
-                          </span>
-                        </TableCell>
+                    <TableRow
+                      onClick={() => setSelectedId((prev) => (prev === log.id ? null : log.id))}
+                      className={cn(
+                        "group cursor-pointer border-b border-[#F1F5F9] transition-all duration-100",
+                        isSelected
+                          ? "bg-[#EEF2FF] shadow-[inset_4px_0_0_#5B4DFF] border-b-transparent"
+                          : "hover:bg-[#F8FAFC]"
+                      )}
+                    >
+                      {/* Time */}
+                      <TableCell className="py-2.5 pl-4 pr-2 w-[88px]">
+                        <div className="font-mono text-[12px] font-semibold text-[#0F172A] tabular-nums leading-snug">{ts.time}</div>
+                        <div className="font-mono text-[10.5px] text-[#94A3B8] mt-0.5 tabular-nums">{ts.date}</div>
+                      </TableCell>
 
-                        {/* request id */}
-                        <TableCell className="w-[110px]">
-                          <span className="font-mono text-[11px] text-muted-foreground truncate block max-w-[100px]">
-                            {log.id.slice(0, 8)}…
-                          </span>
-                        </TableCell>
+                      {/* Model */}
+                      <TableCell className="py-2.5 px-2">
+                        <div className="text-[13px] font-semibold text-[#0F172A] max-w-[200px] truncate leading-snug">
+                          {log.model?.displayName ?? log.requestedModelSlug}
+                        </div>
+                        <div className="text-[11px] text-[#94A3B8] mt-0.5 max-w-[200px] truncate">
+                          {log.model?.provider?.displayName ?? "—"}
+                        </div>
+                      </TableCell>
 
-                        {/* timestamp */}
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {fmtTimestamp(log.createdAt)}
-                        </TableCell>
-
-                        {/* model */}
-                        <TableCell>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xs font-medium text-foreground truncate max-w-[140px]">
-                              {log.model?.displayName ?? log.requestedModelSlug}
-                            </span>
-                            {log.model?.provider?.displayName && (
-                              <span className="text-[10px] text-muted-foreground">
-                                {log.model.provider.displayName}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-
-                        {/* key prefix */}
-                        <TableCell>
-                          <span className="font-mono text-[11px] bg-muted/60 border border-border/60 rounded-none px-1.5 py-0.5 text-muted-foreground">
-                            {log.apiKey?.keyPrefix ?? "—"}
-                          </span>
-                        </TableCell>
-
-                        {/* capability */}
-                        <TableCell>
-                          <CapabilityBadge type={log.requestType} />
-                        </TableCell>
-
-                        {/* status */}
-                        <TableCell>
-                          <StatusBadge status={log.status} />
-                        </TableCell>
-
-                        {/* prompt tokens */}
-                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">
-                          {fmtTokens(log.promptTokens)}
-                        </TableCell>
-
-                        {/* completion tokens */}
-                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">
-                          {fmtTokens(log.completionTokens)}
-                        </TableCell>
-
-                        {/* total tokens */}
-                        <TableCell className="text-right tabular-nums text-xs font-medium text-foreground">
-                          {fmtTokens(log.totalTokens)}
-                        </TableCell>
-
-                        {/* cost */}
-                        <TableCell
+                      {/* Project */}
+                      <TableCell className="py-2.5 px-2 w-[110px]">
+                        <span
+                          title={log.project?.name}
                           className={cn(
-                            "text-right tabular-nums text-xs font-semibold",
-                            costColor(log.totalCost)
+                            "text-[12px] truncate block max-w-[100px] cursor-default",
+                            log.project?.name ? "text-[#475569]" : "text-[#94A3B8]"
                           )}
                         >
+                          {log.project?.name ?? "—"}
+                        </span>
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell className="py-2.5 px-2 w-[100px]">
+                        <StatusBadge status={log.status} />
+                      </TableCell>
+
+                      {/* Type */}
+                      <TableCell className="py-2.5 px-2 w-[78px]">
+                        <TypeBadge type={log.requestType} />
+                      </TableCell>
+
+                      {/* Tokens */}
+                      <TableCell className="py-2.5 px-2 text-right w-[92px]">
+                        <div className="font-mono text-[12.5px] font-bold text-[#0F172A] tabular-nums leading-snug">
+                          {fmtTokensShort(log.totalTokens)}
+                        </div>
+                        <div className="font-mono text-[10px] text-[#94A3B8] mt-0.5 tabular-nums">
+                          ↑{fmtTokensShort(log.promptTokens)}&nbsp;+{fmtTokensShort(log.completionTokens)}
+                        </div>
+                      </TableCell>
+
+                      {/* Cost */}
+                      <TableCell className="py-2.5 px-2 text-right w-[88px]">
+                        <span className={cn("font-mono text-[12.5px] font-bold tabular-nums leading-snug", costColor(log.totalCost))}>
                           {fmtCost(log.totalCost)}
-                        </TableCell>
+                        </span>
+                      </TableCell>
 
-                        {/* latency */}
-                        <TableCell
-                          className={cn(
-                            "text-right tabular-nums text-xs font-medium",
-                            latencyColor(log.latencyMs)
-                          )}
-                        >
+                      {/* Latency */}
+                      <TableCell className="py-2.5 px-2 text-right w-[80px]">
+                        <span className={cn("font-mono text-[12.5px] font-semibold tabular-nums leading-snug", latencyColor(log.latencyMs))}>
                           {fmtLatency(log.latencyMs)}
+                        </span>
+                      </TableCell>
+
+                      {/* Chevron affordance */}
+                      <TableCell className="py-2.5 pr-4 pl-2 w-10 text-right">
+                        {isSelected
+                          ? <ChevronDown className="size-4 ml-auto text-[#5B4DFF] transition-colors duration-100" />
+                          : <ChevronRight className="size-4 ml-auto text-[#E2E8F0] group-hover:text-[#CBD5E1] transition-colors duration-100" />
+                        }
+                      </TableCell>
+                    </TableRow>
+                    {isSelected && (
+                      <TableRow className="border-b border-[#F1F5F9]">
+                        <TableCell colSpan={9} className="p-0">
+                          <InlineDetail
+                            log={log}
+                            onViewFull={() => setDrawerLogId(log.id)}
+                          />
                         </TableCell>
                       </TableRow>
-
-                      {/* ── Expanded detail panel ── */}
-                      <AnimatePresence initial={false}>
-                        {isExpanded && (
-                          <tr className="border-b border-border/60 bg-primary/3">
-                            <td colSpan={12} className="p-0">
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.22, ease: "easeInOut" }}
-                                className="overflow-hidden"
-                              >
-                                <div className="px-6 py-5 space-y-5 border-t border-primary/10 bg-gradient-to-b from-primary/5 to-transparent">
-                                  {detailLoading ? (
-                                    <div className="grid grid-cols-4 gap-3">
-                                      {Array.from({ length: 4 }).map((_, i) => (
-                                        <Skeleton key={i} className="h-16 rounded-xl" />
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <>
-                                      {/* ── Metric cards ── */}
-                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                        <MetricCard
-                                          icon={Activity}
-                                          label="Total Tokens"
-                                          value={fmtTokens(log.totalTokens)}
-                                        />
-                                        <MetricCard
-                                          icon={DollarSign}
-                                          label="Total Cost"
-                                          value={fmtCost(log.totalCost)}
-                                          valueClass={costColor(log.totalCost)}
-                                        />
-                                        <MetricCard
-                                          icon={Clock}
-                                          label="Latency"
-                                          value={fmtLatency(log.latencyMs)}
-                                          valueClass={latencyColor(log.latencyMs)}
-                                        />
-                                        <MetricCard
-                                          icon={Zap}
-                                          label="Finish Reason"
-                                          value={detail?.finishReason ?? "—"}
-                                        />
-                                      </div>
-
-                                      {/* ── Detail grid ── */}
-                                      <div className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3 rounded-xl border border-border/50 bg-background/60 p-4">
-                                        <DetailRow
-                                          label="Request ID"
-                                          value={
-                                            <span className="font-mono text-xs break-all flex items-center">
-                                              {detail?.id ?? log.id}
-                                              <CopyButton text={detail?.id ?? log.id} />
-                                            </span>
-                                          }
-                                        />
-                                        <DetailRow
-                                          label="Timestamp"
-                                          value={new Date(log.createdAt).toLocaleString()}
-                                        />
-                                        <DetailRow
-                                          label="Model"
-                                          value={
-                                            <span className="font-mono text-xs">
-                                              {log.model?.displayName ?? log.requestedModelSlug}
-                                            </span>
-                                          }
-                                        />
-                                        <DetailRow
-                                          label="Provider"
-                                          value={log.model?.provider?.displayName ?? "—"}
-                                        />
-                                        <DetailRow
-                                          label="API Key"
-                                          value={
-                                            <span className="font-mono text-xs bg-muted border border-border rounded px-1.5 py-0.5">
-                                              {log.apiKey?.keyPrefix ?? "—"}
-                                            </span>
-                                          }
-                                        />
-                                        <DetailRow
-                                          label="Streaming"
-                                          value={log.stream ? "Yes" : "No"}
-                                        />
-                                        <DetailRow
-                                          label="Prompt Tokens"
-                                          value={fmtTokens(log.promptTokens)}
-                                        />
-                                        <DetailRow
-                                          label="Completion Tokens"
-                                          value={fmtTokens(log.completionTokens)}
-                                        />
-                                        <DetailRow
-                                          label="Total Tokens"
-                                          value={fmtTokens(log.totalTokens)}
-                                        />
-
-                                        {(detail?.errorMessage || log.status === "FAILED") && (
-                                          <div className="sm:col-span-2 lg:col-span-3">
-                                            <DetailRow
-                                              label="Error"
-                                              value={
-                                                <span className="text-red-600 dark:text-red-400 text-xs leading-relaxed">
-                                                  {detail?.errorMessage ?? "Request failed"}
-                                                </span>
-                                              }
-                                            />
-                                          </div>
-                                        )}
-                                      </div>
-
-                                      {/* ── Cost breakdown ── */}
-                                      {/* <div className="rounded-xl border border-border/50 bg-background/60 p-4">
-                                        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                          <DollarSign className="size-3" />
-                                          Cost Breakdown
-                                        </p>
-                                        <div className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
-                                          <DetailRow
-                                            label="Provider Cost"
-                                            value={fmtCost(detail?.providerCost ?? log.totalCost)}
-                                          />
-                                          <DetailRow
-                                            label="Platform Markup"
-                                            value={
-                                              detail?.platformMarkupPercent
-                                                ? `${detail.platformMarkupPercent}% → ${fmtCost(detail.platformMarkup ?? "0")}`
-                                                : "—"
-                                            }
-                                          />
-                                          <DetailRow
-                                            label="Total Charged"
-                                            value={
-                                              <span className="font-bold text-foreground">
-                                                {fmtCost(log.totalCost)}
-                                              </span>
-                                            }
-                                          />
-                                        </div>
-                                      </div> */}
-
-                                      {/* ── Request payload ── */}
-                                      {detail?.requestPayload && (
-                                        <div className="rounded-xl border border-border/50 bg-background/60 overflow-hidden">
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setShowPayload((v) => !v);
-                                            }}
-                                            className="flex w-full items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:bg-muted/40 transition-colors"
-                                          >
-                                            {showPayload ? (
-                                              <ChevronDown className="size-3.5" />
-                                            ) : (
-                                              <ChevronRight className="size-3.5" />
-                                            )}
-                                            Request Payload
-                                          </button>
-                                          <AnimatePresence initial={false}>
-                                            {showPayload && (
-                                              <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: "auto", opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                transition={{ duration: 0.18 }}
-                                                className="overflow-hidden"
-                                              >
-                                                <pre className="max-h-64 overflow-auto border-t border-border/60 px-4 py-3 text-xs text-foreground font-mono leading-relaxed bg-muted/20">
-                                                  {JSON.stringify(detail.requestPayload, null, 2)}
-                                                </pre>
-                                              </motion.div>
-                                            )}
-                                          </AnimatePresence>
-                                        </div>
-                                      )}
-
-                                      {/* ── Response metadata ── */}
-                                      {detail?.responseMetadata && (
-                                        <div className="rounded-xl border border-border/50 bg-background/60 overflow-hidden">
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setShowResponse((v) => !v);
-                                            }}
-                                            className="flex w-full items-center gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:bg-muted/40 transition-colors"
-                                          >
-                                            {showResponse ? (
-                                              <ChevronDown className="size-3.5" />
-                                            ) : (
-                                              <ChevronRight className="size-3.5" />
-                                            )}
-                                            Response Metadata
-                                          </button>
-                                          <AnimatePresence initial={false}>
-                                            {showResponse && (
-                                              <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: "auto", opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                transition={{ duration: 0.18 }}
-                                                className="overflow-hidden"
-                                              >
-                                                <pre className="max-h-64 overflow-auto border-t border-border/60 px-4 py-3 text-xs text-foreground font-mono leading-relaxed bg-muted/20">
-                                                  {JSON.stringify(detail.responseMetadata, null, 2)}
-                                                </pre>
-                                              </motion.div>
-                                            )}
-                                          </AnimatePresence>
-                                        </div>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                              </motion.div>
-                            </td>
-                          </tr>
-                        )}
-                      </AnimatePresence>
+                    )}
                     </React.Fragment>
                   );
                 })}
@@ -1076,45 +1090,35 @@ export default function UsagePage() {
         )}
       </motion.div>
 
-      {/* ── Pagination ───────────────────────────────────────────────────── */}
+      {/* ── Pagination ────────────────────────────────────────────── */}
       {!isLoading && total > 0 && (
-        <motion.div
-          variants={itemVariants}
-          className="flex flex-wrap items-center justify-between gap-3"
-        >
-          <p className="text-sm text-muted-foreground">
+        <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[13px] text-[#64748B]">
             Showing{" "}
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-[#0F172A]">
               {(page - 1) * limit + 1}–{Math.min(page * limit, total)}
             </span>{" "}
             of{" "}
-            <span className="font-semibold text-foreground">{total.toLocaleString()}</span>{" "}
+            <span className="font-semibold text-[#0F172A]">{total.toLocaleString()}</span>{" "}
             results
           </p>
 
           <div className="flex items-center gap-2">
-            <FilterSelect
-              value={String(limit)}
-              onChange={(v) => setLimit(Number(v))}
-              className="w-24"
-            >
+            <StyledSelect value={String(limit)} onChange={(v) => setLimit(Number(v))}>
               <option value="20">20 / page</option>
               <option value="50">50 / page</option>
               <option value="100">100 / page</option>
-            </FilterSelect>
+            </StyledSelect>
 
-            <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="sm"
+            <div className="flex items-center gap-1">
+              <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="rounded-xl"
+                className="h-8 px-3 rounded-xl border border-[#E2E8F0] bg-white text-[12.5px] font-semibold text-[#475569] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 Previous
-              </Button>
+              </button>
 
-              {/* Page number pills */}
               <div className="hidden sm:flex items-center gap-1">
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                   const p = i + 1;
@@ -1123,10 +1127,10 @@ export default function UsagePage() {
                       key={p}
                       onClick={() => setPage(p)}
                       className={cn(
-                        "size-8 rounded-xl text-sm font-medium transition-colors",
+                        "w-8 h-8 rounded-xl text-[12.5px] font-semibold transition-all",
                         page === p
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-accent text-muted-foreground hover:text-foreground"
+                          ? "bg-[#5B4DFF] text-white shadow-sm"
+                          : "text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A] border border-transparent hover:border-[#E2E8F0]"
                       )}
                     >
                       {p}
@@ -1134,23 +1138,30 @@ export default function UsagePage() {
                   );
                 })}
                 {totalPages > 5 && (
-                  <span className="text-muted-foreground text-sm px-1">…</span>
+                  <span className="text-[#94A3B8] text-[13px] px-1">…</span>
                 )}
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="rounded-xl"
+                className="h-8 px-3 rounded-xl border border-[#E2E8F0] bg-white text-[12.5px] font-semibold text-[#475569] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 Next
-              </Button>
+              </button>
             </div>
           </div>
         </motion.div>
       )}
+
+      {/* ── Right-side detail drawer ───────────────────────────────── */}
+      <LogDrawer
+        open={!!drawerLogId}
+        onClose={() => setDrawerLogId(null)}
+        log={selectedLog}
+        detail={detail}
+        detailLoading={detailLoading}
+      />
     </motion.div>
   );
 }

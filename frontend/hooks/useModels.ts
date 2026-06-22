@@ -1,4 +1,4 @@
-﻿import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import type { Model, ModelFilters, ModelUsageStats, PaginatedModels } from "@/types/index";
 import { buildModelsQueryString } from "@/lib/modelUtils";
@@ -24,7 +24,7 @@ function normalizePaginatedResponse(raw: PaginatedModels | Model[]): PaginatedMo
   return { ...raw, data: raw.data.map(normalizeModel) };
 }
 
-export function useModels(filters: ModelFilters) {
+export function useModels(filters: ModelFilters, options: { staleTime?: number; enabled?: boolean } = {}) {
   const qs = buildModelsQueryString(filters);
   const url = qs ? `/models?${qs}` : "/models";
 
@@ -34,7 +34,8 @@ export function useModels(filters: ModelFilters) {
       api
         .get<PaginatedModels | Model[]>(url)
         .then((r) => normalizePaginatedResponse(r.data as PaginatedModels | Model[])),
-    staleTime: 5 * 60 * 1000,
+    staleTime: options.staleTime ?? 5 * 60 * 1000,
+    enabled: options.enabled !== false,
   });
 
   return {
