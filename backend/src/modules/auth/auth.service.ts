@@ -24,6 +24,7 @@ import {
 } from "./auth.utils.js";
 import { createWallet } from "../wallets/wallets.service.js";
 import { sendEmail } from "../../services/email.service.js";
+import { activityLogService } from "../../services/activity-log.service.js";
 
 const authUserSelect = {
 	id: true,

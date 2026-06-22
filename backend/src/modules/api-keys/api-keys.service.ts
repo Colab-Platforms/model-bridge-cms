@@ -176,7 +176,7 @@ export const getApiKeyByIdService = async (id: string) => {
   return formatApiKeyRecord(apiKey);
 };
 
-export const updateApiKeyService = async (id: string, body: UpdateApiKeyInput, actorId?: string) => {
+export const updateApiKeyService = async (id: string, body: UpdateApiKeyInput, _actorId?: string) => {
   const existingApiKey = await prisma.apiKey.findFirst({
     where: {
       id,
@@ -224,7 +224,7 @@ export const getApiKeysByUserIdService = async (userId: string) => {
   return apiKeys.map((apiKey) => formatApiKeyRecord(apiKey));
 };
 
-export const deleteApiKeyService = async (id: string, actorId?: string) => {
+export const deleteApiKeyService = async (id: string, _actorId?: string) => {
   const existingApiKey = await prisma.apiKey.findFirst({
     where: {
       id,
