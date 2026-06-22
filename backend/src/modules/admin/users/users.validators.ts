@@ -4,6 +4,8 @@ import { z } from "zod";
 import { validateBody, validateParams, validateQuery } from "../../../shared/middlewares/validate.js";
 
 export const adminUsersQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
   search: z.string().trim().min(1).optional(),
   status: z.nativeEnum(UserStatus).optional(),
   role: z.enum(["User", "Admin", "SuperAdmin"]).optional(),

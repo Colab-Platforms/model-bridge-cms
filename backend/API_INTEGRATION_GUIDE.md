@@ -101,6 +101,61 @@ Required:
 - `email`
 - `password`
 
+Notes:
+- local signup now creates the user with `isVerified=false`
+- backend sends a 6-digit email verification OTP after successful registration
+- register does not log the user in immediately
+
+Example success response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "user": {
+      "id": "cm_user_123",
+      "email": "john@example.com",
+      "firstName": "John",
+      "lastName": "Doe",
+      "authProvider": "LOCAL",
+      "isVerified": false
+    },
+    "verificationRequired": true
+  },
+  "message": "User registered successfully"
+}
+```
+
+### POST `/auth/verify-email-otp`
+
+Verify the OTP sent after local registration.
+
+Payload:
+
+```json
+{
+  "email": "john@example.com",
+  "otp": "123456"
+}
+```
+
+Notes:
+- OTP is currently 6 digits
+- after successful verification, backend marks the user as verified
+- this endpoint issues normal app `accessToken` and `refreshToken`
+
+### POST `/auth/resend-email-otp`
+
+Resend verification OTP for a local account that is not yet verified.
+
+Payload:
+
+```json
+{
+  "email": "john@example.com"
+}
+```
+
 ### POST `/auth/login`
 
 Login user.
@@ -113,6 +168,46 @@ Payload:
   "password": "Password123"
 }
 ```
+
+Notes:
+- local users must verify email before login
+- Google-only users cannot log in through email/password
+
+### GET `/auth/google/start`
+
+Start Google OAuth login/signup flow.
+
+Optional query params:
+- `redirect`
+
+Example:
+
+```txt
+GET /auth/google/start?redirect=/dashboard
+```
+
+Notes:
+- backend sanitizes `redirect` so only internal paths are allowed
+- backend signs the redirect inside OAuth `state`
+- browser is redirected to Google consent page
+
+### GET `/auth/google/callback`
+
+Google OAuth callback endpoint used by Google after consent.
+
+Example configured callback URL:
+
+```txt
+http://localhost:5001/api/v1/auth/google/callback
+```
+
+Notes:
+- backend validates `state`
+- exchanges auth `code` with Google
+- verifies Google identity
+- finds or creates the user
+- issues app JWT/session tokens
+- redirects browser to frontend callback URL with auth result
 
 ### POST `/auth/refresh`
 
@@ -2203,9 +2298,15 @@ GET /api/v1/health
 
 ### User login flow
 
-1. Call `/auth/register` or `/auth/login`
-2. Save `accessToken`
-3. Use `Authorization: Bearer <USER_ACCESS_TOKEN>` for user-protected routes
+1. For local signup, call `/auth/register`
+2. Prompt user for the email OTP
+3. Call `/auth/verify-email-otp`
+4. Save `accessToken` and `refreshToken`
+5. Use `Authorization: Bearer <USER_ACCESS_TOKEN>` for user-protected routes
+
+Alternative login flows:
+- existing local user: call `/auth/login`
+- Google auth: send browser to `/auth/google/start`
 
 ### AI generation flow
 
