@@ -15,11 +15,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import type { CapabilityType } from "@/types/index";
 import { CAPABILITY_LABELS, MODALITY_LABELS } from "@/lib/modelUtils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface FilterSidebarProps {
   providers: { id: string; displayName: string; count: number }[];
   maxInputPrice: number;
   maxOutputPrice: number;
+  isLoading?: boolean;
 }
 
 const CONTEXT_PRESETS = [
@@ -35,6 +37,7 @@ export function FilterSidebar({
   providers,
   maxInputPrice,
   maxOutputPrice,
+  isLoading = false,
 }: FilterSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -187,23 +190,35 @@ export function FilterSidebar({
           )}
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-3 space-y-2">
-          {providers.map((provider) => (
-            <label
-              key={provider.id}
-              className="flex cursor-pointer items-center gap-2"
-            >
-              <Checkbox
-                checked={activeProviders.includes(provider.id)}
-                onCheckedChange={() =>
-                  toggleArrayParam("providerId", provider.id)
-                }
-              />
-              <span className="flex-1 text-sm">{provider.displayName}</span>
-              <Badge variant="secondary" className="text-xs">
-                {provider.count}
-              </Badge>
-            </label>
-          ))}
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 flex-1 rounded" />
+                <Skeleton className="h-4 w-6 rounded-full" />
+              </div>
+            ))
+          ) : providers.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-2 py-1 italic">No providers found</p>
+          ) : (
+            providers.map((provider) => (
+              <label
+                key={provider.id}
+                className="flex cursor-pointer items-center gap-2"
+              >
+                <Checkbox
+                  checked={activeProviders.includes(provider.id)}
+                  onCheckedChange={() =>
+                    toggleArrayParam("providerId", provider.id)
+                  }
+                />
+                <span className="flex-1 text-sm">{provider.displayName}</span>
+                <Badge variant="secondary" className="text-xs">
+                  {provider.count}
+                </Badge>
+              </label>
+            ))
+          )}
         </CollapsibleContent>
       </Collapsible>
 
@@ -334,18 +349,24 @@ export function FilterSidebar({
           )}
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-3 space-y-2">
-          <input
-            type="range"
-            min={0}
-            max={maxInputPrice}
-            step={0.5}
-            value={inputPriceValue}
-            onChange={(e) => updateParam("maxInputPrice", e.target.value)}
-            className="w-full accent-primary"
-          />
-          <p className="text-xs text-muted-foreground">
-            ${inputPriceValue.toFixed(2)} / 1M
-          </p>
+          {isLoading ? (
+            <Skeleton className="h-6 w-full rounded" />
+          ) : (
+            <>
+              <input
+                type="range"
+                min={0}
+                max={maxInputPrice}
+                step={0.5}
+                value={inputPriceValue}
+                onChange={(e) => updateParam("maxInputPrice", e.target.value)}
+                className="w-full accent-primary"
+              />
+              <p className="text-xs text-muted-foreground">
+                ${inputPriceValue.toFixed(2)} / 1M
+              </p>
+            </>
+          )}
         </CollapsibleContent>
       </Collapsible>
 
@@ -362,18 +383,24 @@ export function FilterSidebar({
           )}
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-3 space-y-2">
-          <input
-            type="range"
-            min={0}
-            max={maxOutputPrice}
-            step={0.5}
-            value={outputPriceValue}
-            onChange={(e) => updateParam("maxOutputPrice", e.target.value)}
-            className="w-full accent-primary"
-          />
-          <p className="text-xs text-muted-foreground">
-            ${outputPriceValue.toFixed(2)} / 1M
-          </p>
+          {isLoading ? (
+            <Skeleton className="h-6 w-full rounded" />
+          ) : (
+            <>
+              <input
+                type="range"
+                min={0}
+                max={maxOutputPrice}
+                step={0.5}
+                value={outputPriceValue}
+                onChange={(e) => updateParam("maxOutputPrice", e.target.value)}
+                className="w-full accent-primary"
+              />
+              <p className="text-xs text-muted-foreground">
+                ${outputPriceValue.toFixed(2)} / 1M
+              </p>
+            </>
+          )}
         </CollapsibleContent>
       </Collapsible>
     </div>

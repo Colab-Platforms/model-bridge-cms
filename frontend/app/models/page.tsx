@@ -133,7 +133,11 @@ function ModelsContent() {
 
   // Metadata query: all models without active filters, for sidebar provider list and price ranges.
   // Uses a high limit so all providers/prices are always visible regardless of what page you're on.
-  const { models: allModels } = useModels({ pageSize: 200 });
+  // We use an aggressive staleTime (30 mins) to prevent this heavy call from firing on every visit.
+  const { models: allModels, isLoading: isMetadataLoading } = useModels(
+    { pageSize: 200 },
+    { staleTime: 30 * 60 * 1000 } // 30 minutes
+  );
 
   // Main query: respects all filters + current page
   const { models, total, isLoading, isError, refetch } = useModels({
@@ -147,18 +151,19 @@ function ModelsContent() {
     if (!allModels) return [];
     const map = new Map<string, { id: string; displayName: string; count: number }>();
     for (const model of allModels) {
+      if (!model?.provider?.id) continue;
       const entry = map.get(model.provider.id);
       if (entry) {
         entry.count++;
       } else {
         map.set(model.provider.id, {
           id: model.provider.id,
-          displayName: model.provider.displayName,
+          displayName: model.provider.displayName || "Unknown",
           count: 1,
         });
       }
     }
-    return Array.from(map.values());
+    return Array.from(map.values()).sort((a, b) => a.displayName.localeCompare(b.displayName));
   }, [allModels]);
 
   const derivedMaxInputPrice = useMemo(() => {
@@ -249,6 +254,7 @@ function ModelsContent() {
             providers={uniqueProviders}
             maxInputPrice={derivedMaxInputPrice}
             maxOutputPrice={derivedMaxOutputPrice}
+            isLoading={isMetadataLoading}
           />
         </div>
 

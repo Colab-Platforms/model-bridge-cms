@@ -154,7 +154,7 @@ export default function AdminCreditsPage() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <SummaryCard
           title="Total Revenue"
-          value={fmtUsd((summary as any)?.totalRevenue ?? (summary as any)?.revenue ?? "0")}
+          value={fmtUsd(summary?.totals?.platformMarkup ?? "0")}
           subValue="Platform markup"
           icon={TrendingUp}
           iconClass="text-green-500"
@@ -162,7 +162,7 @@ export default function AdminCreditsPage() {
         />
         <SummaryCard
           title="Provider Cost"
-          value={fmtUsd((summary as any)?.totalProviderCost ?? (summary as any)?.providerCost ?? "0")}
+          value={fmtUsd(summary?.totals?.providerCost ?? "0")}
           subValue="Paid to providers"
           icon={TrendingDown}
           iconClass="text-red-500"
@@ -170,14 +170,14 @@ export default function AdminCreditsPage() {
         />
         <SummaryCard
           title="Total Billed"
-          value={fmtUsd((summary as any)?.totalBilledAmount ?? (summary as any)?.totalCost ?? "0")}
+          value={fmtUsd(summary?.totals?.totalRevenue ?? "0")}
           subValue="To users"
           icon={DollarSign}
           loading={summaryLoading}
         />
         <SummaryCard
           title="Total Requests"
-          value={fmtNum((summary as any)?.totalRequests ?? 0)}
+          value={fmtNum(summary?.totals?.totalRequests ?? 0)}
           icon={RefreshCw}
           loading={summaryLoading}
         />
@@ -278,16 +278,16 @@ export default function AdminCreditsPage() {
                         <p className="text-xs text-muted-foreground">{u.email}</p>
                       </TableCell>
                       <TableCell className="text-right text-sm tabular-nums">
-                        {fmtNum(u.totalRequests ?? u.requests ?? 0)}
+                        {fmtNum(u.requests ?? 0)}
                       </TableCell>
                       <TableCell className="text-right text-sm tabular-nums">
-                        {fmtUsd(u.totalBilledAmount ?? u.totalCost ?? "0")}
+                        {fmtUsd(u.totalRevenue ?? "0")}
                       </TableCell>
                       <TableCell className="text-right text-sm tabular-nums text-green-600 font-medium">
-                        {fmtUsd(u.revenue ?? u.totalRevenue ?? "0")}
+                        {fmtUsd(u.platformMarkup ?? "0")}
                       </TableCell>
                       <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
-                        {fmtUsd(u.providerCost ?? u.totalProviderCost ?? "0")}
+                        {fmtUsd(u.providerCost ?? "0")}
                       </TableCell>
                     </TableRow>
                   ))}
