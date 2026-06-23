@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import axios from "axios";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
@@ -46,9 +47,13 @@ function CallbackHandler() {
         const isAdmin = (data.role as string)?.toLowerCase() === "admin";
         router.replace(isAdmin ? "/admin/statistics" : redirect);
       })
-      .catch(() => {
+      .catch((error) => {
         localStorage.removeItem("auth-storage");
-        toast.error("Unable to load your account after Google sign-in.");
+        const message = axios.isAxiosError(error)
+          ? error.response?.data?.message ?? "Unable to load your account after Google sign-in."
+          : "Unable to load your account after Google sign-in.";
+        console.error("Google sign-in account load failed:", error);
+        toast.error(message);
         router.replace("/auth/login");
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
