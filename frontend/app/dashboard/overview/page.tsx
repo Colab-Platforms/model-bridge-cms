@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Wallet, 
@@ -23,17 +24,53 @@ import { SpendOverviewChart } from "@/components/overview/spend-overview-chart";
 import { QuickActions } from "@/components/overview/quick-actions";
 import { DonutChartCard } from "@/components/overview/donut-chart-card";
 import { DataListCard } from "@/components/overview/data-list-card";
-import { StatusRow } from "@/components/overview/status-row";
+import { StatusRow, type DatePreset } from "@/components/overview/status-row";
 import { ActivityAndWallet } from "@/components/overview/activity-and-wallet";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Maps frontend preset labels → backend-accepted dateRangePreset values.
+// Backend accepts: "today" | "past_24h" | "weekly" | "monthly" | "yearly" | "custom"
+// "90d" has no backend preset, so we derive custom from/to dates for it.
+const PRESET_MAP: Record<string, string> = {
+  "7d":  "weekly",
+  "30d": "monthly",
+};
+
+function nDaysAgoIso(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString();
+}
+
 export default function OverviewPage() {
   const user = useAuthStore((s) => s.user);
-  
+
+  const [preset, setPreset]           = useState<DatePreset>("7d");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd]     = useState("");
+
+  const queryParams = useMemo(() => {
+    if (preset === "90d") {
+      return {
+        dateRangePreset: "custom",
+        from: nDaysAgoIso(90),
+        to: new Date().toISOString(),
+      };
+    }
+    if (preset === "custom") {
+      const params: Record<string, string> = {};
+      if (customStart) params.from = `${customStart}T00:00:00.000Z`;
+      if (customEnd)   params.to   = `${customEnd}T23:59:59.000Z`;
+      if (customStart && customEnd) params.dateRangePreset = "custom";
+      return params;
+    }
+    return { dateRangePreset: PRESET_MAP[preset] ?? "weekly" };
+  }, [preset, customStart, customEnd]);
+
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["overview"],
-    queryFn: () => api.get("/overview").then((r) => r.data),
-    staleTime: 60 * 1000, // Keep data fresh for 1 minute
+    queryKey: ["overview", queryParams],
+    queryFn: () => api.get("/overview", { params: queryParams }).then((r) => r.data),
+    staleTime: 60 * 1000,
   });
 
   const summary = data?.summary;
@@ -57,7 +94,16 @@ export default function OverviewPage() {
           </p>
         </div>
         
-        <StatusRow onRefresh={refetch} isRefreshing={isFetching} />
+        <StatusRow
+          onRefresh={refetch}
+          isRefreshing={isFetching}
+          preset={preset}
+          onPresetChange={setPreset}
+          customStart={customStart}
+          customEnd={customEnd}
+          onCustomStartChange={setCustomStart}
+          onCustomEndChange={setCustomEnd}
+        />
       </div>
 
       {/* Main Metric Cards */}
@@ -143,7 +189,7 @@ export default function OverviewPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <SpendOverviewChart 
           data={charts?.usageTrend.map((b: any) => ({ date: formatDate(b.bucket), value: parseFloat(b.totalCost) })) || []}
-          totalSpend={`$${summary?.totalSpend}`}
+          totalSpend={`$${parseFloat(summary?.totalSpend || "0").toFixed(4)}`}
           trend="14%"
           isLoading={isLoading}
         />

@@ -53,6 +53,7 @@ export default function DashboardLayout({
 }) {
   const setProjects = useProjectStore((s) => s.setProjects);
   const user = useAuthStore((s) => s.user);
+  const isAdmin = useAuthStore((s) => s.isAdmin);
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const crumbs = useBreadcrumbs();
@@ -80,13 +81,14 @@ useEffect(() => {
     if (mounted) {
       if (!user) {
         router.replace("/auth/login");
-      } else if (user.role === "ADMIN") {
+      } else if (isAdmin()) {
         router.replace("/admin/statistics");
       }
     }
-  }, [mounted, user, router]);
+  }, [mounted, user, isAdmin, router]);
 
-  if (!mounted) return null;
+  if (!mounted || !user) return null;
+  if (isAdmin()) return null;
 
   return (
     <SidebarProvider>

@@ -102,6 +102,7 @@ export function FilterSidebar({
       } else {
         params.delete("q");
       }
+      params.delete("page");
       const qs = params.toString();
       router.push(`${pathname}${qs ? `?${qs}` : ""}`);
     }, 300);
@@ -117,6 +118,7 @@ export function FilterSidebar({
     } else {
       params.set(key, value);
     }
+    params.delete("page");
     const qs = params.toString();
     router.push(`${pathname}${qs ? `?${qs}` : ""}`);
   }
@@ -125,6 +127,7 @@ export function FilterSidebar({
     const params = new URLSearchParams(searchParams.toString());
     const existing = params.getAll(key);
     params.delete(key);
+    params.delete("page");
     if (existing.includes(value)) {
       existing.filter((v) => v !== value).forEach((v) => params.append(key, v));
     } else {
