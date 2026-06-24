@@ -7,7 +7,7 @@ export const modelIdParamsSchema = z.object({
 });
 
 export const getAllModelsQuerySchema = z.object({
-  search: z.string().trim().min(1).optional(),
+  q: z.string().trim().min(1).optional(),
   providerId: z.string().trim().min(1).optional(),
   slug: z.string().trim().min(1).optional(),
   isActive: z

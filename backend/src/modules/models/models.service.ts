@@ -69,24 +69,24 @@ export const getAllModelsService = async (query: GetAllModelsQuery) => {
   const { take, skip, page, pageSize } = getPaginationOptions(query, 10);
   const where: Prisma.ModelWhereInput = {
     isDeleted: false,
-    ...(query.search
+    ...(query.q
       ? {
           OR: [
             {
               slug: {
-                contains: query.search,
+                contains: query.q,
                 mode: "insensitive",
               },
             },
             {
               displayName: {
-                contains: query.search,
+                contains: query.q,
                 mode: "insensitive",
               },
             },
             {
               description: {
-                contains: query.search,
+                contains: query.q,
                 mode: "insensitive",
               },
             },
