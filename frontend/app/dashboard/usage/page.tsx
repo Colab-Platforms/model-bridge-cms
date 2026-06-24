@@ -39,7 +39,7 @@ import type { ApiKey } from "@/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type LogStatus = "SUCCESS" | "ERROR" | "PENDING";
+type LogStatus = "SUCCESS" | "FAILED" | "PARTIAL" | "STOPPED" | "PENDING";
 
 interface UsageLogItem {
   id: string;
@@ -159,8 +159,10 @@ function calcThroughput(completionTokens: number, completionTimeMs: number): str
 
 const STATUS_CFG: Record<string, { dot: string; bg: string; text: string; border: string; label: string }> = {
   SUCCESS: { dot: "#16A34A", bg: "#DCFCE7", text: "#15803D", border: "#BBF7D0", label: "Success" },
-  ERROR:   { dot: "#DC2626", bg: "#FEE2E2", text: "#DC2626", border: "#FECACA", label: "Error"   },
-  PENDING: { dot: "#D97706", bg: "#FEF3C7", text: "#B45309", border: "#FDE68A", label: "Pending" },
+  FAILED:  { dot: "#DC2626", bg: "#FEE2E2", text: "#DC2626", border: "#FECACA", label: "Failed"  },
+  PARTIAL: { dot: "#D97706", bg: "#FEF3C7", text: "#B45309", border: "#FDE68A", label: "Partial" },
+  STOPPED: { dot: "#64748B", bg: "#F1F5F9", text: "#475569", border: "#CBD5E1", label: "Stopped" },
+  PENDING: { dot: "#3B82F6", bg: "#EFF6FF", text: "#1D4ED8", border: "#BFDBFE", label: "Pending" },
 };
 
 const STATUS_FALLBACK = { dot: "#94A3B8", bg: "#F1F5F9", text: "#475569", border: "#CBD5E1", label: "Unknown" };
