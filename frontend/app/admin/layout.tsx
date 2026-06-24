@@ -38,7 +38,6 @@ import {
   Server,
   CreditCard,
   LayoutDashboard,
-  ArrowLeft,
 } from "lucide-react";
 
 const adminNav = [
@@ -108,15 +107,6 @@ function AdminSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <AdminNav />
-        <div className="mt-auto px-2 pb-2">
-          <Link
-            href="/dashboard/overview"
-            className="flex items-center gap-2 rounded-none px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          >
-            <ArrowLeft className="size-3.5" />
-            Back to Dashboard
-          </Link>
-        </div>
       </SidebarContent>
       <SidebarFooter>
         <NavUser />
@@ -147,7 +137,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [mounted, user, isAdmin, router]);
 
-  if (!mounted) return null;
+  if (!mounted || !user) return null;
+  if (!isAdmin()) return null;
 
   return (
     <SidebarProvider>

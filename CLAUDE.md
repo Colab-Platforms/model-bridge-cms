@@ -356,22 +356,4 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 
 ---
 
-## What To Work On Next
 
-### High Priority (unblocks frontend)
-1. **Backend: User model + Auth** — implement register, login, JWT generation, refresh
-2. **Backend: ApiKey model + CRUD** — the keys page is fully built and waiting
-3. **Backend: Prisma migrations** — add all missing models (ApiKey, UsageLog, CreditTransaction, Model, Provider)
-4. **Frontend: Wire login/signup forms** — add onSubmit handlers calling the auth endpoints
-5. **Frontend: Protected routes** — uncomment/implement auth guard in dashboard layout
-
-### Medium Priority
-6. **Backend: Usage logging** — POST endpoint called by the proxy layer to store logs
-7. **Backend: Stats aggregation** — aggregate UsageLogs for the stats/overview endpoints
-8. **Backend: Credits system** — balance + transaction endpoints
-9. **Frontend: Admin pages** — build out the admin section pages
-
-### Lower Priority
-10. **Backend: Proxy layer** — the actual completions/embeddings routing to providers
-11. **Backend: Rate limiting** — enforce per-key rate limits
-12. **Backend: Webhooks, notifications, audit logs**

@@ -78,13 +78,13 @@ function ModelsContent() {
 
   // ── Pagination ───────────────────────────────────────────────────────────
   const PAGE_SIZE = 20;
-  const [currentPage, setCurrentPage] = useState(1);
+  const currentPage = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
 
-  // Reset to page 1 whenever any filter URL param changes
-  const filterParamString = searchParams.toString();
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filterParamString]);
+  function handlePageChange(newPage: number) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", String(newPage));
+    router.push(`/models?${params.toString()}`);
+  }
 
   // ── Comparison selection ─────────────────────────────────────────────────
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>([]);
@@ -135,7 +135,7 @@ function ModelsContent() {
   // Uses a high limit so all providers/prices are always visible regardless of what page you're on.
   // We use an aggressive staleTime (30 mins) to prevent this heavy call from firing on every visit.
   const { models: allModels, isLoading: isMetadataLoading } = useModels(
-    { pageSize: 200 },
+    { pageSize: 20 },
     { staleTime: 30 * 60 * 1000 } // 30 minutes
   );
 
@@ -189,6 +189,7 @@ function ModelsContent() {
     } else {
       params.set("sort", value);
     }
+    params.delete("page");
     const qs = params.toString();
     router.push(`/models${qs ? `?${qs}` : ""}`);
   }
@@ -409,7 +410,7 @@ function ModelsContent() {
                   variant="outline"
                   size="sm"
                   disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
+                  onClick={() => handlePageChange(currentPage - 1)}
                 >
                   Previous
                 </Button>
@@ -420,7 +421,7 @@ function ModelsContent() {
                   variant="outline"
                   size="sm"
                   disabled={currentPage >= Math.ceil(total / PAGE_SIZE)}
-                  onClick={() => setCurrentPage((p) => p + 1)}
+                  onClick={() => handlePageChange(currentPage + 1)}
                 >
                   Next
                 </Button>
