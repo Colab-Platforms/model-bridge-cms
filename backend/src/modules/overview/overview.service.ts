@@ -5,6 +5,8 @@ import prisma from "../../../prisma.js";
 import AppError from "../../shared/errors/index.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import type { GetOverviewQuery, OverviewActor } from "./overview.types.js";
+import { cacheGet, cacheSet } from "../../shared/utils/cache.js";
+
 
 const TOP_LIMIT = 5;
 const RECENT_TRANSACTIONS_LIMIT = 5;
@@ -140,11 +142,11 @@ const buildOverviewWhere = (actor: OverviewActor, query: GetOverviewQuery) => {
     userId: actor.id,
     ...(dateRange.from || dateRange.to
       ? {
-          createdAt: {
-            ...(dateRange.from ? { gte: dateRange.from } : {}),
-            ...(dateRange.to ? { lte: dateRange.to } : {}),
-          },
-        }
+        createdAt: {
+          ...(dateRange.from ? { gte: dateRange.from } : {}),
+          ...(dateRange.to ? { lte: dateRange.to } : {}),
+        },
+      }
       : {}),
   };
 
@@ -180,8 +182,31 @@ const getGroupedSumValue = <TKey extends string>(
   key: TKey
 ) => sum?.[key] ?? null;
 
+const getOverviewTTL = (preset: string): number => {
+  switch (preset) {
+    case "today":
+    case "past_24h":
+      return 60;
+    case "weekly":
+      return 120;
+    case "monthly":
+      return 300;
+    case "yearly":
+    case "custom":
+      return 600;
+    default:
+      return 120;
+  }
+};
+
+
 export const getOverviewService = async (actor: OverviewActor, query: GetOverviewQuery) => {
   const { where, dateRange } = buildOverviewWhere(actor, query);
+
+  const cacheKey = `overview:${actor.id}:${dateRange.preset}:${dateRange.from?.toISOString() ?? ""}:${dateRange.to?.toISOString() ?? ""}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return cached;
+
   const granularity = getTimeseriesGranularity(dateRange.from, dateRange.to);
   const bucketExpression = getBucketExpression(granularity);
 
@@ -328,11 +353,11 @@ export const getOverviewService = async (actor: OverviewActor, query: GetOvervie
         isDeleted: false,
         ...(dateRange.from || dateRange.to
           ? {
-              createdAt: {
-                ...(dateRange.from ? { gte: dateRange.from } : {}),
-                ...(dateRange.to ? { lte: dateRange.to } : {}),
-              },
-            }
+            createdAt: {
+              ...(dateRange.from ? { gte: dateRange.from } : {}),
+              ...(dateRange.to ? { lte: dateRange.to } : {}),
+            },
+          }
           : {}),
       },
       _sum: {
@@ -378,55 +403,55 @@ export const getOverviewService = async (actor: OverviewActor, query: GetOvervie
   const [modelRecords, projectRecords, apiKeyRecords, walletTransactionGroups] = await Promise.all([
     topModelGroups.length
       ? prisma.model.findMany({
-          where: {
-            id: { in: topModelGroups.map((item) => item.modelId) },
-          },
-          select: {
-            id: true,
-            slug: true,
-            displayName: true,
-            provider: {
-              select: {
-                id: true,
-                slug: true,
-                displayName: true,
-              },
+        where: {
+          id: { in: topModelGroups.map((item) => item.modelId) },
+        },
+        select: {
+          id: true,
+          slug: true,
+          displayName: true,
+          provider: {
+            select: {
+              id: true,
+              slug: true,
+              displayName: true,
             },
           },
-        })
+        },
+      })
       : Promise.resolve([]),
     topProjectGroups.length
       ? prisma.project.findMany({
-          where: {
-            id: { in: topProjectGroups.map((item) => item.projectId) },
-          },
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            isActive: true,
-          },
-        })
+        where: {
+          id: { in: topProjectGroups.map((item) => item.projectId) },
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          isActive: true,
+        },
+      })
       : Promise.resolve([]),
     topApiKeyGroups.length
       ? prisma.apiKey.findMany({
-          where: {
-            id: { in: topApiKeyGroups.map((item) => item.apiKeyId) },
-          },
-          select: {
-            id: true,
-            name: true,
-            keyPrefix: true,
-            status: true,
-            project: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
+        where: {
+          id: { in: topApiKeyGroups.map((item) => item.apiKeyId) },
+        },
+        select: {
+          id: true,
+          name: true,
+          keyPrefix: true,
+          status: true,
+          project: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
             },
           },
-        })
+        },
+      })
       : Promise.resolve([]),
     prisma.walletTransaction.groupBy({
       by: ["type"],
@@ -438,11 +463,11 @@ export const getOverviewService = async (actor: OverviewActor, query: GetOvervie
         isDeleted: false,
         ...(dateRange.from || dateRange.to
           ? {
-              createdAt: {
-                ...(dateRange.from ? { gte: dateRange.from } : {}),
-                ...(dateRange.to ? { lte: dateRange.to } : {}),
-              },
-            }
+            createdAt: {
+              ...(dateRange.from ? { gte: dateRange.from } : {}),
+              ...(dateRange.to ? { lte: dateRange.to } : {}),
+            },
+          }
           : {}),
       },
       _sum: {
@@ -468,7 +493,7 @@ export const getOverviewService = async (actor: OverviewActor, query: GetOvervie
   const totalFailedRequests = statusCounts.FAILED ?? 0;
   const successRate = totalRequests > 0 ? Number((((statusCounts.SUCCESS ?? 0) / totalRequests) * 100).toFixed(2)) : 0;
 
-  return {
+  const result = {
     summary: {
       walletBalance: formatDecimalValue(wallet?.balance) ?? "0",
       currency: wallet?.currency ?? "USD",
@@ -578,4 +603,7 @@ export const getOverviewService = async (actor: OverviewActor, query: GetOvervie
       })),
     },
   };
+
+  await cacheSet(cacheKey, result, getOverviewTTL(dateRange.preset));
+  return result;
 };

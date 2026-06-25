@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import path from "path";
 import helmet from "helmet";
 import compression from "compression";
@@ -12,8 +11,6 @@ import routes from "./routes.js";
 import sanitizeMiddleware from "./shared/middlewares/sanitize.js";
 import { errorHandler } from "./shared/middlewares/errorHandler.js";
 import { notFoundHandler } from "./shared/middlewares/notFoundHandler.js";
-
-dotenv.config();
 
 const app = express();
 

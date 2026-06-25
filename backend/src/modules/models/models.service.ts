@@ -8,6 +8,7 @@ import {
 } from "../../utils/paginationUtils.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import type { GetAllModelsQuery } from "./models.types.js";
+import { cacheGet, cacheSet } from "../../shared/utils/cache.js";
 
 const modelSelect = {
   id: true,
@@ -67,6 +68,11 @@ const formatModelPriceFields = <
 
 export const getAllModelsService = async (query: GetAllModelsQuery) => {
   const { take, skip, page, pageSize } = getPaginationOptions(query, 10);
+
+  const cacheKey = `models:list:${page}:${pageSize}:${query.providerId ?? ""}:${query.slug ?? ""}:${query.isActive ?? ""}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return cached;
+
   const where: Prisma.ModelWhereInput = {
     isDeleted: false,
     ...(query.providerId ? { providerId: query.providerId } : {}),
@@ -85,15 +91,22 @@ export const getAllModelsService = async (query: GetAllModelsQuery) => {
     prisma.model.count({ where }),
   ]);
 
-  return formatPaginationResponse(
+  const result = formatPaginationResponse(
     models.map((model) => formatModelPriceFields(model)),
     totalRecords,
     page,
     pageSize
   );
+
+  await cacheSet(cacheKey, result, 300);
+  return result;
 };
 
 export const getModelByIdService = async (id: string) => {
+  const cacheKey = `models:id:${id}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return cached;
+
   const model = await prisma.model.findFirst({
     where: {
       id,
@@ -106,5 +119,8 @@ export const getModelByIdService = async (id: string) => {
     throw new AppError("Model not found", STATUS_CODES.NOT_FOUND);
   }
 
-  return formatModelPriceFields(model);
+  const result = formatModelPriceFields(model);
+  await cacheSet(cacheKey, result, 300);
+  return result;
 };
+

@@ -5,6 +5,7 @@ import prisma from "../../../../prisma.js";
 import AppError from "../../../shared/errors/index.js";
 import STATUS_CODES from "../../../utils/statusCodes.js";
 import type { AdminOverviewActor, GetAdminOverviewQuery } from "./overview.types.js";
+import { cacheGet, cacheSet } from "../../../shared/utils/cache.js";
 
 const TOP_LIMIT = 5;
 const RECENT_TRANSACTIONS_LIMIT = 10;
@@ -200,11 +201,33 @@ type TimeseriesRow = {
   totalBilledAmount: Prisma.Decimal | string | number | null;
 };
 
+const getAdminOverviewTTL = (preset: string): number => {
+  switch (preset) {
+    case "today":
+    case "past_24h":
+      return 90;
+    case "weekly":
+      return 180;
+    case "monthly":
+      return 300;
+    case "yearly":
+    case "custom":
+      return 600;
+    default:
+      return 180;
+  }
+};
+
 export const getAdminOverviewService = async (
   _actor: AdminOverviewActor,
   query: GetAdminOverviewQuery
 ) => {
   const { where, dateRange } = buildAdminOverviewWhere(_actor, query);
+
+  const cacheKey = `admin:overview:${dateRange.preset}:${dateRange.from?.toISOString() ?? ""}:${dateRange.to?.toISOString() ?? ""}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return cached;
+
   const granularity = getTimeseriesGranularity(dateRange.from, dateRange.to);
   const bucketExpression = getBucketExpression(granularity);
 
@@ -595,7 +618,7 @@ export const getAdminOverviewService = async (
       ? Number((((statusCounts.SUCCESS ?? 0) / totalRequests) * 100).toFixed(2))
       : 0;
 
-  return {
+  const result = {
     summary: {
       totalUsers,
       activeUsers,
@@ -761,4 +784,7 @@ export const getAdminOverviewService = async (
       })),
     },
   };
+
+  await cacheSet(cacheKey, result, getAdminOverviewTTL(dateRange.preset));
+  return result;
 };
