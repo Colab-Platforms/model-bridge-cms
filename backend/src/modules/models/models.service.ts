@@ -9,6 +9,7 @@ import {
 import STATUS_CODES from "../../utils/statusCodes.js";
 import type { GetAllModelsQuery } from "./models.types.js";
 import { cacheGet, cacheSet } from "../../shared/utils/cache.js";
+import { CACHE_KEYS, CACHE_TTL } from "../../shared/constants/cacheKeys.js";
 
 const modelSelect = {
   id: true,
@@ -69,7 +70,13 @@ const formatModelPriceFields = <
 export const getAllModelsService = async (query: GetAllModelsQuery) => {
   const { take, skip, page, pageSize } = getPaginationOptions(query, 10);
 
-  const cacheKey = `models:list:${page}:${pageSize}:${query.providerId ?? ""}:${query.slug ?? ""}:${query.isActive ?? ""}`;
+  const cacheKey = CACHE_KEYS.MODELS.LIST(
+    page,
+    pageSize,
+    query.providerId,
+    query.slug,
+    query.isActive
+  );
   const cached = await cacheGet(cacheKey);
   if (cached) return cached;
 
@@ -98,12 +105,12 @@ export const getAllModelsService = async (query: GetAllModelsQuery) => {
     pageSize
   );
 
-  await cacheSet(cacheKey, result, 300);
+  await cacheSet(cacheKey, result, CACHE_TTL.MODELS);
   return result;
 };
 
 export const getModelByIdService = async (id: string) => {
-  const cacheKey = `models:id:${id}`;
+  const cacheKey = CACHE_KEYS.MODELS.BY_ID(id);
   const cached = await cacheGet(cacheKey);
   if (cached) return cached;
 
@@ -120,7 +127,7 @@ export const getModelByIdService = async (id: string) => {
   }
 
   const result = formatModelPriceFields(model);
-  await cacheSet(cacheKey, result, 300);
+  await cacheSet(cacheKey, result, CACHE_TTL.MODELS);
   return result;
 };
 

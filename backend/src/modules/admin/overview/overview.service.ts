@@ -6,6 +6,7 @@ import AppError from "../../../shared/errors/index.js";
 import STATUS_CODES from "../../../utils/statusCodes.js";
 import type { AdminOverviewActor, GetAdminOverviewQuery } from "./overview.types.js";
 import { cacheGet, cacheSet } from "../../../shared/utils/cache.js";
+import { CACHE_KEYS, CACHE_TTL } from "../../../shared/constants/cacheKeys.js";
 
 const TOP_LIMIT = 5;
 const RECENT_TRANSACTIONS_LIMIT = 10;
@@ -205,16 +206,16 @@ const getAdminOverviewTTL = (preset: string): number => {
   switch (preset) {
     case "today":
     case "past_24h":
-      return 90;
+      return CACHE_TTL.OVERVIEW.TODAY;
     case "weekly":
-      return 180;
+      return CACHE_TTL.OVERVIEW.WEEKLY;
     case "monthly":
-      return 300;
+      return CACHE_TTL.OVERVIEW.MONTHLY;
     case "yearly":
     case "custom":
-      return 600;
+      return CACHE_TTL.OVERVIEW.YEARLY;
     default:
-      return 180;
+      return CACHE_TTL.OVERVIEW.DEFAULT;
   }
 };
 
@@ -224,7 +225,11 @@ export const getAdminOverviewService = async (
 ) => {
   const { where, dateRange } = buildAdminOverviewWhere(_actor, query);
 
-  const cacheKey = `admin:overview:${dateRange.preset}:${dateRange.from?.toISOString() ?? ""}:${dateRange.to?.toISOString() ?? ""}`;
+  const cacheKey = CACHE_KEYS.OVERVIEW.ADMIN(
+    dateRange.preset,
+    dateRange.from?.toISOString(),
+    dateRange.to?.toISOString()
+  );
   const cached = await cacheGet(cacheKey);
   if (cached) return cached;
 
