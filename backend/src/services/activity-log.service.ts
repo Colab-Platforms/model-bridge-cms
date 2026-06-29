@@ -1,6 +1,7 @@
 import { ActivityType, Prisma } from "@prisma/client";
 
 import prisma from "../../prisma.js";
+import { activityLogQueue } from "../queues/queues/activity-log.queue.js";
 
 type ActivityEntityType =
   | "USER"
@@ -48,3 +49,19 @@ class ActivityLogService {
 
 export const activityLogService = new ActivityLogService();
 export type { ActivityLogInput, ActivityEntityType, TransactionClient };
+
+// Fire-and-forget — only call this OUTSIDE prisma.$transaction().
+// Inside transactions, call activityLogService.log(input, tx) directly.
+export const enqueueActivityLog = async (input: ActivityLogInput): Promise<void> => {
+  await activityLogQueue.add("log-activity", {
+    activityType: input.activityType,
+    entityType: input.entityType,
+    entityId: input.entityId,
+    actorId: input.actorId,
+    userId: input.userId,
+    projectId: input.projectId,
+    metadata: input.metadata as Record<string, unknown> | undefined,
+    ipAddress: input.ipAddress,
+    userAgent: input.userAgent,
+  });
+};
