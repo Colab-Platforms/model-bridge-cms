@@ -14,6 +14,80 @@ import type {
   GeminiPart,
 } from "./gemini.types.js";
 
+const normalizeGeminiResponseModality = (modality: string) => modality.trim().toUpperCase();
+
+const buildGeminiResponseModalities = (modalities?: string[]) => {
+  if (!modalities?.length) {
+    return undefined;
+  }
+
+  const normalizedModalities = Array.from(
+    new Set(modalities.map(normalizeGeminiResponseModality).filter(Boolean))
+  );
+
+  return normalizedModalities.length > 0 ? normalizedModalities : undefined;
+};
+
+const mapGeminiPartToProviderContentPart = (part: GeminiPart): ProviderContentPart | null => {
+  if (typeof part.text === "string" && part.text.length > 0) {
+    return {
+      type: "text",
+      text: part.text,
+    };
+  }
+
+  if (part.inlineData?.data) {
+    return {
+      type: "image_url",
+      image_url: {
+        url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
+      },
+    };
+  }
+
+  return null;
+};
+
+const serializeProviderContent = (parts: ProviderContentPart[]) => {
+  if (parts.length === 0) {
+    return "";
+  }
+
+  const hasNonTextContent = parts.some((part) => part.type !== "text");
+
+  if (!hasNonTextContent) {
+    return parts
+      .filter((part): part is Extract<ProviderContentPart, { type: "text" }> => part.type === "text")
+      .map((part) => part.text)
+      .join("");
+  }
+
+  return JSON.stringify(parts);
+};
+
+const extractGeminiContentParts = (response: GeminiGenerateContentResponse) =>
+  response.candidates
+    ?.flatMap((candidate) => candidate.content?.parts ?? [])
+    .map(mapGeminiPartToProviderContentPart)
+    .filter((part): part is ProviderContentPart => part !== null) ?? [];
+
+const normalizeProviderContent = (parts: ProviderContentPart[]) => {
+  if (parts.length === 0) {
+    return "";
+  }
+
+  const hasNonTextContent = parts.some((part) => part.type !== "text");
+
+  if (hasNonTextContent) {
+    return parts;
+  }
+
+  return parts
+    .filter((part): part is Extract<ProviderContentPart, { type: "text" }> => part.type === "text")
+    .map((part) => part.text)
+    .join("");
+};
+
 const mapProviderMessageRoleToGeminiRole = (
   role: ProviderChatRequest["messages"][number]["role"]
 ): GeminiContent["role"] => (role === "assistant" ? "model" : "user");
@@ -87,26 +161,28 @@ const toProviderUsage = (usageMetadata?: {
 });
 
 export const extractGeminiText = (response: GeminiGenerateContentResponse) =>
-  response.candidates
-    ?.flatMap((candidate) => candidate.content?.parts ?? [])
-    .map((part) => part.text ?? "")
-    .join("") ?? "";
+  serializeProviderContent(extractGeminiContentParts(response));
+
+export const extractGeminiContent = (response: GeminiGenerateContentResponse) =>
+  normalizeProviderContent(extractGeminiContentParts(response));
 
 export const mapProviderChatRequestToGemini = (
   request: ProviderChatRequest
 ): GeminiGenerateContentRequest => {
   const contents = mapChatMessagesToGeminiContents(request);
+  const responseModalities = buildGeminiResponseModalities(request.modalities);
 
   return {
     contents: contents.length > 0 ? contents : [{ role: "user", parts: [{ text: "" }] }],
     ...(extractSystemInstruction(request)
       ? { systemInstruction: extractSystemInstruction(request) }
       : {}),
-    ...(request.temperature !== undefined || request.maxTokens !== undefined
+    ...(request.temperature !== undefined || request.maxTokens !== undefined || responseModalities
       ? {
           generationConfig: {
             ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
             ...(request.maxTokens !== undefined ? { maxOutputTokens: request.maxTokens } : {}),
+            ...(responseModalities ? { responseModalities } : {}),
           },
         }
       : {}),
@@ -125,7 +201,7 @@ export const mapGeminiChatResponseToProviderResponse = (
     requestId: response.responseId ?? `${providerName.toLowerCase()}-${Date.now()}`,
     provider: providerName,
     model,
-    content: extractGeminiText(response),
+    content: extractGeminiContent(response),
     finishReason: candidate?.finishReason,
     usage: toProviderUsage(response.usageMetadata),
     metrics: {

@@ -12,6 +12,7 @@ const SUPPORTED_PROVIDER_NAMES = new Set<ProviderName>([
   "GEMINI",
   "GROQ",
   "DEEPSEEK",
+  "NVIDIA",
   "MISTRAL",
 ]);
 

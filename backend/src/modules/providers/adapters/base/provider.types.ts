@@ -38,6 +38,7 @@ export interface ProviderChatMessage {
 export interface ProviderChatRequest {
   model: string;
   messages: ProviderChatMessage[];
+  modalities?: string[];
   temperature?: number;
   maxTokens?: number;
   stream?: boolean;
@@ -53,7 +54,7 @@ export interface ProviderChatResponse {
   requestId: string;
   provider: string;
   model: string;
-  content: string;
+  content: string | ProviderContentPart[];
   finishReason?: string;
   usage: ProviderUsage;
   metrics: {

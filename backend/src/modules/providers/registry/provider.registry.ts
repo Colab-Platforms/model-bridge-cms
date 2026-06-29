@@ -14,8 +14,12 @@ import type {
 } from "../adapters/base/provider.types.js";
 import { GeminiAdapter } from "../adapters/gemini/gemini.adapter.js";
 import { GeminiClient } from "../adapters/gemini/gemini.client.js";
+import { DeepSeekAdapter } from "../adapters/deepseek/deepseek.adapter.js";
+import { DeepSeekClient } from "../adapters/deepseek/deepseek.client.js";
 import { GroqAdapter } from "../adapters/groq/groq.adapter.js";
 import { GroqClient } from "../adapters/groq/groq.client.js";
+import { NvidiaAdapter } from "../adapters/nvidia/nvidia.adapter.js";
+import { NvidiaClient } from "../adapters/nvidia/nvidia.client.js";
 import { OpenAIAdapter } from "../adapters/openai/openai.adapter.js";
 import { OpenAIClient } from "../adapters/openai/openai.client.js";
 import { ProviderHttpClient } from "../shared/provider-http-client.js";
@@ -73,6 +77,15 @@ const providerMetadataRecords: Record<ProviderName, ProviderMetadata> = {
     supportsStreaming: true,
     supportsEmbeddings: false,
   },
+  NVIDIA: {
+    name: "NVIDIA",
+    displayName: "NVIDIA",
+    apiKeyEnvVar: PROVIDER_ENV_KEYS.NVIDIA,
+    baseUrlEnvVar: PROVIDER_BASE_URL_ENV_KEYS.NVIDIA,
+    defaultBaseUrl: PROVIDER_DEFAULT_BASE_URLS.NVIDIA,
+    supportsStreaming: true,
+    supportsEmbeddings: false,
+  },
   MISTRAL: {
     name: "MISTRAL",
     displayName: "Mistral",
@@ -111,6 +124,16 @@ export class ProviderRegistry {
     this.register("GROQ", (config, dependencies) => {
       const httpClient = new ProviderHttpClient("GROQ", config, dependencies.logger);
       return new GroqAdapter(new GroqClient(httpClient, config));
+    });
+
+    this.register("DEEPSEEK", (config, dependencies) => {
+      const httpClient = new ProviderHttpClient("DEEPSEEK", config, dependencies.logger);
+      return new DeepSeekAdapter(new DeepSeekClient(httpClient, config));
+    });
+
+    this.register("NVIDIA", (config, dependencies) => {
+      const httpClient = new ProviderHttpClient("NVIDIA", config, dependencies.logger);
+      return new NvidiaAdapter(new NvidiaClient(httpClient, config));
     });
   }
 

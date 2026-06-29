@@ -25,6 +25,7 @@ export interface OpenAIChatCompletionRequest {
     name?: string;
     tool_call_id?: string;
   }>;
+  modalities?: string[];
   temperature?: number;
   max_tokens?: number;
   stream?: boolean;

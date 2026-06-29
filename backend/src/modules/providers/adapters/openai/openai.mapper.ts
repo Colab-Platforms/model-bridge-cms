@@ -24,6 +24,7 @@ export const mapProviderChatRequestToOpenAI = (
     ...(message.name ? { name: message.name } : {}),
     ...(message.toolCallId ? { tool_call_id: message.toolCallId } : {}),
   })),
+  ...(request.modalities?.length ? { modalities: request.modalities } : {}),
   ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
   ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
   ...(request.stream ? { stream: true, stream_options: { include_usage: true } } : {}),

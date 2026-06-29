@@ -14,6 +14,7 @@ export interface GeminiContent {
 export interface GeminiGenerationConfig {
   temperature?: number;
   maxOutputTokens?: number;
+  responseModalities?: string[];
 }
 
 export interface GeminiGenerateContentRequest {
