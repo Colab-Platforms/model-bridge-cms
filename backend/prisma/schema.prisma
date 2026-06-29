@@ -286,6 +286,7 @@ model Provider {
 model Model {
   id                     String   @id @default(cuid(2))
   providerId             String   @map("provider_id")
+  providerModelId        String?  @map("provider_model_id")
   slug                   String   @unique
   displayName            String?  @map("display_name")
   description            String?  @db.Text
@@ -305,6 +306,7 @@ model Model {
   outputModalities       String[]  @map("output_modalities")
   supportedParameters    String[]  @map("supported_parameters")
   defaultForCapabilities String[]  @map("default_for_capabilities")
+  isFreeModel            Boolean   @default(false) @map("is_free_model")
 
   isActive               Boolean  @default(true) @map("is_active")
   createdAt              DateTime  @default(now()) @map("created_at")

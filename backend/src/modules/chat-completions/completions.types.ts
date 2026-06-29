@@ -5,6 +5,7 @@ import type {
   ProviderChatMessage,
   ProviderChatRequest,
   ProviderChatResponse,
+  ProviderContentPart,
   ProviderUsage,
 } from "../providers/adapters/base/provider.types.js";
 import { chatCompletionsSchema } from "./completions.validators.js";
@@ -46,6 +47,8 @@ export type ChatCompletionsRequest = Request<
 export interface ResolvedModelRecord {
   id: string;
   slug: string;
+  providerModelId?: string | null;
+  isFreeModel: boolean;
   inputPricePerToken: number;
   outputPricePerToken: number;
   provider: {
@@ -67,7 +70,7 @@ export interface ChatCompletionChoice {
   index: number;
   message: {
     role: "assistant";
-    content: string;
+    content: string | ProviderContentPart[];
   };
   finish_reason: string | null;
 }

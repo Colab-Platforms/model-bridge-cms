@@ -16,6 +16,7 @@ import type {
   UnifiedChatRequest,
 } from "./completions.types.js";
 import type {
+  ProviderContentPart,
   ProviderChatResponse,
   ProviderStreamEvent,
 } from "../providers/adapters/base/provider.types.js";
@@ -29,6 +30,7 @@ const providerFactory = createProviderFactory({
 });
 
 const AVG_CHARS_PER_TOKEN = 2.5;
+const IMAGE_MODALITY = "image";
 
 const resolveModelRecord = async (modelSlug: string): Promise<ResolvedModelRecord> => {
   const modelRecord = await prisma.model.findFirst({
@@ -40,6 +42,8 @@ const resolveModelRecord = async (modelSlug: string): Promise<ResolvedModelRecor
     select: {
       id: true,
       slug: true,
+      providerModelId: true,
+      isFreeModel: true,
       inputPricePerToken: true,
       outputPricePerToken: true,
       provider: {
@@ -62,6 +66,8 @@ const resolveModelRecord = async (modelSlug: string): Promise<ResolvedModelRecor
   return {
     id: modelRecord.id,
     slug: modelRecord.slug,
+    providerModelId: modelRecord.providerModelId,
+    isFreeModel: modelRecord.isFreeModel,
     inputPricePerToken: Number(modelRecord.inputPricePerToken ?? 0),
     outputPricePerToken: Number(modelRecord.outputPricePerToken ?? 0),
     provider: {
@@ -71,13 +77,39 @@ const resolveModelRecord = async (modelSlug: string): Promise<ResolvedModelRecor
   };
 };
 
-const buildProviderRequest = (input: ExecuteCompletionInput): UnifiedChatRequest => ({
-  model: input.body.model,
+const buildProviderRequest = (
+  input: ExecuteCompletionInput,
+  modelRecord: ResolvedModelRecord
+): UnifiedChatRequest => ({
+  // Keep frontend/API requests slug-based, but send the provider-native model ID upstream.
+  model: modelRecord.providerModelId ?? modelRecord.slug,
   messages: input.body.messages,
+  ...(input.body.modalities !== undefined ? { modalities: input.body.modalities } : {}),
   ...(input.body.temperature !== undefined ? { temperature: input.body.temperature } : {}),
   ...(input.body.max_tokens !== undefined ? { maxTokens: input.body.max_tokens } : {}),
   ...(input.body.stream !== undefined ? { stream: input.body.stream } : {}),
 });
+
+const hasImageOutputModality = (modalities?: string[]) =>
+  modalities?.some((modality) => modality.trim().toLowerCase() === IMAGE_MODALITY) ?? false;
+
+const serializeContentPartForStreaming = (part: ProviderContentPart) => {
+  if (part.type === "text") {
+    return part.text;
+  }
+
+  return `![generated image](${part.image_url.url})`;
+};
+
+const serializeProviderContentForStreaming = (
+  content: ProviderChatResponse["content"]
+) => {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  return content.map(serializeContentPartForStreaming).filter(Boolean).join("\n");
+};
 
 const mapToOpenAICompatibleResponse = (
   model: string,
@@ -206,7 +238,7 @@ const hasMeaningfulStreamOutput = (accumulator: StreamAccumulator) =>
 export class CompletionsService {
   async execute(input: ExecuteCompletionInput): Promise<OpenAICompatibleChatCompletionResponse> {
     const modelRecord = await resolveModelRecord(input.body.model);
-    const providerRequest = buildProviderRequest(input);
+    const providerRequest = buildProviderRequest(input, modelRecord);
 
     const inferenceRequest = await inferenceTrackingService.createPendingRequest({
       userId: input.context.user.id,
@@ -237,6 +269,7 @@ export class CompletionsService {
       totalTokens: providerResponse.usage.totalTokens,
       latencyMs: providerResponse.metrics.latencyMs,
       responseCompletionTimeMs: providerResponse.metrics.responseCompletionTimeMs,
+      isFreeModel: modelRecord.isFreeModel,
       inputPricePerToken: modelRecord.inputPricePerToken,
       outputPricePerToken: modelRecord.outputPricePerToken,
       platformMarkupPercent: input.context.creditCheck.platformMarkupPercent,
@@ -253,13 +286,14 @@ export class CompletionsService {
   ): Promise<AsyncIterable<string>> {
     const modelRecord = await resolveModelRecord(input.body.model);
     const startedAt = Date.now();
+    const shouldUseSyntheticImageStream = hasImageOutputModality(input.body.modalities);
     const providerRequest = buildProviderRequest({
       ...input,
       body: {
         ...input.body,
-        stream: true,
+        stream: shouldUseSyntheticImageStream ? false : true,
       },
-    });
+    }, modelRecord);
 
     const inferenceRequest = await inferenceTrackingService.createPendingRequest({
       userId: input.context.user.id,
@@ -271,6 +305,85 @@ export class CompletionsService {
       stream: true,
       requestType: RequestType.STREAM,
     });
+
+    if (shouldUseSyntheticImageStream) {
+      let providerResponse: ProviderChatResponse;
+
+      try {
+        const adapter = providerFactory.get(modelRecord.provider.slug);
+        providerResponse = await adapter.chatCompletion(providerRequest);
+      } catch (error) {
+        await inferenceTrackingService.handleProviderFailure(inferenceRequest.id, RequestStatus.FAILED);
+        throw error;
+      }
+
+      const iterator = async function* (): AsyncGenerator<string> {
+        const serializedContent = serializeProviderContentForStreaming(providerResponse.content);
+
+        try {
+          if (!options.isClientConnected()) {
+            await inferenceTrackingService.handleProviderFailure(
+              inferenceRequest.id,
+              RequestStatus.STOPPED
+            );
+            return;
+          }
+
+          await inferenceTrackingService.completeRequest({
+            inferenceRequestId: inferenceRequest.id,
+            userId: input.context.user.id,
+            promptTokens: providerResponse.usage.promptTokens,
+            completionTokens: providerResponse.usage.completionTokens,
+            totalTokens: providerResponse.usage.totalTokens,
+            latencyMs: providerResponse.metrics.latencyMs,
+            responseCompletionTimeMs: providerResponse.metrics.responseCompletionTimeMs,
+            isFreeModel: modelRecord.isFreeModel,
+            inputPricePerToken: modelRecord.inputPricePerToken,
+            outputPricePerToken: modelRecord.outputPricePerToken,
+            platformMarkupPercent: input.context.creditCheck.platformMarkupPercent,
+            walletReferenceId: inferenceRequest.id,
+            walletDeductionDescription: "AI Model Usage",
+          });
+
+          yield toSseMessage(buildOpenAIStartChunk(providerResponse.requestId, input.body.model));
+
+          if (serializedContent) {
+            yield toSseMessage(
+              buildOpenAIContentChunk(
+                providerResponse.requestId,
+                input.body.model,
+                serializedContent
+              )
+            );
+          }
+
+          yield toSseMessage(
+            buildOpenAIFinalChunk(providerResponse.requestId, input.body.model, providerResponse.finishReason, {
+              requestId: providerResponse.requestId,
+              model: input.body.model,
+              content: serializedContent,
+              usage: providerResponse.usage,
+              finishReason: providerResponse.finishReason,
+            })
+          );
+          yield toSseMessage("[DONE]");
+        } catch (error) {
+          await inferenceTrackingService.handleProviderFailure(inferenceRequest.id, RequestStatus.FAILED);
+
+          if (options.isClientConnected()) {
+            yield toSseMessage({
+              error: {
+                message: error instanceof Error ? error.message : "Streaming request failed",
+              },
+            });
+          }
+
+          throw error;
+        }
+      };
+
+      return iterator();
+    }
 
     let providerStream: AsyncIterable<ProviderStreamEvent>;
 
@@ -367,6 +480,7 @@ export class CompletionsService {
           totalTokens: accumulator.usage.totalTokens,
           latencyMs,
           responseCompletionTimeMs,
+          isFreeModel: modelRecord.isFreeModel,
           inputPricePerToken: modelRecord.inputPricePerToken,
           outputPricePerToken: modelRecord.outputPricePerToken,
           platformMarkupPercent: input.context.creditCheck.platformMarkupPercent,
