@@ -86,10 +86,10 @@ export default function OverviewPage() {
       {/* Header Section */}
       <div className="space-y-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             {getGreeting()}, {user?.firstName || "Tech"}! 👋
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             Here&apos;s what&apos;s happening with your API usage today.
           </p>
         </div>
@@ -117,8 +117,8 @@ export default function OverviewPage() {
           isLoading={isLoading}
           footer={
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Status</span>
-              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold text-muted-foreground/60 uppercase">Status</span>
+              <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
                 {summary?.walletStatus || "Optimal"}
               </span>
             </div>

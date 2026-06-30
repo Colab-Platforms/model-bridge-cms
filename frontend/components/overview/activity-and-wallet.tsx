@@ -32,30 +32,30 @@ export function ActivityAndWallet({ transactions, wallet, isLoading }: ActivityA
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       {/* Recent Activity */}
-      <Card className="border-none shadow-sm lg:col-span-8">
+      <Card className="lg:col-span-8 transition-all hover:shadow-md border border-border/50 bg-card">
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <History className="size-4 text-primary" />
-              <CardTitle className="text-sm font-semibold text-slate-800">Recent Activity</CardTitle>
+              <CardTitle className="text-sm font-semibold text-foreground">Recent Activity</CardTitle>
             </div>
-            <CardDescription className="text-xs">Your latest wallet transactions</CardDescription>
+            <CardDescription className="text-xs text-muted-foreground">Your latest wallet transactions</CardDescription>
           </div>
         </CardHeader>
-        <CardContent className="p-0 border-t border-slate-50">
+        <CardContent className="p-0 border-t border-border/40">
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-100 bg-slate-50/50 hover:bg-slate-50/50">
-                <TableHead className="py-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Date</TableHead>
-                <TableHead className="py-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Type</TableHead>
-                <TableHead className="py-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Amount</TableHead>
-                <TableHead className="py-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</TableHead>
+              <TableRow className="border-border/40 bg-muted/40 hover:bg-transparent">
+                <TableHead className="py-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Date</TableHead>
+                <TableHead className="py-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Type</TableHead>
+                <TableHead className="py-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Amount</TableHead>
+                <TableHead className="py-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Description</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="border-slate-50">
+                  <TableRow key={i} className="border-border/20">
                     <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-14 " /></TableCell>
@@ -70,27 +70,27 @@ export function ActivityAndWallet({ transactions, wallet, isLoading }: ActivityA
                 transactions.map((txn) => {
                   const isNegative = txn.type === "USAGE_DEDUCTION";
                   return (
-                    <TableRow key={txn.id} className="border-slate-50 hover:bg-slate-50/50">
+                    <TableRow key={txn.id} className="border-border/10 hover:bg-muted/30">
                       <TableCell className="py-3">
-                        <span className="text-xs text-slate-700">
+                        <span className="text-xs text-foreground">
                           {new Date(txn.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                         </span>
-                        <span className="block text-[10px] text-slate-400">
+                        <span className="block text-[10px] text-muted-foreground">
                           {new Date(txn.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </TableCell>
                       <TableCell className="py-3">
                         <span className={cn(
                           "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                          isNegative ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"
+                          isNegative ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                         )}>
                           {txn.type.replace(/_/g, " ").toLowerCase()}
                         </span>
                       </TableCell>
-                      <TableCell className={cn("py-3 text-xs font-bold tabular-nums", isNegative ? "text-rose-600" : "text-emerald-600")}>
+                      <TableCell className={cn("py-3 text-xs font-bold tabular-nums", isNegative ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400")}>
                         {isNegative ? "-" : "+"}${parseFloat(txn.amount).toFixed(2)}
                       </TableCell>
-                      <TableCell className="py-3 max-w-[220px] truncate text-xs text-slate-500">
+                      <TableCell className="py-3 max-w-[220px] truncate text-xs text-muted-foreground">
                         {txn.description ?? "—"}
                       </TableCell>
                     </TableRow>
@@ -101,7 +101,7 @@ export function ActivityAndWallet({ transactions, wallet, isLoading }: ActivityA
           </Table>
           <a 
             href="/dashboard/credits"
-            className="flex items-center justify-center gap-2 p-3 text-xs font-bold text-slate-400 hover:text-slate-600 border-t border-slate-50"
+            className="flex items-center justify-center gap-2 p-3 text-xs font-bold text-muted-foreground hover:text-foreground border-t border-border/40 hover:bg-muted/30 transition-all"
           >
             View all transactions
             <ChevronRight className="size-3.5" />
@@ -110,19 +110,19 @@ export function ActivityAndWallet({ transactions, wallet, isLoading }: ActivityA
       </Card>
 
       {/* Wallet Summary */}
-      <Card className="border-none shadow-sm lg:col-span-4">
+      <Card className="lg:col-span-4 transition-all hover:shadow-md border border-border/50 bg-card">
         <CardHeader className="pb-4">
-          <CardTitle className="text-sm font-semibold text-slate-800">Wallet Summary</CardTitle>
+          <CardTitle className="text-sm font-semibold text-foreground">Wallet Summary</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-4">
-            <SummaryItem label="Current Balance" value={`$${wallet.currentBalance}`} icon={WalletIcon} color="text-slate-400" isLoading={isLoading} />
-            <SummaryItem label="Total Credits Added" value={`$${wallet.totalCredits}`} icon={Plus} color="text-slate-400" isLoading={isLoading} />
+            <SummaryItem label="Current Balance" value={`$${wallet.currentBalance}`} icon={WalletIcon} color="text-muted-foreground" isLoading={isLoading} />
+            <SummaryItem label="Total Credits Added" value={`$${wallet.totalCredits}`} icon={Plus} color="text-muted-foreground" isLoading={isLoading} />
             <SummaryItem label="Total Usage Deducted" value={`-$${wallet.totalUsage}`} icon={MinusCircle} color="text-rose-500" isLoading={isLoading} />
             <SummaryItem label="Total Refunded" value={`+$${wallet.totalRefunded}`} icon={RefreshCw} color="text-emerald-500" isLoading={isLoading} />
-            <SummaryItem label="Total Transactions" value={`$${wallet.totalTransactions}`} icon={History} color="text-slate-400" isLoading={isLoading} />
+            <SummaryItem label="Total Transactions" value={`$${wallet.totalTransactions}`} icon={History} color="text-muted-foreground" isLoading={isLoading} />
           </div>
-          <Button className="w-full h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold shadow-sm shadow-indigo-200">
+          <Button className="w-full h-10 rounded-xl bg-primary hover:bg-primary/90 text-xs font-bold transition-all hover:shadow-md hover:-translate-y-0.5">
             View wallet
           </Button>
         </CardContent>
@@ -136,12 +136,12 @@ function SummaryItem({ label, value, icon: Icon, color, isLoading }: { label: st
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
         <Icon className={cn("size-3.5", color)} />
-        <span className="text-[11px] font-medium text-slate-500">{label}</span>
+        <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
       </div>
       {isLoading ? (
         <Skeleton className="h-3 w-12" />
       ) : (
-        <span className={cn("text-xs font-bold tabular-nums", value.startsWith("-") ? "text-rose-500" : value.startsWith("+") ? "text-emerald-500" : "text-slate-900")}>
+        <span className={cn("text-xs font-bold tabular-nums", value.startsWith("-") ? "text-rose-500" : value.startsWith("+") ? "text-emerald-500" : "text-foreground")}>
           {value}
         </span>
       )}

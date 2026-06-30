@@ -27,20 +27,20 @@ export function MiniMetricCard({
   isLoading,
 }: MiniMetricCardProps) {
   return (
-    <div className={cn("flex items-center gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-xs transition-all hover:shadow-sm", className)}>
-      <div className="flex size-10 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
+    <div className={cn("flex items-center gap-4 rounded-xl border border-border/50 bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-border/80", className)}>
+      <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
         <Icon className="size-5" />
       </div>
       <div className="space-y-0.5 flex-1">
-        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
         <div className="flex items-center gap-2">
           {isLoading ? (
             <Skeleton className="h-5 w-12" />
           ) : (
-            <p className="text-lg font-bold text-slate-900">{value}</p>
+            <p className="text-lg font-bold text-foreground">{value}</p>
           )}
           {!isLoading && trend && (
-            <span className={cn("text-[10px] font-bold", trend.isPositive ? "text-emerald-500" : "text-rose-500")}>
+            <span className={cn("text-[10px] font-bold", trend.isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
               {trend.isPositive ? "↑" : "↓"} {trend.value}
             </span>
           )}

@@ -37,7 +37,7 @@ export function StatusRow({
   return (
     <div className="flex flex-wrap items-center gap-3 py-1">
       {/* Preset pills */}
-      <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-slate-50 p-0.5 gap-0.5">
+      <div className="flex rounded-xl border border-border/60 overflow-hidden bg-muted/40 p-0.5 gap-0.5">
         {PRESETS.map(({ key, label }) => (
           <button
             key={key}
@@ -45,8 +45,8 @@ export function StatusRow({
             className={cn(
               "px-3 py-1.5 text-[12.5px] font-semibold rounded-[9px] transition-all",
               preset === key
-                ? "bg-white text-indigo-600 shadow-sm border border-slate-200"
-                : "text-slate-500 hover:text-slate-900"
+                ? "bg-card text-primary shadow-xs border border-border/60"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             {label}
@@ -58,21 +58,21 @@ export function StatusRow({
       {preset === "custom" && (
         <>
           <div className="flex flex-col gap-1">
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-slate-400">From</span>
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-muted-foreground/60">From</span>
             <input
               type="date"
               value={customStart}
               onChange={(e) => onCustomStartChange(e.target.value)}
-              className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[13px] text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all"
+              className="h-9 rounded-xl border border-border/60 bg-card px-3 text-[13px] text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-slate-400">To</span>
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.09em] text-muted-foreground/60">To</span>
             <input
               type="date"
               value={customEnd}
               onChange={(e) => onCustomEndChange(e.target.value)}
-              className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[13px] text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all"
+              className="h-9 rounded-xl border border-border/60 bg-card px-3 text-[13px] text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
             />
           </div>
         </>
@@ -83,8 +83,8 @@ export function StatusRow({
         onClick={onRefresh}
         aria-label="Refresh"
         className={cn(
-          "h-9 w-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-slate-900 hover:border-slate-300 hover:shadow-sm transition-all",
-          isRefreshing && "text-indigo-600"
+          "h-9 w-9 rounded-xl border border-border/60 bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-border hover:shadow-xs transition-all",
+          isRefreshing && "text-primary"
         )}
       >
         <RefreshCw className={cn("size-3.5", isRefreshing && "animate-spin")} />

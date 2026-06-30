@@ -65,7 +65,7 @@ interface UsageLogItem {
 }
 
 interface UsageLogDetail extends UsageLogItem {
-  finishReason?: string;
+  finishReason?: string; 
   errorMessage?: string;
   providerCost?: string;
   platformMarkupPercent?: string;

@@ -12,13 +12,6 @@ export const chatCompletionsController = async (req: Request, res: Response) => 
       clientConnected = false;
     });
 
-    res.status(200);
-    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("X-Accel-Buffering", "no");
-    res.flushHeaders();
-
     const stream = await completionsService.executeStream(
       {
         body: typedRequest.body,
@@ -33,6 +26,13 @@ export const chatCompletionsController = async (req: Request, res: Response) => 
         isClientConnected: () => clientConnected,
       }
     );
+
+    res.status(200);
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
 
     try {
       for await (const chunk of stream) {

@@ -20,6 +20,28 @@ const defaultLogger: ProviderLogger = {
   error: (message, meta) => console.error(message, meta),
 };
 
+const maskSensitiveHeaders = (headers?: AxiosRequestConfig["headers"]) => {
+  if (!headers || typeof headers !== "object") {
+    return headers;
+  }
+
+  const maskedHeaders: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(headers)) {
+    const normalizedKey = key.toLowerCase();
+
+    maskedHeaders[key] =
+      normalizedKey === "authorization" ||
+      normalizedKey === "x-api-key" ||
+      normalizedKey.includes("token") ||
+      normalizedKey.includes("secret")
+        ? "[REDACTED]"
+        : value;
+  }
+
+  return maskedHeaders;
+};
+
 export class ProviderHttpClient {
   private readonly client: AxiosInstance;
   private readonly logger: ProviderLogger;
@@ -48,11 +70,20 @@ export class ProviderHttpClient {
       const startedAt = Date.now();
 
       try {
+        const resolvedUrl = this.client.getUri({
+          ...requestConfig,
+          baseURL: this.config.baseUrl,
+        });
+
         this.logger.info("Provider HTTP request started", {
           provider: this.providerName,
           method: requestConfig.method ?? "GET",
           url: requestConfig.url,
+          resolvedUrl,
           attempt: attempt + 1,
+          params: requestConfig.params,
+          headers: maskSensitiveHeaders(requestConfig.headers),
+          payload: requestConfig.data,
         });
 
         const response = await this.client.request<TResponse>({

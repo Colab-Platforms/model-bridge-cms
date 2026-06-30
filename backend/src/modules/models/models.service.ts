@@ -36,6 +36,7 @@ const modelSelect = {
       id: true,
       slug: true,
       displayName: true,
+      providerLogo: true,
       isActive: true,
     },
   },
@@ -69,21 +70,38 @@ const formatModelPriceFields = <
 
 export const getAllModelsService = async (query: GetAllModelsQuery) => {
   const { take, skip, page, pageSize } = getPaginationOptions(query, 10);
-
-  const cacheKey = CACHE_KEYS.MODELS.LIST(
-    page,
-    pageSize,
-    query.providerId,
-    query.slug,
-    query.isActive
-  );
-  const cached = await cacheGet(cacheKey);
-  if (cached) return cached;
-
+  console.log(" query params:", query);
   const where: Prisma.ModelWhereInput = {
     isDeleted: false,
+    ...(query.q
+      ? {
+          OR: [
+            {
+              slug: {
+                contains: query.q,
+                mode: "insensitive",
+              },
+            },
+            {
+              displayName: {
+                contains: query.q,
+                mode: "insensitive",
+              },
+            },
+            {
+              description: {
+                contains: query.q,
+                mode: "insensitive",
+              },
+            },
+          ],
+        }
+      : {}),
     ...(query.providerId ? { providerId: query.providerId } : {}),
     ...(query.slug ? { slug: query.slug } : {}),
+    ...(query.capability ? { outputModalities: { has: query.capability } } : {}),
+    ...(query.inputModality ? { inputModalities: { has: query.inputModality } } : {}),
+    ...(query.outputModality ? { outputModalities: { has: query.outputModality } } : {}),
     ...(typeof query.isActive === "boolean" ? { isActive: query.isActive } : {}),
   };
 
@@ -98,7 +116,9 @@ export const getAllModelsService = async (query: GetAllModelsQuery) => {
     prisma.model.count({ where }),
   ]);
 
-  const result = formatPaginationResponse(
+  console.log(`Fetched ${models.length} models out of ${totalRecords} total records.`);
+
+  return formatPaginationResponse(
     models.map((model) => formatModelPriceFields(model)),
     totalRecords,
     page,

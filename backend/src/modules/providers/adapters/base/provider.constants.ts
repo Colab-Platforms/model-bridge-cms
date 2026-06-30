@@ -4,6 +4,7 @@ export const PROVIDER_NAMES = [
   "GEMINI",
   "GROQ",
   "DEEPSEEK",
+  "NVIDIA",
   "MISTRAL",
 ] as const;
 
@@ -16,6 +17,7 @@ export const PROVIDER_DEFAULT_BASE_URLS = {
   GEMINI: "https://generativelanguage.googleapis.com/v1beta",
   GROQ: "https://api.groq.com/openai/v1",
   DEEPSEEK: "https://api.deepseek.com/v1",
+  NVIDIA: "https://integrate.api.nvidia.com/v1",
   MISTRAL: "https://api.mistral.ai/v1",
 } as const;
 
@@ -25,6 +27,7 @@ export const PROVIDER_ENV_KEYS = {
   GEMINI: "GEMINI_API_KEY",
   GROQ: "GROQ_API_KEY",
   DEEPSEEK: "DEEPSEEK_API_KEY",
+  NVIDIA: "NVIDIA_API_KEY",
   MISTRAL: "MISTRAL_API_KEY",
 } as const;
 
@@ -34,5 +37,6 @@ export const PROVIDER_BASE_URL_ENV_KEYS = {
   GEMINI: "GEMINI_BASE_URL",
   GROQ: "GROQ_BASE_URL",
   DEEPSEEK: "DEEPSEEK_BASE_URL",
+  NVIDIA: "NVIDIA_BASE_URL",
   MISTRAL: "MISTRAL_BASE_URL",
 } as const;

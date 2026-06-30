@@ -35,6 +35,7 @@ const chatMessageSchema = z.object({
 export const chatCompletionsSchema = z.object({
   model: z.string().trim().min(1),
   messages: z.array(chatMessageSchema).min(1),
+  modalities: z.array(z.string().trim().min(1)).optional(),
   temperature: z.number().min(0).max(2).optional(),
   max_tokens: z.number().int().positive().optional(),
   stream: z.boolean().optional().default(false),

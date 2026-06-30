@@ -7,8 +7,12 @@ export const modelIdParamsSchema = z.object({
 });
 
 export const getAllModelsQuerySchema = z.object({
+  q: z.string().trim().min(1).optional(),
   providerId: z.string().trim().min(1).optional(),
   slug: z.string().trim().min(1).optional(),
+  capability: z.string().trim().min(1).transform((value) => value.toLowerCase()).optional(),
+  inputModality: z.string().trim().min(1).transform((value) => value.toLowerCase()).optional(),
+  outputModality: z.string().trim().min(1).transform((value) => value.toLowerCase()).optional(),
   isActive: z
     .enum(["true", "false"])
     .transform((value) => value === "true")

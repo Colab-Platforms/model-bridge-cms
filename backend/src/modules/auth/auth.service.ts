@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { AuthProvider, Prisma, UserStatus } from "@prisma/client";
+import { ActivityType, AuthProvider, Prisma, UserStatus } from "@prisma/client";
 
 import AppError from "../../shared/errors/index.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
@@ -24,6 +24,7 @@ import {
 } from "./auth.utils.js";
 import { createWallet } from "../wallets/wallets.service.js";
 import { sendEmail } from "../../services/email.service.js";
+import { activityLogService } from "../../services/activity-log.service.js";
 
 const authUserSelect = {
 	id: true,
@@ -436,6 +437,23 @@ export const loginService = async (
 			context
 		);
 
+		await activityLogService.log(
+			{
+				activityType: ActivityType.USER_LOGIN,
+				entityType: "AUTH",
+				entityId: safeUser.id,
+				actorId: safeUser.id,
+				userId: safeUser.id,
+				metadata: {
+					email: safeUser.email,
+					deviceName: context?.deviceName ?? null,
+				},
+				ipAddress: context?.ipAddress,
+				userAgent: context?.userAgent,
+			},
+			tx
+		);
+
 		return {
 			user: authUser,
 			tokens,
@@ -570,13 +588,30 @@ export const logoutService = async (refreshToken: string) => {
 		throw new AppError("Session not found", STATUS_CODES.NOT_FOUND);
 	}
 
-	await prisma.session.update({
-		where: {
-			id: session.id,
-		},
-		data: {
-			revokedAt: new Date(),
-		},
+	await prisma.$transaction(async (tx) => {
+		await tx.session.update({
+			where: {
+				id: session.id,
+			},
+			data: {
+				revokedAt: new Date(),
+			},
+		});
+
+		await activityLogService.log(
+			{
+				activityType: ActivityType.USER_LOGOUT,
+				entityType: "AUTH",
+				entityId: session.id,
+				actorId: payload.userId,
+				userId: payload.userId,
+				metadata: {
+					sessionId: session.id,
+					scope: "single",
+				},
+			},
+			tx
+		);
 	});
 
 	return { success: true };
@@ -741,14 +776,31 @@ export const googleCallbackService = async (
 };
 
 export const logoutAllService = async (userId: string) => {
-	await prisma.session.updateMany({
-		where: {
-			userId,
-			revokedAt: null,
-		},
-		data: {
-			revokedAt: new Date(),
-		},
+	await prisma.$transaction(async (tx) => {
+		const result = await tx.session.updateMany({
+			where: {
+				userId,
+				revokedAt: null,
+			},
+			data: {
+				revokedAt: new Date(),
+			},
+		});
+
+		await activityLogService.log(
+			{
+				activityType: ActivityType.USER_LOGOUT,
+				entityType: "AUTH",
+				entityId: userId,
+				actorId: userId,
+				userId,
+				metadata: {
+					scope: "all",
+					revokedSessions: result.count,
+				},
+			},
+			tx
+		);
 	});
 
 	return { success: true };

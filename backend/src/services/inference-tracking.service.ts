@@ -29,6 +29,7 @@ export interface CompleteInferenceInput {
   totalTokens: number;
   latencyMs: number;
   responseCompletionTimeMs: number;
+  isFreeModel?: boolean;
   inputPricePerToken: number;
   outputPricePerToken: number;
   platformMarkupPercent: number;
@@ -59,10 +60,19 @@ export class InferenceTrackingService {
   calculateBilling(input: {
     promptTokens: number;
     completionTokens: number;
+    isFreeModel?: boolean;
     inputPricePerToken: number;
     outputPricePerToken: number;
     platformMarkupPercent: number;
   }): BillingResult {
+    if (input.isFreeModel) {
+      return {
+        providerCost: 0,
+        platformMarkup: 0,
+        totalCost: 0,
+      };
+    }
+
     const inputCost = input.promptTokens * input.inputPricePerToken;
     const outputCost = input.completionTokens * input.outputPricePerToken;
     const providerCost = inputCost + outputCost;
@@ -80,6 +90,7 @@ export class InferenceTrackingService {
     const billing = this.calculateBilling({
       promptTokens: input.promptTokens,
       completionTokens: input.completionTokens,
+      isFreeModel: input.isFreeModel,
       inputPricePerToken: input.inputPricePerToken,
       outputPricePerToken: input.outputPricePerToken,
       platformMarkupPercent: input.platformMarkupPercent,

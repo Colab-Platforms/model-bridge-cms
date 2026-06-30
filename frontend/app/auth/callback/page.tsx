@@ -2,6 +2,8 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import axios from "axios";
+import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 
@@ -11,11 +13,19 @@ function CallbackHandler() {
   const setAuth = useAuthStore((s) => s.setAuth);
 
   useEffect(() => {
-    const accessToken = params.get("accessToken");
+    const accessToken = params.get("token") ?? params.get("accessToken");
     const refreshToken = params.get("refreshToken");
     const error = params.get("error");
+    const redirect = params.get("redirect") ?? "/dashboard";
 
-    if (error || !accessToken || !refreshToken) {
+    if (error) {
+      toast.error(error);
+      router.replace("/auth/login");
+      return;
+    }
+
+    if (!accessToken || !refreshToken) {
+      toast.error("Google sign-in did not return valid session tokens.");
       router.replace("/auth/login");
       return;
     }
@@ -35,14 +45,19 @@ function CallbackHandler() {
         // Best-effort wallet creation for new Google sign-ups.
         api.post("/wallets").catch(() => {});
         const isAdmin = (data.role as string)?.toLowerCase() === "admin";
-        router.replace(isAdmin ? "/admin/statistics" : "/dashboard");
+        router.replace(isAdmin ? "/admin/statistics" : redirect);
       })
-      .catch(() => {
+      .catch((error) => {
         localStorage.removeItem("auth-storage");
+        const message = axios.isAxiosError(error)
+          ? error.response?.data?.message ?? "Unable to load your account after Google sign-in."
+          : "Unable to load your account after Google sign-in.";
+        console.error("Google sign-in account load failed:", error);
+        toast.error(message);
         router.replace("/auth/login");
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [params, router, setAuth]);
 
   return (
     <div className="flex min-h-svh items-center justify-center">

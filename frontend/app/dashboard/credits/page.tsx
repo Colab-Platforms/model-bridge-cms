@@ -255,7 +255,7 @@ function TopUpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                 placeholder="10.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full rounded-none border border-border bg-background pl-7 pr-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                className="w-full rounded-lg border border-border bg-background pl-7 pr-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               />
             </div>
           </div>
@@ -269,7 +269,7 @@ function TopUpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
               placeholder="e.g. Monthly top-up"
               value={description}
               onChange={(e) => setDesc(e.target.value)}
-              className="w-full rounded-none border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
             />
           </div>
 
@@ -308,7 +308,7 @@ function FilterSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        "h-8 rounded-none border border-border bg-background px-2.5 text-sm text-foreground outline-none",
+        "h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground outline-none",
         "focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:border-ring cursor-pointer",
         className
       )}
@@ -555,7 +555,7 @@ export default function CreditsPage() {
 
       {/* Hero balance card */}
       <motion.div variants={itemVariants}>
-        <Card className="bg-gradient-to-br from-primary/10 via-background to-background rounded-none overflow-hidden border-border/40 shadow-sm transition-all hover:shadow-md">
+        <Card className="bg-gradient-to-br from-primary/10 via-background to-background rounded-2xl overflow-hidden border-border/40 shadow-sm transition-all hover:shadow-md">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <CoinsIcon className="size-4" />
@@ -565,7 +565,7 @@ export default function CreditsPage() {
           <CardContent className="flex items-end justify-between gap-4">
             <div>
               {balanceLoading ? (
-                <Skeleton className="h-10 w-36 rounded-none" />
+                <Skeleton className="h-10 w-36 rounded-lg" />
               ) : (
                 <p className="text-4xl font-bold tracking-tight text-foreground">
                   ${parseFloat(balanceData?.balance ?? "0").toFixed(7)}
@@ -602,13 +602,13 @@ export default function CreditsPage() {
       </motion.div>
 
         {/* Filter bar */}
-      <motion.div variants={itemVariants} className="flex flex-wrap items-end gap-3 rounded-none border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
+      <motion.div variants={itemVariants} className="flex flex-wrap items-end gap-3 rounded-xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
         {/* Date presets */}
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium text-muted-foreground">
             Date range
           </span>
-          <div className="flex overflow-hidden rounded-none border border-border">
+          <div className="flex overflow-hidden rounded-lg border border-border">
             {PRESET_LABELS.map(({ key, label }) => (
               <button
                 key={key}
@@ -636,7 +636,7 @@ export default function CreditsPage() {
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="h-8 rounded-none border border-border bg-background px-2.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                className="h-9 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -647,7 +647,7 @@ export default function CreditsPage() {
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="h-8 rounded-none border border-border bg-background px-2.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                className="h-9 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               />
             </div>
           </>
@@ -680,14 +680,14 @@ export default function CreditsPage() {
       {/* Transaction table */}
       <motion.div variants={itemVariants}>
       {isLoading ? (
-        <div className="space-y-2 rounded-none border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
+        <div className="space-y-2 rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded-none" />
+            <Skeleton key={i} className="h-10 w-full rounded-lg" />
           ))}
         </div>
       ) : isError ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-none border border-dashed border-red-300 bg-red-50/10 py-20 text-center shadow-sm backdrop-blur-sm">
-          <div className="flex size-14 items-center justify-center rounded-none bg-red-100/50">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-red-300 bg-red-50/10 py-20 text-center shadow-sm backdrop-blur-sm">
+          <div className="flex size-14 items-center justify-center rounded-xl bg-red-100/50">
             <FileText className="size-6 text-red-500" />
           </div>
           <div>
@@ -698,8 +698,8 @@ export default function CreditsPage() {
           </div>
         </div>
       ) : txs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-none border border-dashed border-border bg-muted/10 py-20 text-center shadow-sm backdrop-blur-sm">
-          <div className="flex size-14 items-center justify-center rounded-none bg-muted/50">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/10 py-20 text-center shadow-sm backdrop-blur-sm">
+          <div className="flex size-14 items-center justify-center rounded-xl bg-muted/50">
             <FileText className="size-6 text-muted-foreground" />
           </div>
           <div>
@@ -710,7 +710,7 @@ export default function CreditsPage() {
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-none border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md">
+        <div className="overflow-hidden rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md">
           <Table>
             <TableHeader>
               <TableRow className="border-b border-border/60 bg-muted/30 hover:bg-muted/30">

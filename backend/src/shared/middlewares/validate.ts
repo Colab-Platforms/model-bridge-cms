@@ -58,13 +58,12 @@ export const validateQuery = <T extends ZodTypeAny>(schema: T) => {
       );
     }
 
-    const currentQuery = req.query as ParsedQs & Record<string, unknown>;
-
-    for (const key of Object.keys(currentQuery)) {
-      delete currentQuery[key];
-    }
-
-    Object.assign(currentQuery, result.data as ParsedQs);
+    Object.defineProperty(req, "query", {
+      value: result.data as ParsedQs,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
 
     return next();
   };

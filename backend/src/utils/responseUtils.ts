@@ -29,7 +29,7 @@ const transformDatesToIST = (value: unknown, visited = new WeakSet<object>()): u
   }
 
   if (visited.has(value)) {
-    return value;
+    return "[Circular]";
   }
 
   visited.add(value);
