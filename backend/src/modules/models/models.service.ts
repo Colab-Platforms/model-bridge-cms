@@ -34,6 +34,7 @@ const modelSelect = {
       id: true,
       slug: true,
       displayName: true,
+      providerLogo: true,
       isActive: true,
     },
   },
@@ -67,6 +68,7 @@ const formatModelPriceFields = <
 
 export const getAllModelsService = async (query: GetAllModelsQuery) => {
   const { take, skip, page, pageSize } = getPaginationOptions(query, 10);
+  console.log(" query params:", query);
   const where: Prisma.ModelWhereInput = {
     isDeleted: false,
     ...(query.q
@@ -95,6 +97,9 @@ export const getAllModelsService = async (query: GetAllModelsQuery) => {
       : {}),
     ...(query.providerId ? { providerId: query.providerId } : {}),
     ...(query.slug ? { slug: query.slug } : {}),
+    ...(query.capability ? { outputModalities: { has: query.capability } } : {}),
+    ...(query.inputModality ? { inputModalities: { has: query.inputModality } } : {}),
+    ...(query.outputModality ? { outputModalities: { has: query.outputModality } } : {}),
     ...(typeof query.isActive === "boolean" ? { isActive: query.isActive } : {}),
   };
 
@@ -108,6 +113,8 @@ export const getAllModelsService = async (query: GetAllModelsQuery) => {
     }),
     prisma.model.count({ where }),
   ]);
+
+  console.log(`Fetched ${models.length} models out of ${totalRecords} total records.`);
 
   return formatPaginationResponse(
     models.map((model) => formatModelPriceFields(model)),

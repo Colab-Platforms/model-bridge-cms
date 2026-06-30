@@ -272,6 +272,7 @@ model Provider {
   displayName String?  @map("display_name")
   description String?  @db.Text
   baseUrl     String?  @map("base_url")
+  providerLogo  String?  @map("provider_logo")
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
