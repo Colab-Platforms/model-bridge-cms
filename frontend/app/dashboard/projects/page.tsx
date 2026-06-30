@@ -110,14 +110,14 @@ export default function ProjectsPage() {
       {/* Content */}
       <motion.div variants={itemVariants}>
       {isLoading ? (
-        <div className="space-y-2 rounded-none border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
+        <div className="space-y-2 rounded-xl border border-border/40 bg-card/60 backdrop-blur-md p-4 shadow-sm">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded-none" />
+            <Skeleton key={i} className="h-10 w-full rounded-lg" />
           ))}
         </div>
       ) : projects.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-none border border-dashed border-border bg-muted/10 py-20 text-center shadow-sm backdrop-blur-sm">
-          <div className="flex size-16 items-center justify-center rounded-none bg-muted/50">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/10 py-20 text-center shadow-sm backdrop-blur-sm">
+          <div className="flex size-16 items-center justify-center rounded-xl bg-muted/50">
             <FolderOpen className="size-8 text-muted-foreground" />
           </div>
           <div>
@@ -132,7 +132,7 @@ export default function ProjectsPage() {
           </Button>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-none border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md">
+        <div className="overflow-hidden rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-md">
           <Table>
             <TableHeader>
               <TableRow>

@@ -26,11 +26,11 @@ interface DonutChartCardProps {
 
 export function DonutChartCard({ title, totalValue, totalLabel, data, trend, isLoading }: DonutChartCardProps) {
   return (
-    <Card className="border-none shadow-sm">
+    <Card className="transition-all hover:shadow-md border border-border/50 bg-card">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="flex items-center gap-2">
-          <CardTitle className="text-sm font-semibold text-slate-800">{title}</CardTitle>
-          <Info className="size-3.5 text-slate-400 cursor-help" />
+          <CardTitle className="text-sm font-semibold text-foreground">{title}</CardTitle>
+          <Info className="size-3.5 text-muted-foreground cursor-help" />
         </div>
       </CardHeader>
       <CardContent>
@@ -55,12 +55,14 @@ export function DonutChartCard({ title, totalValue, totalLabel, data, trend, isL
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: "12px", border: "1px solid var(--border)", backgroundColor: "var(--card)", color: "var(--card-foreground)", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)" }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-xl font-bold text-slate-900">{totalValue}</span>
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">{totalLabel}</span>
+                  <span className="text-xl font-bold text-foreground">{totalValue}</span>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{totalLabel}</span>
                 </div>
               </>
             )}
@@ -80,12 +82,12 @@ export function DonutChartCard({ title, totalValue, totalLabel, data, trend, isL
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <div className="size-2 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span className="text-xs font-medium text-slate-500 whitespace-nowrap">{item.name}</span>
+                      <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{item.name}</span>
                     </div>
-                    <span className="text-xs font-bold text-slate-900">{item.count || item.value}</span>
+                    <span className="text-xs font-bold text-foreground">{item.count || item.value}</span>
                   </div>
                   {item.percentage && (
-                    <div className="ml-4 text-[10px] text-slate-400 font-medium">{item.percentage}</div>
+                    <div className="ml-4 text-[10px] text-muted-foreground/60 font-medium">{item.percentage}</div>
                   )}
                 </div>
               ))
@@ -94,7 +96,7 @@ export function DonutChartCard({ title, totalValue, totalLabel, data, trend, isL
         </div>
         
         {!isLoading && trend && (
-          <div className="mt-4 flex items-center gap-1.5 text-[10px] font-bold text-emerald-500">
+          <div className="mt-4 flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
             <span>↑ {trend} from last week</span>
           </div>
         )}

@@ -169,7 +169,7 @@ function ProfileTab() {
     return (
       <div className="space-y-3 pt-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full rounded-none" />
+          <Skeleton key={i} className="h-12 w-full rounded-lg" />
         ))}
       </div>
     );
@@ -179,12 +179,12 @@ function ProfileTab() {
     <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-5 pt-6">
 
       {/* ── Hero: avatar + account snapshot ── */}
-      <Card className="rounded-none border-border/40 bg-gradient-to-br from-primary/10 via-background to-background shadow-sm overflow-hidden">
+      <Card className="rounded-2xl border-border/40 bg-gradient-to-br from-primary/10 via-background to-background shadow-sm overflow-hidden">
         <CardContent className="pt-6 pb-5">
           <div className="flex items-center gap-5">
-            <Avatar className="h-20 w-20 rounded-none shrink-0 ring-2 ring-primary/20">
+            <Avatar className="h-20 w-20 rounded-lg shrink-0 ring-2 ring-primary/20">
               {imageUrl && <AvatarImage src={imageUrl} alt="Profile" />}
-              <AvatarFallback className="rounded-none text-2xl font-black bg-primary/10 text-primary">
+              <AvatarFallback className="rounded-lg text-2xl font-black bg-primary/10 text-primary">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -197,7 +197,7 @@ function ProfileTab() {
               </p>
               <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                 <span className={cn(
-                  "inline-flex items-center gap-1.5 rounded-none px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight border",
+                  "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight border",
                   displayUser?.status === "ACTIVE"
                     ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"
                     : "bg-zinc-500/10 border-zinc-500/20 text-zinc-500"
@@ -208,7 +208,7 @@ function ProfileTab() {
                   )} />
                   {displayUser?.status?.toLowerCase() ?? "—"}
                 </span>
-                <span className="inline-flex items-center rounded-none px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight border border-primary/20 bg-primary/10 text-primary">
+                <span className="inline-flex items-center rounded-lg px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight border border-primary/20 bg-primary/10 text-primary">
                   {displayUser?.role?.toLowerCase() ?? "—"}
                 </span>
                 {profile?.createdAt && (
@@ -223,14 +223,14 @@ function ProfileTab() {
       </Card>
 
       {/* ── Avatar URL ── */}
-      <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+      <Card className="rounded-2xl border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
         <CardContent className="pt-5 pb-5">
           <SectionLabel label="Profile image" />
           <Field id="profileImage" label="Image URL" error={errors.profileImage?.message}>
             <Input
               id="profileImage"
               placeholder="https://example.com/avatar.png"
-              className="rounded-none"
+              className="rounded-lg"
               {...register("profileImage")}
             />
           </Field>
@@ -238,24 +238,24 @@ function ProfileTab() {
       </Card>
 
       {/* ── Personal info ── */}
-      <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+      <Card className="rounded-2xl border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
         <CardContent className="pt-5 pb-5">
           <SectionLabel label="Personal information" />
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="firstName" label="First name" error={errors.firstName?.message}>
-                <Input id="firstName" className="rounded-none" {...register("firstName")} />
+                <Input id="firstName" className="rounded-lg" {...register("firstName")} />
               </Field>
               <Field id="lastName" label="Last name" error={errors.lastName?.message}>
-                <Input id="lastName" className="rounded-none" {...register("lastName")} />
+                <Input id="lastName" className="rounded-lg" {...register("lastName")} />
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="countryCode" label="Country code">
-                <Input id="countryCode" placeholder="+1" className="rounded-none" {...register("countryCode")} />
+                <Input id="countryCode" placeholder="+1" className="rounded-lg" {...register("countryCode")} />
               </Field>
               <Field id="phoneNo" label="Phone number">
-                <Input id="phoneNo" placeholder="555 000 1234" className="rounded-none" {...register("phoneNo")} />
+                <Input id="phoneNo" placeholder="555 000 1234" className="rounded-lg" {...register("phoneNo")} />
               </Field>
             </div>
           </div>
@@ -263,24 +263,24 @@ function ProfileTab() {
       </Card>
 
       {/* ── Location ── */}
-      <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+      <Card className="rounded-2xl border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
         <CardContent className="pt-5 pb-5">
           <SectionLabel label="Location" />
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="city" label="City">
-                <Input id="city" className="rounded-none" {...register("city")} />
+                <Input id="city" className="rounded-lg" {...register("city")} />
               </Field>
               <Field id="state" label="State / Province">
-                <Input id="state" className="rounded-none" {...register("state")} />
+                <Input id="state" className="rounded-lg" {...register("state")} />
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="country" label="Country">
-                <Input id="country" className="rounded-none" {...register("country")} />
+                <Input id="country" className="rounded-lg" {...register("country")} />
               </Field>
               <Field id="timezone" label="Timezone">
-                <Input id="timezone" placeholder="America/New_York" className="rounded-none" {...register("timezone")} />
+                <Input id="timezone" placeholder="America/New_York" className="rounded-lg" {...register("timezone")} />
               </Field>
             </div>
           </div>
@@ -288,7 +288,7 @@ function ProfileTab() {
       </Card>
 
       {/* ── Account info (read-only) ── */}
-      <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+      <Card className="rounded-2xl border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
         <CardContent className="pt-5 pb-2">
           <SectionLabel label="Account info" />
           <div className="divide-y divide-border/40">
@@ -312,7 +312,7 @@ function ProfileTab() {
         <Button
           type="submit"
           disabled={isPending}
-          className="rounded-none font-bold uppercase text-xs tracking-wider h-10 px-6 shadow-lg shadow-primary/20"
+          className="rounded-lg font-bold uppercase text-xs tracking-wider h-10 px-6 shadow-lg shadow-primary/20"
         >
           {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
           Save changes
@@ -339,24 +339,24 @@ function PasswordSection() {
   });
 
   return (
-    <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+    <Card className="rounded-2xl border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
       <CardContent className="pt-5 pb-5">
         <SectionLabel label="Change password" />
         <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-4">
           <Field id="currentPassword" label="Current password" error={errors.currentPassword?.message}>
-            <Input id="currentPassword" type="password" autoComplete="current-password" className="rounded-none" {...register("currentPassword")} />
+            <Input id="currentPassword" type="password" autoComplete="current-password" className="rounded-lg" {...register("currentPassword")} />
           </Field>
           <Field id="newPassword" label="New password" error={errors.newPassword?.message}>
-            <Input id="newPassword" type="password" autoComplete="new-password" className="rounded-none" {...register("newPassword")} />
+            <Input id="newPassword" type="password" autoComplete="new-password" className="rounded-lg" {...register("newPassword")} />
           </Field>
           <Field id="confirmPassword" label="Confirm new password" error={errors.confirmPassword?.message}>
-            <Input id="confirmPassword" type="password" autoComplete="new-password" className="rounded-none" {...register("confirmPassword")} />
+            <Input id="confirmPassword" type="password" autoComplete="new-password" className="rounded-lg" {...register("confirmPassword")} />
           </Field>
           <div className="flex justify-end pt-2">
             <Button
               type="submit"
               disabled={isPending}
-              className="rounded-none font-bold uppercase text-xs tracking-wider h-10 px-6"
+              className="rounded-lg font-bold uppercase text-xs tracking-wider h-10 px-6"
             >
               {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Update password
@@ -393,7 +393,7 @@ function SessionsSection() {
   const otherSessions = sessions.filter((s) => !s.isCurrent);
 
   return (
-    <Card className="rounded-none border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
+    <Card className="rounded-2xl border-border/40 bg-card/60 backdrop-blur-md shadow-sm">
       <CardContent className="pt-5">
         <div className="flex items-start justify-between gap-4 mb-4">
           <SectionLabel label="Active sessions" />
@@ -403,7 +403,7 @@ function SessionsSection() {
               size="sm"
               disabled={revokeAll.isPending}
               onClick={() => revokeAll.mutate()}
-              className="rounded-none text-[10px] font-black uppercase tracking-wider border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive shrink-0 -mt-1"
+              className="rounded-lg text-[10px] font-black uppercase tracking-wider border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive shrink-0 -mt-1"
             >
               {revokeAll.isPending && <Loader2 className="mr-1.5 size-3 animate-spin" />}
               Revoke all other
@@ -414,18 +414,18 @@ function SessionsSection() {
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-none" />
+              <Skeleton key={i} className="h-14 w-full rounded-lg" />
             ))}
           </div>
         ) : sessions.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <div className="flex size-12 items-center justify-center rounded-none bg-muted">
+            <div className="flex size-12 items-center justify-center rounded-lg bg-muted">
               <Shield className="size-5 text-muted-foreground" />
             </div>
             <p className="text-sm text-muted-foreground">No active sessions found.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-none border border-border/40">
+          <div className="overflow-hidden rounded-lg border border-border/40">
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border/40 bg-muted/40 hover:bg-muted/40">
@@ -444,7 +444,7 @@ function SessionsSection() {
                   >
                     <TableCell className="py-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-none bg-muted border border-border/40">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted border border-border/40">
                           {session.deviceName?.toLowerCase().includes("mobile") ? (
                             <Smartphone className="size-3.5 text-muted-foreground" />
                           ) : (
@@ -456,7 +456,7 @@ function SessionsSection() {
                             {session.deviceName ?? parseUserAgent(session.userAgent)}
                           </p>
                           {session.isCurrent && (
-                            <span className="mt-1.5 inline-flex items-center gap-1 rounded-none border border-emerald-300/50 bg-emerald-500/10 px-1.5 py-px text-[10px] font-black uppercase tracking-tight text-emerald-600">
+                            <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg border border-emerald-300/50 bg-emerald-500/10 px-1.5 py-px text-[10px] font-black uppercase tracking-tight text-emerald-600">
                               <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                               Current
                             </span>
@@ -480,7 +480,7 @@ function SessionsSection() {
                           size="sm"
                           disabled={revokeOne.isPending}
                           onClick={() => revokeOne.mutate(session.id)}
-                          className="rounded-none text-[10px] font-black uppercase tracking-wider text-destructive hover:text-destructive hover:bg-destructive/5 opacity-0 group-hover/row:opacity-100 transition-opacity"
+                          className="rounded-lg text-[10px] font-black uppercase tracking-wider text-destructive hover:text-destructive hover:bg-destructive/5 opacity-0 group-hover/row:opacity-100 transition-opacity"
                         >
                           Revoke
                         </Button>
@@ -529,16 +529,16 @@ export default function SettingsPage() {
       {/* Tabs */}
       <motion.div variants={itemVariants}>
         <Tabs defaultValue="profile">
-          <TabsList className="rounded-none border border-border/50 bg-background/60 p-0 h-10 w-full grid grid-cols-2">
+          <TabsList className="rounded-lg border border-border/50 bg-background/60 p-0 h-10 w-full grid grid-cols-2">
             <TabsTrigger
               value="profile"
-              className="rounded-none text-[11px] font-black uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none transition-all"
+              className="rounded-lg text-[11px] font-black uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none transition-all"
             >
               Profile
             </TabsTrigger>
             <TabsTrigger
               value="security"
-              className="rounded-none text-[11px] font-black uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none transition-all"
+              className="rounded-lg text-[11px] font-black uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none transition-all"
             >
               Security
             </TabsTrigger>

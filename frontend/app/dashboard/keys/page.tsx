@@ -83,7 +83,7 @@ function StatusBadge({ status }: { status: ApiKey["status"] }) {
   const cfg = STATUS_CONFIG[status];
   return (
     <span className={cn(
-      "inline-flex items-center gap-1.5 rounded-none px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight border",
+      "inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight border",
       cfg.bg,
       cfg.text
     )}>
@@ -172,7 +172,7 @@ export default function KeysPage() {
         </div>
         <Button 
           onClick={() => setCreateOpen(true)} 
-          className="shrink-0 rounded-none bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 h-10 px-5 font-bold uppercase text-xs tracking-wider"
+          className="shrink-0 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 h-10 px-5 font-bold uppercase text-xs tracking-wider"
         >
           <Plus className="size-4 mr-2" />
           Generate New Key
@@ -180,8 +180,8 @@ export default function KeysPage() {
       </motion.div>
 
       {/* ── Info Banner ── */}
-      <motion.div variants={itemVariants} className="rounded-none border border-primary/20 bg-primary/5 p-6 flex items-start gap-4">
-         <div className="flex size-10 items-center justify-center rounded-none bg-primary/10 text-primary shrink-0">
+      <motion.div variants={itemVariants} className="rounded-2xl border border-primary/20 bg-primary/5 p-6 flex items-start gap-4">
+         <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
             <Shield className="size-5" />
          </div>
          <div className="space-y-1">
@@ -195,14 +195,14 @@ export default function KeysPage() {
       {/* ── Main Content ── */}
       <motion.div variants={itemVariants}>
         {isLoading ? (
-          <div className="space-y-3 rounded-none border border-border/40 bg-card/60 backdrop-blur-md p-6">
+          <div className="space-y-3 rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md p-6">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-14 w-full rounded-2xl" />
             ))}
           </div>
         ) : keys.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-6 rounded-none border border-dashed border-border/60 bg-muted/10 py-24 text-center backdrop-blur-sm">
-            <div className="flex size-20 items-center justify-center rounded-none bg-muted shadow-inner">
+          <div className="flex flex-col items-center justify-center gap-6 rounded-2xl border border-dashed border-border/60 bg-muted/10 py-24 text-center backdrop-blur-sm">
+            <div className="flex size-20 items-center justify-center rounded-xl bg-muted shadow-inner">
               <Key className="size-10 text-muted-foreground/40" />
             </div>
             <div className="max-w-xs">
@@ -213,14 +213,14 @@ export default function KeysPage() {
             </div>
             <Button 
               onClick={() => setCreateOpen(true)}
-              className="rounded-none font-bold px-6"
+              className="rounded-lg font-bold px-6"
             >
               <Plus className="size-4 mr-2" />
               Create First Key
             </Button>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-none border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-xl">
+          <div className="overflow-hidden rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md shadow-sm transition-all duration-500 hover:shadow-xl">
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border/40 bg-muted/40 hover:bg-muted/40">
@@ -290,12 +290,12 @@ export default function KeysPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="size-10 rounded-none hover:bg-primary/10 hover:text-primary"
+                            className="size-10 rounded-lg hover:bg-primary/10 hover:text-primary"
                           >
                             <MoreHorizontal className="size-5" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56 rounded-none p-2 bg-popover/90 backdrop-blur-md border-border/60">
+                        <DropdownMenuContent align="end" className="w-56 rounded-lg p-2 bg-popover/90 backdrop-blur-md border-border/60">
                           <DropdownMenuItem onSelect={() => setEditKey(key)} className="rounded-xl px-3 py-2.5 gap-3 cursor-pointer">
                             <Edit3 className="size-4 text-muted-foreground" />
                             <span className="font-bold text-xs uppercase tracking-wider">Configure Key</span>
@@ -342,9 +342,9 @@ export default function KeysPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="pt-6">
-            <AlertDialogCancel className="rounded-none border-border/60 font-bold uppercase text-[10px] tracking-widest h-11">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-2xl border-border/60 font-bold uppercase text-[10px] tracking-widest h-11">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="rounded-none bg-red-600 text-white hover:bg-red-700 font-bold uppercase text-[10px] tracking-widest h-11 shadow-lg shadow-red-600/20"
+              className="rounded-lg bg-red-600 text-white hover:bg-red-700 font-bold uppercase text-[10px] tracking-widest h-11 shadow-lg shadow-red-600/20"
               disabled={revokeMutation.isPending}
               onClick={() => revokeKey && revokeMutation.mutate(revokeKey.id)}
             >
@@ -370,13 +370,13 @@ export default function KeysPage() {
             <OneTimeKeyDisplay apiKey={rotatedApiKey} onDismiss={closeRotateDialog} />
           ) : (
             <DialogFooter className="pt-6">
-              <Button variant="outline" onClick={closeRotateDialog} className="rounded-none border-border/60 font-bold uppercase text-[10px] tracking-widest h-11">
+              <Button variant="outline" onClick={closeRotateDialog} className="rounded-2xl border-border/60 font-bold uppercase text-[10px] tracking-widest h-11">
                 Keep Current
               </Button>
               <Button
                 disabled={rotateMutation.isPending}
                 onClick={() => rotateKey && rotateMutation.mutate(rotateKey.id)}
-                className="rounded-none font-bold uppercase text-[10px] tracking-widest h-11 shadow-lg shadow-primary/20"
+                className="rounded-lg font-bold uppercase text-[10px] tracking-widest h-11 shadow-lg shadow-primary/20"
               >
                 {rotateMutation.isPending ? "Rotating…" : "Generate New Secret"}
               </Button>
