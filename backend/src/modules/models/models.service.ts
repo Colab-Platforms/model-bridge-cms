@@ -71,6 +71,16 @@ const formatModelPriceFields = <
 export const getAllModelsService = async (query: GetAllModelsQuery) => {
   const { take, skip, page, pageSize } = getPaginationOptions(query, 10);
   console.log(" query params:", query);
+  const cacheKey = CACHE_KEYS.MODELS.LIST(
+    page,
+    pageSize,
+    query.providerId,
+    query.slug,
+    typeof query.isActive === "boolean" ? query.isActive : undefined
+  );
+
+  const cached = await cacheGet<any>(cacheKey);
+  if (cached) return cached;
   const where: Prisma.ModelWhereInput = {
     isDeleted: false,
     ...(query.q
@@ -117,8 +127,7 @@ export const getAllModelsService = async (query: GetAllModelsQuery) => {
   ]);
 
   console.log(`Fetched ${models.length} models out of ${totalRecords} total records.`);
-
-  return formatPaginationResponse(
+  const result = formatPaginationResponse(
     models.map((model) => formatModelPriceFields(model)),
     totalRecords,
     page,

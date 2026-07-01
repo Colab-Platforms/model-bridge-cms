@@ -6,7 +6,11 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
   if (!isRedisConfigured) return null;
 
   try {
-    const data = await redisClient.get<T>(key);
+    const client = redisClient();
+    if (!client) return null;
+
+    const raw = await client.get(key);
+    const data = raw ? (JSON.parse(raw) as T) : null;
     if (data) {
       console.log(`[Cache] HIT: ${key}`);
     } else {
@@ -25,7 +29,11 @@ export async function cacheSet(key: string, value: unknown, ttlSeconds: number) 
   try {
     // Basic TTL check
     const ttl = Math.max(0, ttlSeconds);
-    await redisClient.set(key, value, { ex: ttl });
+    const client = redisClient();
+    if (!client) return;
+
+    const stringValue = typeof value === "string" ? value : JSON.stringify(value);
+    await client.set(key, stringValue, "EX", ttl);
     console.log(`[Cache] SET: ${key} (TTL: ${ttl}s)`);
   } catch (error) {
     console.error(`[Cache] SET error for key "${key}":`, error);
@@ -40,7 +48,10 @@ export async function cacheSet(key: string, value: unknown, ttlSeconds: number) 
 export async function cacheInvalidate(...keys: string[]) {
   if (!isRedisConfigured || !keys.length) return;
   try {
-    await redisClient.del(...keys);
+    const client = redisClient();
+    if (!client) return;
+
+    await client.del(...keys);
     console.log(`[Cache] INVALIDATE: ${keys.join(", ")}`);
   } catch (error) {
     console.error("[Cache] INVALIDATE error:", error);
@@ -51,9 +62,12 @@ export async function cacheInvalidate(...keys: string[]) {
 export async function cacheInvalidatePattern(pattern: string) {
   if (!isRedisConfigured) return;
   try {
-    const keys = await redisClient.keys(pattern);
+    const client = redisClient();
+    if (!client) return;
+
+    const keys = await client.keys(pattern);
     if (keys.length) {
-      await redisClient.del(...keys);
+      await client.del(...keys);
       console.log(`[Cache] INVALIDATE PATTERN "${pattern}": ${keys.length} keys removed`);
     }
   } catch (error) {
