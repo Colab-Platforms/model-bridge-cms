@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { toast } from "sonner";
+import { BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Model } from "@/types/index";
 import {
@@ -56,8 +57,14 @@ export function ModelCard({
       </div>
 
       <CardHeader>
-        {/* Row 1: provider name + status badges */}
+        {/* Row 1: provider logo + name + status badges */}
         <div className="flex items-center gap-2">
+          <div className="size-5 rounded shrink-0 overflow-hidden flex items-center justify-center">
+            {model.provider.providerLogo
+              ? <img src={model.provider.providerLogo} alt={model.provider.displayName} className="size-full object-contain" />
+              : <BrainCircuit className="size-4 text-muted-foreground" />
+            }
+          </div>
           <span className="text-xs text-muted-foreground">
             {model.provider.displayName}
           </span>

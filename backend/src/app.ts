@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import path from "path";
 import helmet from "helmet";
 import compression from "compression";
@@ -13,8 +12,6 @@ import sanitizeMiddleware from "./shared/middlewares/sanitize.js";
 import { errorHandler } from "./shared/middlewares/errorHandler.js";
 import { notFoundHandler } from "./shared/middlewares/notFoundHandler.js";
 import { globalAppRateLimiter } from "./shared/middlewares/rateLimit.js";
-
-dotenv.config();
 
 const app = express();
 const trustProxy = process.env.TRUST_PROXY?.trim().toLowerCase();

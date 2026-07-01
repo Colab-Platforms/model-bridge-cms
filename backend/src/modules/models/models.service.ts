@@ -8,6 +8,8 @@ import {
 } from "../../utils/paginationUtils.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import type { GetAllModelsQuery } from "./models.types.js";
+import { cacheGet, cacheSet } from "../../shared/utils/cache.js";
+import { CACHE_KEYS, CACHE_TTL } from "../../shared/constants/cacheKeys.js";
 
 const modelSelect = {
   id: true,
@@ -122,9 +124,16 @@ export const getAllModelsService = async (query: GetAllModelsQuery) => {
     page,
     pageSize
   );
+
+  await cacheSet(cacheKey, result, CACHE_TTL.MODELS);
+  return result;
 };
 
 export const getModelByIdService = async (id: string) => {
+  const cacheKey = CACHE_KEYS.MODELS.BY_ID(id);
+  const cached = await cacheGet(cacheKey);
+  if (cached) return cached;
+
   const model = await prisma.model.findFirst({
     where: {
       id,
@@ -137,5 +146,8 @@ export const getModelByIdService = async (id: string) => {
     throw new AppError("Model not found", STATUS_CODES.NOT_FOUND);
   }
 
-  return formatModelPriceFields(model);
+  const result = formatModelPriceFields(model);
+  await cacheSet(cacheKey, result, CACHE_TTL.MODELS);
+  return result;
 };
+

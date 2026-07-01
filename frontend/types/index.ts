@@ -79,6 +79,7 @@ export interface ModelProvider {
   id: string;
   slug: string;
   displayName: string;
+  providerLogo: string | null;
 }
 
 export interface Model {

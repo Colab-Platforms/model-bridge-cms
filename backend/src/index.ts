@@ -1,36 +1,23 @@
-import dotenv from "dotenv";
-
-dotenv.config();
+import "dotenv/config";
 
 import app from "./app.js";
+import { startWorkers } from "./queues/index.js";
 import { configureServerTimeouts, registerServerLifecycle } from "./utils/serverConfig.js";
-// import { syncModelsForProvider } from "./scripts/syncProviderModels.js";
 
 const PORT = process.env.PORT || 5000;
 
-// async function run() {
-//   console.log("🚀 Starting Model Bridge backend initialization...");
+async function bootstrap(): Promise<void> {
+  const server = app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
 
-//   try {
-//     await syncModelsForProvider("openai");
-//     console.log("✅ All provider models synced successfully!");
-//   } catch (error) {
-//     console.error("❌ A critical error occurred during initialization:", error);
-//   }
-// }
+  configureServerTimeouts(server);
+  registerServerLifecycle(server);
 
+  await startWorkers();
+}
 
-// run().catch((err) => {
-//   console.error("❌ Fatal crash in main execution block:", err);
-// });
-
-// void run().catch((err) => {
-//   console.error("Fatal crash in main execution block:", err);
-// });
-
-const server = app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+bootstrap().catch((err: unknown) => {
+  console.error("❌ Fatal crash during server startup:", err);
+  process.exit(1);
 });
-
-configureServerTimeouts(server);
-registerServerLifecycle(server);

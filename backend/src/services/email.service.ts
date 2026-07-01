@@ -1,5 +1,7 @@
 import AppError from "../shared/errors/index.js";
 import STATUS_CODES from "../utils/statusCodes.js";
+import { emailQueue } from "../queues/queues/email.queue.js";
+import type { EmailJobPayload } from "../queues/types/job-payloads.js";
 
 type SendEmailInput = {
 	to: string;
@@ -69,4 +71,10 @@ export const sendEmail = async (input: SendEmailInput) => {
 	}
 
 	await sendWithConsoleFallback(input);
+};
+
+// Fire-and-forget — enqueues email to BullMQ and returns immediately.
+// Use this everywhere outside of critical synchronous flows.
+export const enqueueEmail = async (input: EmailJobPayload): Promise<void> => {
+	await emailQueue.add("send-email", input);
 };

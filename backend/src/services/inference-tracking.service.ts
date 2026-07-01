@@ -1,6 +1,7 @@
 import { Prisma, RequestStatus, RequestType } from "@prisma/client";
 
 import prisma from "../../prisma.js";
+import { cacheInvalidatePattern } from "../shared/utils/cache.js";
 import { deductCredits, refundCredits } from "../modules/wallets/wallets.service.js";
 
 export interface BillingResult {
@@ -130,6 +131,11 @@ export class InferenceTrackingService {
         },
       });
 
+      await Promise.all([
+        cacheInvalidatePattern(`overview:${input.userId}:*`),
+        cacheInvalidatePattern("admin:overview:*"),
+      ]);
+
       return {
         inferenceRequest: updatedRequest,
         billing,
@@ -174,7 +180,9 @@ export class InferenceTrackingService {
     inferenceRequestId: string,
     status: RequestStatus = RequestStatus.FAILED
   ) {
-    return this.failRequest(inferenceRequestId, status);
+    const result = await this.failRequest(inferenceRequestId, status);
+    await cacheInvalidatePattern("admin:overview:*");
+    return result;
   }
 
   async refundDeductedCredits(input: {
