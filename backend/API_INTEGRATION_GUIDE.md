@@ -266,6 +266,7 @@ Get all models.
 Optional query params:
 - `providerId`
 - `slug`
+- `capability`
 - `isActive=true|false`
 - `page`
 - `pageSize`
@@ -275,15 +276,18 @@ Example:
 ```txt
 GET /models?isActive=true
 GET /models?slug=gpt-4o
+GET /models?capability=TEXT
 GET /models?providerId=abc123
 GET /models?page=1&pageSize=10
-GET /models?providerId=abc123&isActive=true&page=2&pageSize=5
+GET /models?providerId=abc123&capability=chat&isActive=true&page=2&pageSize=5
 ```
 
 Notes:
 - default `page` is `1`
 - default `pageSize` is `10`
 - max `pageSize` is `100`
+- `capability` is matched against `defaultForCapabilities`
+- `capability` is case-insensitive in the query and normalized to lowercase by the backend
 
 Paginated response shape:
 
@@ -1256,7 +1260,178 @@ Response shape:
 
 ---
 
-## 9. Admin Revenue APIs
+## 9. Admin Models APIs
+
+Auth:
+
+```http
+Authorization: Bearer <ADMIN_ACCESS_TOKEN>
+```
+
+Notes:
+- these endpoints are admin-only
+- mounted under `/admin/models`
+- accessible to `Admin` and `SuperAdmin`
+- soft delete marks the model as deleted and inactive
+
+### GET `/admin/models`
+
+Get a paginated list of models for the admin panel.
+
+Optional query params:
+- `providerId`
+- `slug`
+- `isActive=true|false`
+- `page`
+- `pageSize`
+
+Examples:
+
+```txt
+GET /admin/models
+GET /admin/models?isActive=true
+GET /admin/models?slug=gpt-4o
+GET /admin/models?providerId=cm_provider_123&page=1&pageSize=20
+```
+
+Response shape:
+
+```json
+{
+  "status": true,
+  "data": {
+    "currentPage": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPreviousPage": false,
+    "data": [
+      {
+        "id": "cm_model_123",
+        "providerId": "cm_provider_123",
+        "slug": "gpt-4o",
+        "displayName": "GPT-4o",
+        "description": "General-purpose OpenAI model",
+        "contextLength": 128000,
+        "maxOutputTokens": 16384,
+        "tokenizer": "cl100k_base",
+        "inputPricePerToken": "0.00000500",
+        "outputPricePerToken": "0.00001500",
+        "cacheWritePricePerToken": null,
+        "cacheReadPricePerToken": null,
+        "inputModalities": ["text"],
+        "outputModalities": ["text"],
+        "supportedParameters": ["temperature", "max_tokens", "stream"],
+        "defaultForCapabilities": ["chat"],
+        "isActive": true,
+        "createdAt": "2026-06-10T10:00:00.000Z",
+        "updatedAt": "2026-06-10T10:00:00.000Z",
+        "provider": {
+          "id": "cm_provider_123",
+          "slug": "openai",
+          "displayName": "OpenAI",
+          "isActive": true
+        }
+      }
+    ]
+  },
+  "message": "Admin models fetched successfully"
+}
+```
+
+Notes:
+- default `page` is `1`
+- default `pageSize` is `10`
+- max `pageSize` is `100`
+
+### GET `/admin/models/:id`
+
+Get a single model by id for the admin panel.
+
+Example:
+
+```txt
+GET /admin/models/cm_model_123
+```
+
+### POST `/admin/models`
+
+Create a model.
+
+Payload:
+
+```json
+{
+  "providerId": "cm_provider_123",
+  "slug": "gpt-4o",
+  "displayName": "GPT-4o",
+  "description": "General-purpose OpenAI model",
+  "contextLength": 128000,
+  "maxOutputTokens": 16384,
+  "tokenizer": "cl100k_base",
+  "inputPricePerToken": "0.00000500",
+  "outputPricePerToken": "0.00001500",
+  "cacheWritePricePerToken": "0.00000100",
+  "cacheReadPricePerToken": "0.00000050",
+  "inputModalities": ["text"],
+  "outputModalities": ["text"],
+  "supportedParameters": ["temperature", "max_tokens", "stream"],
+  "defaultForCapabilities": ["chat"],
+  "isActive": true
+}
+```
+
+Required:
+- `providerId`
+- `slug`
+
+Notes:
+- `displayName` is optional
+- `description` is optional
+- `inputModalities` defaults to `["text"]`
+- `outputModalities` defaults to `["text"]`
+- `supportedParameters` defaults to `[]`
+- `defaultForCapabilities` defaults to `[]`
+- `isActive` defaults to `true`
+- duplicate slugs return conflict error
+
+### PATCH `/admin/models/:id`
+
+Update a model.
+
+Payload example:
+
+```json
+{
+  "displayName": "GPT-4o Latest",
+  "description": "Updated model description",
+  "maxOutputTokens": 32768,
+  "inputPricePerToken": "0.00000600",
+  "outputPricePerToken": "0.00001600",
+  "supportedParameters": ["temperature", "max_tokens", "stream", "top_p"],
+  "isActive": true
+}
+```
+
+Notes:
+- at least one field is required
+- `displayName`, `description`, `contextLength`, `maxOutputTokens`, `tokenizer`, and price fields can be sent as `null` to clear them
+- duplicate slugs return conflict error
+
+### DELETE `/admin/models/:id`
+
+Soft delete a model.
+
+Notes:
+- sets `isDeleted=true`
+- sets `deletedAt` to the deletion time
+- sets `isActive=false`
+
+---
+
+
+## 10. Admin Revenue APIs
 
 Auth:
 
@@ -1598,7 +1773,7 @@ Notes:
 
 ---
 
-## 10. Admin Overview API
+## 11. Admin Overview API
 
 Auth:
 
@@ -1779,7 +1954,7 @@ Recommended dashboard mapping:
 
 ---
 
-## 11. Admin Activity APIs
+## 12. Admin Activity APIs
 
 Auth:
 
@@ -2117,7 +2292,7 @@ Notes:
 
 ---
 
-## 11. Providers APIs
+## 13. Providers APIs
 
 Auth:
 
@@ -2173,7 +2348,7 @@ Soft delete provider.
 
 ---
 
-## 12. Chat Completions API
+## 14. Chat Completions API
 
 This is the main AI generation endpoint.
 
@@ -2273,7 +2448,7 @@ data: [DONE]
 
 ---
 
-## 13. Root / Health
+## 15. Root / Health
 
 ### GET `/`
 

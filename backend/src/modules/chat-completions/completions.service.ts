@@ -236,7 +236,7 @@ const hasMeaningfulStreamOutput = (accumulator: StreamAccumulator) =>
   Boolean(accumulator.content?.trim()) || (accumulator.usage?.completionTokens ?? 0) > 0;
 
 export class CompletionsService {
-  async execute(input: ExecuteCompletionInput): Promise<OpenAICompatibleChatCompletionResponse> {
+  async executeDetailed(input: ExecuteCompletionInput): Promise<ExecuteCompletionResult> {
     const modelRecord = await resolveModelRecord(input.body.model);
     const providerRequest = buildProviderRequest(input, modelRecord);
 
@@ -261,7 +261,7 @@ export class CompletionsService {
       throw error;
     }
 
-    await inferenceTrackingService.completeRequest({
+    const completionResult = await inferenceTrackingService.completeRequest({
       inferenceRequestId: inferenceRequest.id,
       userId: input.context.user.id,
       promptTokens: providerResponse.usage.promptTokens,
@@ -277,7 +277,17 @@ export class CompletionsService {
       walletDeductionDescription: "AI Model Usage",
     });
 
-    return mapToOpenAICompatibleResponse(input.body.model, providerResponse);
+    return {
+      inferenceRequestId: inferenceRequest.id,
+      billing: completionResult.billing,
+      providerResponse,
+      response: mapToOpenAICompatibleResponse(input.body.model, providerResponse),
+    };
+  }
+
+  async execute(input: ExecuteCompletionInput): Promise<OpenAICompatibleChatCompletionResponse> {
+    const result = await this.executeDetailed(input);
+    return result.response;
   }
 
   async executeStream(

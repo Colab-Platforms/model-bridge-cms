@@ -2,6 +2,7 @@
   
 import type { Server } from "http";
 import prisma from "@root/prisma.js";
+import { disconnectRedis } from "../shared/redis/index.js";
 
 export function configureServerTimeouts(server: Server) {
   server.keepAliveTimeout = Number(process.env.KEEP_ALIVE_TIMEOUT_MS ?? 65000);
@@ -19,7 +20,7 @@ export function registerServerLifecycle(server: Server) {
 
     server.close(async () => {
       try {
-        await prisma.$disconnect();
+        await Promise.allSettled([prisma.$disconnect(), disconnectRedis()]);
         console.log("[Server] Graceful shutdown complete.");
         process.exit(0);
       } catch (error) {

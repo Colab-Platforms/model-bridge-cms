@@ -21,7 +21,7 @@ type ChatMessage = {
 };
 
 type ModalitiesRequestBody = {
-  model?: string;
+  models: string[];
   messages?: ChatMessage[];
   modalities?: string[];
 };
@@ -68,6 +68,10 @@ const getRequestedInputModalities = (body: ModalitiesRequestBody) => {
   return ["text"];
 };
 
+const getRequestedModelSlugs = (body: ModalitiesRequestBody) => {
+  return body.models;
+};
+
 export const validateRequestedModalities = async (
   req: Request,
   res: Response,
@@ -75,8 +79,9 @@ export const validateRequestedModalities = async (
 ) => {
   try {
     const body = req.body as ModalitiesRequestBody;
+    const requestedModels = getRequestedModelSlugs(body);
 
-    if (!body.model) {
+    if (requestedModels.length === 0) {
       return sendResponse(
         res,
         false,
@@ -89,9 +94,9 @@ export const validateRequestedModalities = async (
     const requestedInputModalities = getRequestedInputModalities(body);
     const requestedOutputModalities = getRequestedOutputModalities(body);
 
-    const modelRecord = await prisma.model.findFirst({
+    const modelRecords = await prisma.model.findMany({
       where: {
-        slug: body.model,
+        slug: { in: Array.from(new Set(requestedModels)) },
         isDeleted: false,
         isActive: true,
       },
@@ -102,41 +107,54 @@ export const validateRequestedModalities = async (
       },
     });
 
-    if (!modelRecord) {
+    const modelMap = new Map(modelRecords.map((modelRecord) => [modelRecord.slug, modelRecord]));
+    const missingModels = requestedModels.filter((model) => !modelMap.has(model));
+
+    if (missingModels.length > 0) {
       return sendResponse(
         res,
         false,
-        null,
+        missingModels.length === 1 && requestedModels.length === 1
+          ? null
+          : { missingModels },
         "Requested model not found",
         STATUS_CODES.NOT_FOUND
       );
     }
 
-    const supportedInputModalities = modelRecord.inputModalities.map(normalizeModality);
-    const supportedOutputModalities = modelRecord.outputModalities.map(normalizeModality);
-    const unsupportedInputModalities = requestedInputModalities.filter(
-      (modality) => !supportedInputModalities.includes(normalizeModality(modality))
-    );
-    const unsupportedOutputModalities = requestedOutputModalities.filter(
-      (modality) => !supportedOutputModalities.includes(normalizeModality(modality))
-    );
+    for (const requestedModel of requestedModels) {
+      const modelRecord = modelMap.get(requestedModel);
 
-    if (unsupportedInputModalities.length > 0 || unsupportedOutputModalities.length > 0) {
-      return sendResponse(
-        res,
-        false,
-        {
-          model: modelRecord.slug,
-          requestedInputModalities,
-          supportedInputModalities: modelRecord.inputModalities,
-          unsupportedInputModalities,
-          requestedOutputModalities,
-          supportedOutputModalities: modelRecord.outputModalities,
-          unsupportedOutputModalities,
-        },
-        "Requested input or output modalities are not supported by the selected model",
-        STATUS_CODES.BAD_REQUEST
+      if (!modelRecord) {
+        continue;
+      }
+
+      const supportedInputModalities = modelRecord.inputModalities.map(normalizeModality);
+      const supportedOutputModalities = modelRecord.outputModalities.map(normalizeModality);
+      const unsupportedInputModalities = requestedInputModalities.filter(
+        (modality) => !supportedInputModalities.includes(normalizeModality(modality))
       );
+      const unsupportedOutputModalities = requestedOutputModalities.filter(
+        (modality) => !supportedOutputModalities.includes(normalizeModality(modality))
+      );
+
+      if (unsupportedInputModalities.length > 0 || unsupportedOutputModalities.length > 0) {
+        return sendResponse(
+          res,
+          false,
+          {
+            model: modelRecord.slug,
+            requestedInputModalities,
+            supportedInputModalities: modelRecord.inputModalities,
+            unsupportedInputModalities,
+            requestedOutputModalities,
+            supportedOutputModalities: modelRecord.outputModalities,
+            unsupportedOutputModalities,
+          },
+          "Requested input or output modalities are not supported by the selected model",
+          STATUS_CODES.BAD_REQUEST
+        );
+      }
     }
 
     return next();

@@ -27,7 +27,7 @@ type ChatCompletionMessage = {
 };
 
 type ApiKeyLimitedRequestBody = {
-  model?: string;
+  models: string[];
   messages?: ChatCompletionMessage[];
   max_tokens?: number;
 };
@@ -66,18 +66,25 @@ const extractPromptText = (messages: ChatCompletionMessage[] = []) =>
     .filter(Boolean)
     .join(" ");
 
+const getRequestedModels = (body: ApiKeyLimitedRequestBody) => {
+  return body.models;
+};
+
 const estimateRequestCost = async (body: ApiKeyLimitedRequestBody) => {
-  if (!body.model) {
+  const requestedModels = getRequestedModels(body);
+
+  if (requestedModels.length === 0) {
     return 0;
   }
 
-  const modelRecord = await prisma.model.findFirst({
+  const modelRecords = await prisma.model.findMany({
     where: {
-      slug: body.model,
+      slug: { in: Array.from(new Set(requestedModels)) },
       isDeleted: false,
       isActive: true,
     },
     select: {
+      slug: true,
       isFreeModel: true,
       inputPricePerToken: true,
       outputPricePerToken: true,
@@ -85,25 +92,35 @@ const estimateRequestCost = async (body: ApiKeyLimitedRequestBody) => {
     },
   });
 
-  if (!modelRecord || modelRecord.isFreeModel) {
-    return 0;
-  }
+  const modelMap = new Map(modelRecords.map((modelRecord) => [modelRecord.slug, modelRecord]));
 
   const promptText = extractPromptText(body.messages ?? []);
   const estimatedPromptTokens = Math.ceil(promptText.length / AVG_CHARS_PER_TOKEN);
-  const requestedMaxTokens =
-    typeof body.max_tokens === "number"
-      ? body.max_tokens
-      : modelRecord.maxOutputTokens ?? 0;
+  let totalEstimatedRequestCost = 0;
 
-  const estimatedInputCost =
-    estimatedPromptTokens * Number(modelRecord.inputPricePerToken ?? 0);
-  const estimatedOutputCost =
-    requestedMaxTokens * Number(modelRecord.outputPricePerToken ?? 0);
-  const estimatedProviderCost = estimatedInputCost + estimatedOutputCost;
-  const platformFee = (estimatedProviderCost * PLATFORM_FEE_PERCENT) / 100;
+  for (const requestedModel of requestedModels) {
+    const modelRecord = modelMap.get(requestedModel);
 
-  return Number((estimatedProviderCost + platformFee).toFixed(8));
+    if (!modelRecord || modelRecord.isFreeModel) {
+      continue;
+    }
+
+    const requestedMaxTokens =
+      typeof body.max_tokens === "number"
+        ? body.max_tokens
+        : modelRecord.maxOutputTokens ?? 0;
+
+    const estimatedInputCost =
+      estimatedPromptTokens * Number(modelRecord.inputPricePerToken ?? 0);
+    const estimatedOutputCost =
+      requestedMaxTokens * Number(modelRecord.outputPricePerToken ?? 0);
+    const estimatedProviderCost = estimatedInputCost + estimatedOutputCost;
+    const platformFee = (estimatedProviderCost * PLATFORM_FEE_PERCENT) / 100;
+
+    totalEstimatedRequestCost += estimatedProviderCost + platformFee;
+  }
+
+  return Number(totalEstimatedRequestCost.toFixed(8));
 };
 
 export const apiKeyAuth = async (
@@ -234,7 +251,7 @@ export const apiKeyAuth = async (
       );
     }
 
-    if (apiKeyRecord.creditLimit !== null && apiKeyRecord.limitType) {
+    if (apiKeyRecord.creditLimit !== null && apiKeyRecord.limitType) { 
       const windowStart = getLimitWindowStart(apiKeyRecord.limitType);
 
       if (windowStart) {

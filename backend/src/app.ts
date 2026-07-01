@@ -12,10 +12,20 @@ import routes from "./routes.js";
 import sanitizeMiddleware from "./shared/middlewares/sanitize.js";
 import { errorHandler } from "./shared/middlewares/errorHandler.js";
 import { notFoundHandler } from "./shared/middlewares/notFoundHandler.js";
+import { globalAppRateLimiter } from "./shared/middlewares/rateLimit.js";
 
 dotenv.config();
 
 const app = express();
+const trustProxy = process.env.TRUST_PROXY?.trim().toLowerCase();
+
+if (trustProxy === "false") {
+  app.set("trust proxy", false);
+} else if (trustProxy && /^\d+$/.test(trustProxy)) {
+  app.set("trust proxy", Number(trustProxy));
+} else {
+  app.set("trust proxy", 1);
+}
 
 app.use(cors());
 app.use(helmet());
@@ -32,7 +42,7 @@ app.use(sanitizeMiddleware);
 // }));
 
 app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
-app.use("/api/v1", routes);
+app.use("/api/v1", globalAppRateLimiter, routes);
 app.use("/health", (_req: Request, res: Response) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });

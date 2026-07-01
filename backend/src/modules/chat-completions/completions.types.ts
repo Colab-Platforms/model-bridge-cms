@@ -8,9 +8,39 @@ import type {
   ProviderContentPart,
   ProviderUsage,
 } from "../providers/adapters/base/provider.types.js";
+import type { BillingResult } from "../../services/inference-tracking.service.js";
 import { chatCompletionsSchema } from "./completions.validators.js";
 
 export type ChatCompletionsInput = z.infer<typeof chatCompletionsSchema>;
+
+export type SingleModelChatCompletionsInput = Omit<ChatCompletionsInput, "models"> & {
+  model: string;
+};
+
+export interface CreditCheckEstimate {
+  requestedModels: string[];
+  estimatedPromptTokens: number;
+  maxOutputTokens: number;
+  estimatedInputCost: number;
+  estimatedOutputCost: number;
+  platformFee: number;
+  platformMarkupPercent: number;
+  totalEstimatedCost: number;
+  isFreeModel: boolean;
+  modelEstimates?: Record<
+    string,
+    {
+      estimatedPromptTokens: number;
+      maxOutputTokens: number;
+      estimatedInputCost: number;
+      estimatedOutputCost: number;
+      platformFee: number;
+      platformMarkupPercent: number;
+      totalEstimatedCost: number;
+      isFreeModel: boolean;
+    }
+  >;
+}
 
 export interface ApiKeyRequestContext {
   apiKey: {
@@ -25,16 +55,7 @@ export interface ApiKeyRequestContext {
     id: string;
     email?: string;
   };
-  creditCheck: {
-    estimatedPromptTokens: number;
-    maxOutputTokens: number;
-    estimatedInputCost: number;
-    estimatedOutputCost: number;
-    platformFee: number;
-    platformMarkupPercent: number;
-    totalEstimatedCost: number;
-    isFreeModel: boolean;
-  };
+  creditCheck: CreditCheckEstimate;
 }
 
 export type ChatCompletionsRequest = Request<
@@ -58,7 +79,7 @@ export interface ResolvedModelRecord {
 }
 
 export interface ExecuteCompletionInput {
-  body: ChatCompletionsInput;
+  body: SingleModelChatCompletionsInput;
   context: ApiKeyRequestContext;
 }
 
@@ -109,8 +130,47 @@ export interface OpenAICompatibleChatCompletionChunk {
 }
 
 export interface ExecuteCompletionResult {
+  inferenceRequestId: string;
+  billing: BillingResult;
   providerResponse: ProviderChatResponse;
   response: OpenAICompatibleChatCompletionResponse;
+}
+
+export type MultiModelExecutionStatus = "success" | "failed" | "timeout";
+
+export interface MultiModelChatCompletionError {
+  code: string;
+  message: string;
+  statusCode?: number;
+}
+
+export interface MultiModelChatCompletionResult {
+  model: string;
+  status: MultiModelExecutionStatus;
+  attempts: number;
+  inferenceRequestId?: string;
+  latencyMs?: number;
+  response?: OpenAICompatibleChatCompletionResponse;
+  content?: string | ProviderContentPart[];
+  usage?: OpenAICompatibleChatCompletionResponse["usage"];
+  finish_reason?: string | null;
+  billing?: BillingResult;
+  error?: MultiModelChatCompletionError;
+}
+
+export interface MultiModelChatCompletionResponse {
+  id: string;
+  object: "chat.completion.group";
+  created: number;
+  results: MultiModelChatCompletionResult[];
+  summary: {
+    totalModels: number;
+    successfulModels: number;
+    failedModels: number;
+    timedOutModels: number;
+    usage: OpenAICompatibleChatCompletionResponse["usage"];
+    billing: BillingResult;
+  };
 }
 
 export interface StreamAccumulator {
