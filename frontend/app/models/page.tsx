@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { LayoutGrid, List, SearchX } from "lucide-react";
+import { LayoutGrid, List, SearchX, BrainCircuit } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { useModels } from "@/hooks/useModels";
@@ -333,10 +333,18 @@ function ModelsContent() {
                     return (
                       <TableRow key={model.id}>
                         <TableCell>
-                          <p className="font-medium">{model.displayName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {model.provider.displayName}
-                          </p>
+                          <div className="flex items-center gap-2.5">
+                            <div className="size-8 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                              {model.provider.providerLogo
+                                ? <img src={model.provider.providerLogo} alt={model.provider.displayName} className="size-full object-contain p-1" />
+                                : <BrainCircuit className="size-4 text-muted-foreground" />
+                              }
+                            </div>
+                            <div>
+                              <p className="font-medium">{model.displayName}</p>
+                              <p className="text-xs text-muted-foreground">{model.provider.displayName}</p>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
