@@ -38,20 +38,48 @@ export function OverviewTab({ model }: OverviewTabProps) {
         <CardHeader>
           <CardTitle>Capabilities</CardTitle>
         </CardHeader>
-        <CardContent className="px-5 pb-5 pt-0">
-          {model.defaultForCapabilities.map((cap, i) => (
-            <div key={cap}>
-              {i > 0 && <Separator className="my-3" />}
-              <div className="flex items-start gap-4">
-                <Badge className={cn("mt-0.5 shrink-0 text-xs", CAPABILITY_COLORS[cap])}>
-                  {CAPABILITY_LABELS[cap]}
-                </Badge>
-                <p className="text-sm text-muted-foreground">
-                  {CAPABILITY_DESCRIPTIONS[cap]}
-                </p>
-              </div>
+        <CardContent className="px-5 pb-5 pt-0 flex flex-col gap-4">
+          {/* Capability badges + descriptions */}
+          {model.defaultForCapabilities.length > 0 && (
+            <div className="flex flex-col gap-0">
+              {model.defaultForCapabilities.map((cap, i) => (
+                <div key={cap}>
+                  {i > 0 && <Separator className="my-3" />}
+                  <div className="flex items-start gap-4">
+                    <Badge className={cn("mt-0.5 shrink-0 text-xs font-medium", CAPABILITY_COLORS[cap])}>
+                      {CAPABILITY_LABELS[cap]}
+                    </Badge>
+                    <p className="text-sm text-muted-foreground">
+                      {CAPABILITY_DESCRIPTIONS[cap]}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* Modality badges — same style as the models list page */}
+          <div className="flex flex-col gap-2.5">
+            {model.defaultForCapabilities.length === 0 && (
+              <p className="text-sm text-muted-foreground">No specific capabilities listed for this model.</p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground min-w-[36px]">In</span>
+              {model.inputModalities.length > 0 ? model.inputModalities.map((m) => (
+                <Badge key={m} className={cn("text-xs font-medium shadow-sm", MODALITY_COLORS[m] ?? "bg-muted text-muted-foreground")}>
+                  {MODALITY_LABELS[m] ?? m}
+                </Badge>
+              )) : <span className="text-sm text-muted-foreground">—</span>}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground min-w-[36px]">Out</span>
+              {model.outputModalities.length > 0 ? model.outputModalities.map((m) => (
+                <Badge key={m} className={cn("text-xs font-medium shadow-sm", MODALITY_COLORS[m] ?? "bg-muted text-muted-foreground")}>
+                  {MODALITY_LABELS[m] ?? m}
+                </Badge>
+              )) : <span className="text-sm text-muted-foreground">—</span>}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -91,7 +119,7 @@ export function OverviewTab({ model }: OverviewTabProps) {
             <dt className="text-muted-foreground">Input modalities</dt>
             <dd className="flex flex-wrap gap-1">
               {model.inputModalities.length > 0 ? model.inputModalities.map((m) => (
-                <Badge key={m} className={cn("text-xs", MODALITY_COLORS[m] ?? "bg-muted text-muted-foreground")}>
+                <Badge key={m} className={cn("text-xs font-medium", MODALITY_COLORS[m] ?? "bg-muted text-muted-foreground")}>
                   {MODALITY_LABELS[m] ?? m}
                 </Badge>
               )) : <span className="text-muted-foreground">—</span>}
@@ -100,7 +128,7 @@ export function OverviewTab({ model }: OverviewTabProps) {
             <dt className="text-muted-foreground">Output modalities</dt>
             <dd className="flex flex-wrap gap-1">
               {model.outputModalities.length > 0 ? model.outputModalities.map((m) => (
-                <Badge key={m} className={cn("text-xs", MODALITY_COLORS[m] ?? "bg-muted text-muted-foreground")}>
+                <Badge key={m} className={cn("text-xs font-medium", MODALITY_COLORS[m] ?? "bg-muted text-muted-foreground")}>
                   {MODALITY_LABELS[m] ?? m}
                 </Badge>
               )) : <span className="text-muted-foreground">—</span>}

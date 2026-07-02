@@ -26,12 +26,12 @@ interface NavItem {
   items?: { title: string; url: string }[]
 }
 
-export function NavMain({ items }: { items: NavItem[] }) {
+export function NavMain({ items, label = "Platform" }: { items: NavItem[]; label?: string }) {
   const pathname = usePathname()
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           const hasChildren = !!item.items?.length

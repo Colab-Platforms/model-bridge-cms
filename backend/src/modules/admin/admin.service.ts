@@ -134,6 +134,7 @@ const adminModelSelect = {
       id: true,
       slug: true,
       displayName: true,
+      providerLogo: true,
       isActive: true,
     },
   },
