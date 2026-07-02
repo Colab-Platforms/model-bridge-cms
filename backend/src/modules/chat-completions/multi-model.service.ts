@@ -43,6 +43,9 @@ const toSingleModelBody = (
   stream: body.stream ?? false,
 });
 
+const getRequestedModels = (body: ChatCompletionsInput) =>
+  Array.isArray(body.model) ? body.model : [body.model];
+
 const resolveModelCreditCheck = (creditCheck: CreditCheckEstimate, model: string): CreditCheckEstimate => {
   const modelEstimate = creditCheck.modelEstimates?.[model];
 
@@ -239,7 +242,7 @@ export class MultiModelCompletionsService {
     body: ChatCompletionsInput;
     context: ExecuteCompletionInput["context"];
   }): Promise<MultiModelChatCompletionResponse> {
-    const models = input.body.models ?? [];
+    const models = getRequestedModels(input.body);
 
     const settledResults = await Promise.allSettled(
       models.map((model) =>

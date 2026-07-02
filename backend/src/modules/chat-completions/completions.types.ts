@@ -13,7 +13,7 @@ import { chatCompletionsSchema } from "./completions.validators.js";
 
 export type ChatCompletionsInput = z.infer<typeof chatCompletionsSchema>;
 
-export type SingleModelChatCompletionsInput = Omit<ChatCompletionsInput, "models"> & {
+export type SingleModelChatCompletionsInput = Omit<ChatCompletionsInput, "model"> & {
   model: string;
 };
 

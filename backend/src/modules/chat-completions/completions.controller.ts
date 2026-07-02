@@ -7,10 +7,13 @@ import type {
   SingleModelChatCompletionsInput,
 } from "./completions.types.js";
 
+const getRequestedModels = (body: ChatCompletionsRequest["body"]) =>
+  Array.isArray(body.model) ? body.model : [body.model];
+
 const toSingleModelBody = (
   body: ChatCompletionsRequest["body"]
 ): SingleModelChatCompletionsInput => ({
-  model: body.models[0] as string,
+  model: getRequestedModels(body)[0] as string,
   messages: body.messages,
   ...(body.modalities !== undefined ? { modalities: body.modalities } : {}),
   ...(body.temperature !== undefined ? { temperature: body.temperature } : {}),
@@ -20,7 +23,8 @@ const toSingleModelBody = (
 
 export const chatCompletionsController = async (req: Request, res: Response) => {
   const typedRequest = req as ChatCompletionsRequest;
-  const isMultiModelRequest = typedRequest.body.models.length > 1;
+  const requestedModels = getRequestedModels(typedRequest.body);
+  const isMultiModelRequest = requestedModels.length > 1;
 
   if (isMultiModelRequest && typedRequest.body.stream) {
     return res.status(501).json({

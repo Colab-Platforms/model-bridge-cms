@@ -26,7 +26,7 @@ type ChatCompletionMessage = {
 };
 
 type CreditCheckRequestBody = {
-  models: string[];
+  model: string | string[];
   messages?: ChatCompletionMessage[];
   max_tokens?: number;
 };
@@ -34,7 +34,7 @@ type CreditCheckRequestBody = {
 const roundCurrency = (value: number) => Number(value.toFixed(8));
 
 const getRequestedModels = (body: CreditCheckRequestBody) => {
-  return body.models;
+  return Array.isArray(body.model) ? body.model : [body.model];
 };
 
 const extractPromptText = (messages: ChatCompletionMessage[] = []) =>

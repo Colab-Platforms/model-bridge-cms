@@ -27,7 +27,7 @@ type ChatCompletionMessage = {
 };
 
 type ApiKeyLimitedRequestBody = {
-  models: string[];
+  model: string | string[];
   messages?: ChatCompletionMessage[];
   max_tokens?: number;
 };
@@ -67,7 +67,7 @@ const extractPromptText = (messages: ChatCompletionMessage[] = []) =>
     .join(" ");
 
 const getRequestedModels = (body: ApiKeyLimitedRequestBody) => {
-  return body.models;
+  return Array.isArray(body.model) ? body.model : [body.model];
 };
 
 const estimateRequestCost = async (body: ApiKeyLimitedRequestBody) => {

@@ -21,7 +21,7 @@ type ChatMessage = {
 };
 
 type ModalitiesRequestBody = {
-  models: string[];
+  model: string | string[];
   messages?: ChatMessage[];
   modalities?: string[];
 };
@@ -69,7 +69,7 @@ const getRequestedInputModalities = (body: ModalitiesRequestBody) => {
 };
 
 const getRequestedModelSlugs = (body: ModalitiesRequestBody) => {
-  return body.models;
+  return Array.isArray(body.model) ? body.model : [body.model];
 };
 
 export const validateRequestedModalities = async (

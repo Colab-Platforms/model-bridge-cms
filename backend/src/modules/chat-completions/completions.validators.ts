@@ -14,6 +14,9 @@ const parseMaxModelsPerRequest = () => {
 
 const MAX_MODELS_PER_REQUEST = parseMaxModelsPerRequest();
 
+const modelListSchema = z.array(z.string().trim().min(1)).min(1).max(MAX_MODELS_PER_REQUEST);
+const modelFieldSchema = z.union([z.string().trim().min(1), modelListSchema]);
+
 const contentPartSchema = z.union([
   z.object({
     type: z.literal("text"),
@@ -44,13 +47,14 @@ const chatMessageSchema = z.object({
   toolCallId: z.string().trim().min(1).optional(),
 });
 
-export const chatCompletionsSchema = z.object({
-  models: z.array(z.string().trim().min(1)).min(1).max(MAX_MODELS_PER_REQUEST),
-  messages: z.array(chatMessageSchema).min(1),
-  modalities: z.array(z.string().trim().min(1)).optional(),
-  temperature: z.number().min(0).max(2).optional(),
-  max_tokens: z.number().int().positive().optional(),
-  stream: z.boolean().optional().default(false),
-});
+export const chatCompletionsSchema = z
+  .object({
+    model: modelFieldSchema,
+    messages: z.array(chatMessageSchema).min(1),
+    modalities: z.array(z.string().trim().min(1)).optional(),
+    temperature: z.number().min(0).max(2).optional(),
+    max_tokens: z.number().int().positive().optional(),
+    stream: z.boolean().optional().default(false),
+  });
 
 export const chatCompletionsValidator = validateBody(chatCompletionsSchema);
