@@ -34,6 +34,9 @@ const ROUTE_LABELS: Record<string, string> = {
   credits: "Credits & Wallet",
   projects: "Projects",
   settings: "Settings",
+  profile: "Profile",
+  privacy: "Privacy",
+  preferences: "Preferences",
 };
 
 function useBreadcrumbs() {

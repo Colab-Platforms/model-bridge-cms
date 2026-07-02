@@ -143,7 +143,7 @@ export function FilterSidebar({
   }
 
   return (
-    <div className="sticky top-4 space-y-6">
+    <div className="sticky top-4 space-y-5">
       {/* Clear all — rendered at the top when any filter is active */}
       {hasActiveFilters && (
         <Button
