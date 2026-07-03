@@ -14,6 +14,7 @@ import { CACHE_KEYS, CACHE_TTL } from "../../shared/constants/cacheKeys.js";
 const modelSelect = {
   id: true,
   providerId: true,
+  providerModelId: true,
   slug: true,
   displayName: true,
   description: true,
