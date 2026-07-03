@@ -3,7 +3,7 @@ import HeroSection from "@/components/landingPage/HeroSection";
 import TrustSection from "@/components/landingPage/TrustSection";
 import FeaturesSection from "@/components/landingPage/FeaturesSection";
 import DeveloperSection from "@/components/landingPage/DeveloperSection";
-import PricingSection from "@/components/landingPage/PricingSection";
+import PricingSection from "@/components/pricing/PricingSection";
 import Footer from "@/components/landingPage/Footer";
 
 export default function Home() {

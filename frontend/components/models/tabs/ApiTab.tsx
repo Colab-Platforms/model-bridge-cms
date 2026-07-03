@@ -4,17 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Copy } from "lucide-react";
+import { Highlight, themes } from "prism-react-renderer";
 import { cn } from "@/lib/utils";
 import type { Model } from "@/types/index";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
 
 interface ApiTabProps {
   model: Model;
@@ -68,30 +62,50 @@ for await (const chunk of stream) {
 function CodeBlock({
   label,
   snippet,
+  language,
 }: {
   label: string;
   snippet: string;
+  language: "typescript" | "javascript";
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <Badge variant="secondary">{label}</Badge>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5"
-          onClick={() => {
-            navigator.clipboard.writeText(snippet);
-            toast.success("Copied to clipboard");
-          }}
-        >
-          <Copy className="size-3.5" />
-          Copy
-        </Button>
+      <Badge variant="secondary" className="w-fit">{label}</Badge>
+      <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-sky-400">
+            {language}
+          </span>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-white"
+            onClick={() => {
+              navigator.clipboard.writeText(snippet);
+              toast.success("Copied to clipboard");
+            }}
+          >
+            <Copy className="size-3.5" />
+            Copy
+          </button>
+        </div>
+        <Highlight code={snippet} language={language} theme={themes.oneDark}>
+          {({ className, tokens, getLineProps, getTokenProps }) => (
+            <pre className={cn(className, "overflow-x-auto bg-transparent! p-4 text-sm leading-relaxed")}>
+              {tokens.map((line, i) => {
+                const { key: lineKey, ...lineProps } = getLineProps({ line });
+                return (
+                  <div key={i} {...lineProps}>
+                    {line.map((token, tokenIndex) => {
+                      const { key: tokenKey, ...tokenProps } = getTokenProps({ token });
+                      return <span key={tokenIndex} {...tokenProps} />;
+                    })}
+                  </div>
+                );
+              })}
+            </pre>
+          )}
+        </Highlight>
       </div>
-      <pre className="overflow-x-auto rounded-lg bg-muted p-4 text-sm">
-        <code>{snippet}</code>
-      </pre>
     </div>
   );
 }
@@ -142,8 +156,8 @@ export function ApiTab({ model, apiKeyPrefix }: ApiTabProps) {
 
       {/* Code blocks */}
       <div className="flex flex-col gap-6">
-        <CodeBlock label="Standard" snippet={standardSnippet} />
-        <CodeBlock label="Streaming" snippet={streamingSnippet} />
+        <CodeBlock label="Standard" snippet={standardSnippet} language={language} />
+        <CodeBlock label="Streaming" snippet={streamingSnippet} language={language} />
       </div>
 
       {/* Footer note */}
