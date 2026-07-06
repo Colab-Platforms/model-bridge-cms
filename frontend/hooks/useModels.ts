@@ -24,6 +24,44 @@ function normalizePaginatedResponse(raw: PaginatedModels | Model[]): PaginatedMo
   return { ...raw, data: raw.data.map(normalizeModel) };
 }
 
+// Matches the backend's validator cap (models.validators.ts: pageSize.max(100)) — the
+// largest page we're allowed to request per call.
+const MAX_PAGE_SIZE = 100;
+
+// The public /models endpoint has no "list distinct providers" mode, and the real
+// complete provider list (GET /providers) is admin-only. So to populate the filter
+// sidebar with every provider (not just whichever ones show up in a capped sample),
+// we page through the entire model catalog ourselves and derive providers client-side.
+export function useAllModelsForFilters(options: { staleTime?: number } = {}) {
+  const { data, isLoading, isError, error, refetch } = useQuery<Model[]>({
+    queryKey: ["models", "all-for-filters"],
+    queryFn: async () => {
+      const firstQs = buildModelsQueryString({ page: 1, pageSize: MAX_PAGE_SIZE });
+      const first = normalizePaginatedResponse(
+        (await api.get<PaginatedModels | Model[]>(`/models?${firstQs}`)).data
+      );
+
+      const totalPages = first.totalPages ?? 1;
+      if (totalPages <= 1) return first.data;
+
+      const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+      const rest = await Promise.all(
+        remainingPages.map((page) => {
+          const qs = buildModelsQueryString({ page, pageSize: MAX_PAGE_SIZE });
+          return api
+            .get<PaginatedModels | Model[]>(`/models?${qs}`)
+            .then((r) => normalizePaginatedResponse(r.data).data);
+        })
+      );
+
+      return [first.data, ...rest].flat();
+    },
+    staleTime: options.staleTime ?? 30 * 60 * 1000,
+  });
+
+  return { models: data, isLoading, isError, error, refetch };
+}
+
 export function useModels(filters: ModelFilters, options: { staleTime?: number; enabled?: boolean } = {}) {
   const qs = buildModelsQueryString(filters);
   const url = qs ? `/models?${qs}` : "/models";

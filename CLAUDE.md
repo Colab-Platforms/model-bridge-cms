@@ -117,7 +117,8 @@ model-bridge-cms/
     │   ├── charts/             # DailySpendChart, ModelPieChart, chart-area-interactive
     │   ├── forms/              # login-form, signup-form, keys/ (CreateKeyModal, EditKeyModal, OneTimeKeyDisplay)
     │   ├── shared/             # Navbar, data-table, section-cards
-    │   └── landingPage/        # HeroSection
+    │   ├── landingPage/        # HeroSection, TrustSection, FeaturesSection, DeveloperSection, Footer
+    │   └── pricing/            # PricingSection (3-tier: Free / Pay As You Go / Scale)
     ├── lib/
     │   ├── api.ts              # Axios instance with JWT interceptors
     │   ├── queryClient.ts      # React Query config (1min stale, 1 retry)
@@ -177,6 +178,7 @@ Every module has been created with these 5 files:
 **Landing page (`/`):**
 - Navbar with logo, search, nav links, sign-up CTA, user avatar (when logged in)
 - HeroSection: headline "The Unified Interface For LLMs", tagline, two CTA buttons, stats grid (100T tokens, 8M+ users, 60+ providers, 400+ models)
+- PricingSection (`components/pricing/PricingSection.tsx`): 3-tier pricing (Free / Pay As You Go / Scale) driven by a typed tier data array, built from shadcn `Card`/`Button` and theme tokens (`bg-primary`, `bg-foreground`/`text-background` for the inverted featured card) so it respects light/dark mode. Replaces the old usage-estimator-style `components/landingPage/PricingSection.tsx` (removed).
 
 **Auth pages:**
 - `/auth/login` — 2-column layout with LoginForm (email, password, forgot password, GitHub OAuth button, sign-up link)

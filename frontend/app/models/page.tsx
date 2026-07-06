@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { LayoutGrid, List, SearchX, BrainCircuit } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
-import { useModels } from "@/hooks/useModels";
+import { useModels, useAllModelsForFilters } from "@/hooks/useModels";
 import type { ModelFilters, CapabilityType } from "@/types/index";
 import { FilterSidebar } from "@/components/models/FilterSidebar";
 import { ModelCard } from "@/components/models/ModelCard";
@@ -133,13 +133,12 @@ function ModelsContent() {
     sort: (searchParams.get("sort") as ModelFilters["sort"]) ?? undefined,
   };
 
-  // Metadata query: all models without active filters, for sidebar provider list and price ranges.
-  // Uses a high limit so all providers/prices are always visible regardless of what page you're on.
+  // Metadata query: every model in the catalog (paged through in full), used to build the
+  // sidebar's provider list and price ranges so no provider is ever missing from the filter.
   // We use an aggressive staleTime (30 mins) to prevent this heavy call from firing on every visit.
-  const { models: allModels, isLoading: isMetadataLoading } = useModels(
-    { pageSize: 20 },
-    { staleTime: 30 * 60 * 1000 } // 30 minutes
-  );
+  const { models: allModels, isLoading: isMetadataLoading } = useAllModelsForFilters({
+    staleTime: 30 * 60 * 1000, // 30 minutes
+  });
 
   // Main query: respects all filters + current page
   const { models, total, isLoading, isError, refetch } = useModels({
