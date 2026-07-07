@@ -16,7 +16,21 @@ return { current, ttl }
 let redisClient: RateLimitRedisClient | null = null;
 let missingRedisWarningLogged = false;
 
-const getRedisUrl = () => process.env.REDIS_INTERNAL_URL || process.env.REDIS_URL || "";
+const isRailwayRuntime = () =>
+  Boolean(
+    process.env.RAILWAY_ENVIRONMENT ||
+    process.env.RAILWAY_PROJECT_ID ||
+    process.env.RAILWAY_SERVICE_ID ||
+    process.env.RAILWAY_STATIC_URL
+  );
+
+const getRedisUrl = () => {
+  if (isRailwayRuntime()) {
+    return process.env.REDIS_INTERNAL_URL || process.env.REDIS_URL || "";
+  }
+
+  return process.env.REDIS_URL || process.env.REDIS_INTERNAL_URL || "";
+};
 
 const registerRateLimitCommand = (client: RateLimitRedisClient) => {
   client.defineCommand("rateLimitIncrement", {
