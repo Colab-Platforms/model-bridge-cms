@@ -415,7 +415,7 @@ export default function PrivacyPage() {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="max-w-4xl space-y-6"
+      className="max-w-5xl mx-auto space-y-6"
     >
       <motion.div variants={itemVariants}>
         <h2 className="text-3xl font-bold tracking-tight text-foreground/90">Privacy</h2>
