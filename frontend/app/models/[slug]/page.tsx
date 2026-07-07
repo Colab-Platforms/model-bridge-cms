@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { Copy, ArrowLeft, Server, DollarSign, TerminalSquare, Activity, BrainCircuit } from "lucide-react";
+import { Copy, ArrowLeft, Server, DollarSign, TerminalSquare, Activity, BrainCircuit, ChevronRight, Code2 } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
@@ -18,6 +18,7 @@ import {
   CAPABILITY_LABELS,
   CAPABILITY_COLORS,
   MODALITY_LABELS,
+  MODALITY_COLORS,
 } from "@/lib/modelUtils";
 
 import { OverviewTab } from "@/components/models/tabs/OverviewTab";
@@ -36,9 +37,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { ApiKey } from "@/types/index";
@@ -70,6 +68,8 @@ export default function ModelDetailPage() {
   const { model, isLoading, isError } = useModelBySlug(slug);
   const { user } = useAuthStore();
   const isAuthenticated = !!user;
+  const [activeTab, setActiveTab] = useState("overview");
+  const tabsSectionRef = useRef<HTMLDivElement>(null);
 
   // Fetch API keys to pre-fill the ApiTab snippet (only when authenticated)
   const { data: keysData } = useQuery<ApiKey[]>({
@@ -85,6 +85,11 @@ export default function ModelDetailPage() {
       document.title = `${model.displayName} — Models | Model Bridge`;
     }
   }, [model]);
+
+  const handleUseModel = () => {
+    setActiveTab("api");
+    tabsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (isLoading) {
@@ -136,6 +141,11 @@ export default function ModelDetailPage() {
     );
   }
 
+  const bothPricesZero = model.inputPricePer1m === "0" && model.outputPricePer1m === "0";
+  const contextFillPct = model.contextLength != null
+    ? Math.min(100, (model.contextLength / 1_000_000) * 100)
+    : 0;
+
   // ── Loaded ───────────────────────────────────────────────────────────────
   return (
     <motion.div
@@ -144,93 +154,143 @@ export default function ModelDetailPage() {
       animate="show"
       className="flex flex-col gap-6 p-6 max-w-5xl mx-auto w-full pt-8"
     >
+      {/* Breadcrumb nav — always visible */}
+      <motion.nav variants={itemVariants} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/models" className="flex items-center gap-1 hover:text-foreground transition-colors">
+          <ArrowLeft className="size-3.5" />
+          Models
+        </Link>
+        <ChevronRight className="size-3.5 text-muted-foreground/40" />
+        <span className="text-foreground font-medium truncate max-w-xs">{model.displayName}</span>
+      </motion.nav>
+
       {/* 1. Header Block */}
       <motion.div variants={itemVariants} className="flex flex-col gap-4">
-        {/* Title */}
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-muted flex items-center justify-center shrink-0 overflow-hidden border border-border/60">
-            {model.provider.providerLogo
-              ? <img src={model.provider.providerLogo} alt={model.provider.displayName} className="size-full object-contain p-1.5" />
-              : <BrainCircuit className="size-5 text-muted-foreground" />
-            }
+        {/* Logo + provider + name row, with primary CTA */}
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="size-14 rounded-2xl bg-muted/50 border border-border/60 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+              {model.provider.providerLogo
+                ? <img src={model.provider.providerLogo} alt={model.provider.displayName} className="size-full object-contain p-2" />
+                : <BrainCircuit className="size-6 text-muted-foreground" />
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <p className="text-xs text-muted-foreground font-medium">{model.provider.displayName}</p>
+                {isNewModel(model.releaseDate) && (
+                  <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] border border-green-200 dark:border-green-800/50 animate-pulse px-1.5">
+                    New
+                  </Badge>
+                )}
+              </div>
+              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground/90 font-serif">
+                {model.displayName}
+              </h1>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{model.provider.displayName}</p>
-            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground/90 font-serif">
-              {model.displayName}
-            </h1>
-          </div>
+
+          <Button onClick={handleUseModel} className="w-full md:w-auto shrink-0">
+            Use this model
+          </Button>
         </div>
 
-
-        {/* Slug line with copy button */}
-        <div className="flex items-center gap-2 -mt-2">
-          <code className="text-muted-foreground text-sm font-medium">
-            {model.provider.slug}/{model.slug}
-          </code>
+        {/* Slug copy pill */}
+        <div className="flex items-center bg-muted/40 rounded-full pl-3 pr-1.5 py-1 w-fit border border-border/40 -mt-1 divide-x divide-border/50">
+          <div className="flex items-center gap-2 pr-3">
+            <Code2 className="size-3.5 text-muted-foreground shrink-0" />
+            <code className="text-sm text-muted-foreground font-mono">
+              {model.provider.slug}/{model.slug}
+            </code>
+          </div>
           <button
             type="button"
-            aria-label="Copy slug"
-            className="text-muted-foreground transition-all hover:bg-muted/50 hover:text-foreground rounded-md border border-border/40 p-1 bg-background"
+            className="flex items-center gap-1.5 pl-3 pr-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
             onClick={() => {
               navigator.clipboard.writeText(model.slug);
               toast.success("Slug copied");
             }}
           >
             <Copy className="size-3.5" />
+            Copy
           </button>
         </div>
 
+        {/* Capability + modality badges — surfaced here instead of buried in a tab */}
+        {(model.defaultForCapabilities.length > 0 || model.inputModalities.length > 0) && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {model.defaultForCapabilities.map((cap) => (
+              <Badge key={cap} className={cn("text-xs font-medium shadow-sm", CAPABILITY_COLORS[cap])}>
+                {CAPABILITY_LABELS[cap]}
+              </Badge>
+            ))}
+            {model.defaultForCapabilities.length > 0 && model.inputModalities.length > 0 && (
+              <span className="text-muted-foreground/40 text-xs mx-0.5">·</span>
+            )}
+            {model.inputModalities.map((m) => (
+              <Badge key={`in-${m}`} variant="outline" className="text-xs text-muted-foreground">
+                {MODALITY_LABELS[m] ?? m}
+              </Badge>
+            ))}
+          </div>
+        )}
+
         {/* Description */}
         {model.description && (
-          <p className="max-w-4xl text-sm text-foreground/80 leading-relaxed mt-1">
+          <p className="max-w-4xl text-sm text-foreground/80 leading-relaxed">
             {model.description}
           </p>
         )}
       </motion.div>
 
-      {/* 2. Four stat cards matching the requested image */}
-      <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3 lg:grid-cols-4 mt-2 mb-2">
+      {/* 2. Four stat cards — three neutral, one accent */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {/* Modalities */}
-        <div className="rounded-2xl bg-muted/30 p-4 border border-border/40 hover:bg-muted/50 transition-colors shadow-sm">
-          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Modalities</div>
-          <div className="flex flex-wrap gap-1.5 items-center text-sm font-medium">
-            <span className="text-primary tracking-wide">
-              {model.inputModalities.map(m => MODALITY_LABELS[m] ?? m).join(", ")}
-            </span>
-            <span className="text-muted-foreground text-[10px] mx-1">→</span>
-            <span className="text-primary tracking-wide">
-              {model.outputModalities.map(m => MODALITY_LABELS[m] ?? m).join(", ")}
-            </span>
+        <div className="rounded-2xl bg-muted/30 border border-border/40 p-4 hover:bg-muted/50 transition-colors shadow-sm">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Modalities</span>
+          <div className="text-sm font-medium text-foreground leading-snug mt-2.5">
+            {model.inputModalities.map(m => MODALITY_LABELS[m] ?? m).join(", ")}
+            <span className="text-muted-foreground/50 text-xs mx-1">→</span>
+            {model.outputModalities.map(m => MODALITY_LABELS[m] ?? m).join(", ")}
           </div>
         </div>
 
-        {/* Price */}
-        <div className="rounded-2xl bg-muted/30 p-4 flex flex-col justify-center border border-border/40 hover:bg-muted/50 transition-colors shadow-sm">
-          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex justify-between items-center">
-            Price
-            {model.inputPricePer1m === "0" && <span className="text-[9px] font-bold text-muted-foreground">Low</span>}
+        {/* Pricing — accent card, input + output combined */}
+        <div className="rounded-2xl bg-primary/10 border border-primary/25 p-4 shadow-sm">
+          <span className="text-[10px] font-semibold text-primary/80 uppercase tracking-wider">Pricing</span>
+          <div className="text-sm font-semibold text-primary mt-2.5">
+            {bothPricesZero ? "Free" : `${formatPrice(model.inputPricePer1m)} / ${formatPrice(model.outputPricePer1m)}`}
           </div>
-          <div className="text-sm font-semibold text-foreground">
-            {model.inputPricePer1m === "0" ? "Free" : formatPrice(model.inputPricePer1m)}
+          <div className="text-[10px] text-primary/70 mt-0.5">
+            {bothPricesZero ? "no cost" : "per 1M tokens (in / out)"}
           </div>
         </div>
 
         {/* Context */}
-        <div className="rounded-2xl bg-muted/30 p-4 flex flex-col justify-center border border-border/40 hover:bg-muted/50 transition-colors shadow-sm">
-          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex justify-between items-center">
-            Context
-            {model.contextLength != null && model.contextLength <= 32000 && <span className="text-[9px] font-bold text-muted-foreground">Low</span>}
-          </div>
-          <div className="text-sm font-semibold text-foreground">
+        <div className="rounded-2xl bg-muted/30 border border-border/40 p-4 hover:bg-muted/50 transition-colors shadow-sm">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Context</span>
+          <div className="text-sm font-semibold text-foreground mt-2.5">
             {formatContextWindow(model.contextLength)}
           </div>
+          {model.contextLength != null && (
+            <>
+              <div className="text-[10px] text-muted-foreground mt-0.5 mb-1.5">
+                {model.contextLength.toLocaleString()} tokens
+              </div>
+              <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-foreground/50"
+                  style={{ width: `${contextFillPct}%` }}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Released */}
-        <div className="rounded-2xl bg-muted/30 p-4 flex flex-col justify-center border border-border/40 hover:bg-muted/50 transition-colors shadow-sm">
-          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Released</div>
-          <div className="text-sm font-semibold text-foreground">
+        <div className="rounded-2xl bg-muted/30 border border-border/40 p-4 hover:bg-muted/50 transition-colors shadow-sm">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Released</span>
+          <div className="text-sm font-semibold text-foreground mt-2.5">
             {formatReleaseDate(model.releaseDate)}
           </div>
         </div>
@@ -238,60 +298,44 @@ export default function ModelDetailPage() {
 
       <Separator className="opacity-40" />
 
-      {/* 3. Vertical Tabs / Layout */}
-      <motion.div variants={itemVariants}>
-        <Tabs defaultValue="overview" className="flex flex-col md:flex-row gap-8 items-start mb-20 mt-2">
-          {/* Sidebar Tabs */}
-          <TabsList className="flex flex-row md:flex-col h-auto bg-transparent items-stretch w-full md:w-56 space-x-2 md:space-x-0 md:space-y-1 p-0 shrink-0 overflow-x-auto pb-2 md:pb-0 scrollbar-hide border-b md:border-b-0 border-border/40">
-            <TabsTrigger
-              value="overview"
-              className="justify-start data-[state=active]:bg-card/80 data-[state=active]:backdrop-blur-sm data-[state=active]:shadow-sm data-[state=active]:font-semibold text-muted-foreground data-[state=active]:text-foreground bg-transparent border border-transparent data-[state=active]:border-border/40 rounded-xl px-4 py-2.5 transition-all hover:bg-muted/50 text-sm whitespace-nowrap"
-            >
-              <Server className="size-[18px] mr-3 shrink-0 opacity-70" />
-              Providers
+      {/* 3. Horizontal underline tabs */}
+      <motion.div ref={tabsSectionRef} variants={itemVariants}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-20 mt-2">
+          <TabsList variant="line" className="w-full justify-start gap-6 bg-transparent border-b border-border/50">
+            <TabsTrigger value="overview" className="gap-2 px-1 text-sm">
+              <Server className="size-[15px] shrink-0 opacity-70" />
+              Overview
             </TabsTrigger>
-            <TabsTrigger
-              value="pricing"
-              className="justify-start data-[state=active]:bg-card/80 data-[state=active]:backdrop-blur-sm data-[state=active]:shadow-sm data-[state=active]:font-semibold text-muted-foreground data-[state=active]:text-foreground bg-transparent border border-transparent data-[state=active]:border-border/40 rounded-xl px-4 py-2.5 transition-all hover:bg-muted/50 text-sm whitespace-nowrap"
-            >
-              <DollarSign className="size-[18px] mr-3 shrink-0 opacity-70" />
+            <TabsTrigger value="pricing" className="gap-2 px-1 text-sm">
+              <DollarSign className="size-[15px] shrink-0 opacity-70" />
               Pricing
             </TabsTrigger>
-            <TabsTrigger
-              value="api"
-              className="justify-start data-[state=active]:bg-card/80 data-[state=active]:backdrop-blur-sm data-[state=active]:shadow-sm data-[state=active]:font-semibold text-muted-foreground data-[state=active]:text-foreground bg-transparent border border-transparent data-[state=active]:border-border/40 rounded-xl px-4 py-2.5 transition-all hover:bg-muted/50 text-sm whitespace-nowrap"
-            >
-              <TerminalSquare className="size-[18px] mr-3 shrink-0 opacity-70" />
+            <TabsTrigger value="api" className="gap-2 px-1 text-sm">
+              <TerminalSquare className="size-[15px] shrink-0 opacity-70" />
               Quick Start
             </TabsTrigger>
             {isAuthenticated && (
-              <TabsTrigger
-                value="usage"
-                className="justify-start data-[state=active]:bg-card/80 data-[state=active]:backdrop-blur-sm data-[state=active]:shadow-sm data-[state=active]:font-semibold text-muted-foreground data-[state=active]:text-foreground bg-transparent border border-transparent data-[state=active]:border-border/40 rounded-xl px-4 py-2.5 transition-all hover:bg-muted/50 text-sm whitespace-nowrap"
-              >
-                <Activity className="size-[18px] mr-3 shrink-0 opacity-70" />
-                Activity
+              <TabsTrigger value="usage" className="gap-2 px-1 text-sm">
+                <Activity className="size-[15px] shrink-0 opacity-70" />
+                My Usage
               </TabsTrigger>
             )}
           </TabsList>
 
-          {/* Content Area */}
-          <div className="flex-1 w-full min-w-0">
-            <TabsContent value="overview" className="mt-0 outline-none">
-              <OverviewTab model={model} />
+          <TabsContent value="overview" className="mt-0 outline-none">
+            <OverviewTab model={model} />
+          </TabsContent>
+          <TabsContent value="pricing" className="mt-0 outline-none">
+            <PricingTab model={model} />
+          </TabsContent>
+          <TabsContent value="api" className="mt-0 outline-none">
+            <ApiTab model={model} apiKeyPrefix={firstActiveKey?.keyPrefix ?? null} />
+          </TabsContent>
+          {isAuthenticated && (
+            <TabsContent value="usage" className="mt-0 outline-none">
+              <MyUsageTab modelId={model.id} isAuthenticated={isAuthenticated} />
             </TabsContent>
-            <TabsContent value="pricing" className="mt-0 outline-none">
-              <PricingTab model={model} />
-            </TabsContent>
-            <TabsContent value="api" className="mt-0 outline-none">
-              <ApiTab model={model} apiKeyPrefix={firstActiveKey?.keyPrefix ?? null} />
-            </TabsContent>
-            {isAuthenticated && (
-              <TabsContent value="usage" className="mt-0 outline-none">
-                <MyUsageTab modelId={model.id} isAuthenticated={isAuthenticated} />
-              </TabsContent>
-            )}
-          </div>
+          )}
         </Tabs>
       </motion.div>
     </motion.div>

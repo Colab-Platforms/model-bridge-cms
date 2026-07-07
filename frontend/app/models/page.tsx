@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { LayoutGrid, List, SearchX, BrainCircuit } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
-import { useModels } from "@/hooks/useModels";
+import { useModels, useAllModelsForFilters } from "@/hooks/useModels";
 import type { ModelFilters, CapabilityType } from "@/types/index";
 import { FilterSidebar } from "@/components/models/FilterSidebar";
 import { ModelCard } from "@/components/models/ModelCard";
@@ -35,6 +35,8 @@ import {
   formatPrice,
   CAPABILITY_LABELS,
   CAPABILITY_COLORS,
+  MODALITY_LABELS,
+  MODALITY_COLORS,
 } from "@/lib/modelUtils";
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
@@ -131,13 +133,12 @@ function ModelsContent() {
     sort: (searchParams.get("sort") as ModelFilters["sort"]) ?? undefined,
   };
 
-  // Metadata query: all models without active filters, for sidebar provider list and price ranges.
-  // Uses a high limit so all providers/prices are always visible regardless of what page you're on.
+  // Metadata query: every model in the catalog (paged through in full), used to build the
+  // sidebar's provider list and price ranges so no provider is ever missing from the filter.
   // We use an aggressive staleTime (30 mins) to prevent this heavy call from firing on every visit.
-  const { models: allModels, isLoading: isMetadataLoading } = useModels(
-    { pageSize: 20 },
-    { staleTime: 30 * 60 * 1000 } // 30 minutes
-  );
+  const { models: allModels, isLoading: isMetadataLoading } = useAllModelsForFilters({
+    staleTime: 30 * 60 * 1000, // 30 minutes
+  });
 
   // Main query: respects all filters + current page
   const { models, total, isLoading, isError, refetch } = useModels({
@@ -203,11 +204,14 @@ function ModelsContent() {
     >
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants} className="flex items-center justify-between">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground/90 font-serif">Models</h1>
-          <span className="text-sm text-muted-foreground">
-            {total ?? 0} models
-          </span>
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground/90 font-serif">Models</h1>
+            <Badge variant="secondary" className="text-xs font-medium tabular-nums">
+              {total ?? 0}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">Browse and compare LLMs across all available providers</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -251,12 +255,14 @@ function ModelsContent() {
       <div className="flex gap-6">
         {/* Sidebar */}
         <div className="w-64 flex-shrink-0">
-          <FilterSidebar
-            providers={uniqueProviders}
-            maxInputPrice={derivedMaxInputPrice}
-            maxOutputPrice={derivedMaxOutputPrice}
-            isLoading={isMetadataLoading}
-          />
+          <div className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm p-4 shadow-sm">
+            <FilterSidebar
+              providers={uniqueProviders}
+              maxInputPrice={derivedMaxInputPrice}
+              maxOutputPrice={derivedMaxOutputPrice}
+              isLoading={isMetadataLoading}
+            />
+          </div>
         </div>
 
         {/* Main content */}
@@ -347,23 +353,34 @@ function ModelsContent() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {visible.map((cap) => (
-                              <Badge
-                                key={cap}
-                                className={cn("text-xs shadow-sm", CAPABILITY_COLORS[cap])}
-                              >
-                                {CAPABILITY_LABELS[cap]}
-                              </Badge>
-                            ))}
-                            {extra > 0 && (
-                              <Badge
-                                variant="secondary"
-                                className="text-xs text-muted-foreground shadow-sm"
-                              >
-                                +{extra} more
-                              </Badge>
-                            )}
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap gap-1">
+                              {visible.map((cap) => (
+                                <Badge key={cap} className={cn("text-xs font-medium", CAPABILITY_COLORS[cap])}>
+                                  {CAPABILITY_LABELS[cap]}
+                                </Badge>
+                              ))}
+                              {extra > 0 && (
+                                <Badge variant="secondary" className="text-xs text-muted-foreground">
+                                  +{extra}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">In</span>
+                              {model.inputModalities.map((m) => (
+                                <Badge key={`in-${m}`} className={cn("text-xs font-medium", MODALITY_COLORS[m])}>
+                                  {MODALITY_LABELS[m] ?? m}
+                                </Badge>
+                              ))}
+                              <span className="text-muted-foreground/50 text-xs mx-0.5">→</span>
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Out</span>
+                              {model.outputModalities.map((m) => (
+                                <Badge key={`out-${m}`} className={cn("text-xs font-medium", MODALITY_COLORS[m])}>
+                                  {MODALITY_LABELS[m] ?? m}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>

@@ -3,11 +3,14 @@
 import * as React from "react";
 import {
   LayoutDashboard,
-  BrainCircuit,
   Key,
-  BarChart2,
+  ListOrdered,
+  History,
   Wallet,
   FolderOpen,
+  CircleUserRound,
+  ShieldCheck,
+  SlidersHorizontal,
 } from "lucide-react";
 
 import { NavMain } from "@/components/layout/nav-main";
@@ -27,30 +30,48 @@ const navMain = [
     url: "/dashboard/overview",
     icon: <LayoutDashboard />,
   },
-  // {
-  //   title: "Models",
-  //   url: "/models",
-  //   icon: <BrainCircuit />,
-  // },
   {
     title: "Projects",
     url: "/dashboard/projects",
     icon: <FolderOpen />,
   },
   {
-    title: "API Management",
-    url: "#",
+    title: "API Keys",
+    url: "/dashboard/keys",
     icon: <Key />,
-    items: [
-      { title: "API Keys",    url: "/dashboard/keys" },
-      { title: "Usage Logs",  url: "/dashboard/usage" },
-      { title: "Activity Log", url: "/dashboard/activity" },
-    ],
+  },
+  {
+    title: "Usage Logs",
+    url: "/dashboard/usage",
+    icon: <ListOrdered />,
+  },
+  {
+    title: "Activity Log",
+    url: "/dashboard/activity",
+    icon: <History />,
   },
   {
     title: "Credits & Wallet",
     url: "/dashboard/credits",
     icon: <Wallet />,
+  },
+];
+
+const navAccount = [
+  {
+    title: "Profile",
+    url: "/dashboard/profile",
+    icon: <CircleUserRound />,
+  },
+  {
+    title: "Privacy",
+    url: "/dashboard/privacy",
+    icon: <ShieldCheck />,
+  },
+  {
+    title: "Preferences",
+    url: "/dashboard/preferences",
+    icon: <SlidersHorizontal />,
   },
 ];
 
@@ -62,6 +83,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
+        <NavMain items={navAccount} label="Account" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser />
