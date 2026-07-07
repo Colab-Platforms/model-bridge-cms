@@ -171,7 +171,7 @@ export default function HeroSection() {
 
         {/* Subheadline */}
         <p className="opacity-0-init animate-fade-in-up delay-200 mt-8 text-[18px] md:text-[20px] text-slate-500 leading-[1.6] max-w-[640px]">
-          The intelligent neural backbone for your AI applications. Connect to 400+ models with a single endpoint. Smart routing, automatic failover, and unified billing.
+          The intelligent neural backbone for your AI applications. Connect to 150+ models with a single endpoint. Smart routing, automatic failover, and unified billing.
         </p>
 
         {/* CTAs */}

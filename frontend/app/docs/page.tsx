@@ -375,8 +375,8 @@ const anthropicModels = models.filter(m => m.provider === "anthropic");
 
 // Retrieve a specific model's details and pricing
 const model = await client.models.retrieve("gpt-4o");
-console.log(model.pricing.inputPerMillion);   // "$2.50"
-console.log(model.pricing.outputPerMillion);  // "$10.00"
+console.log(model.pricing.inputPerToken);   // "$2.50"
+console.log(model.pricing.outputPerToken);  // "$10.00"
 console.log(model.contextLength);             // 128000`,
     python: `# List all available models on the platform
 models = await client.models.list(limit=10, offset=0)
@@ -734,7 +734,7 @@ const FEATURES: { Icon: LucideIcon; title: string; desc: string }[] = [
 ];
 
 const PLATFORM_FEATURES: { Icon: LucideIcon; title: string; desc: string }[] = [
-  { Icon: Cpu,          title: "400+ Models",        desc: "OpenAI, Anthropic, Gemini, Groq, Mistral and more — all under one API key." },
+  { Icon: Cpu,          title: "150+ Models",        desc: "OpenAI, Anthropic, Gemini, Groq, Mistral and more — all under one API key." },
   { Icon: GitBranch,    title: "Parallel Routing",   desc: "Fan out any request to multiple models simultaneously and compare responses." },
   { Icon: Boxes,        title: "Unified Billing",    desc: "One wallet, one invoice. Aggregated across every provider you use." },
   { Icon: MessageSquare,title: "Streaming",          desc: "Real-time token streaming with SSE for single-model requests." },
@@ -1012,7 +1012,7 @@ export default function DocsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen  bg-[#F8FAFC]">
       <Navbar />
 
       {/* Search overlay */}
@@ -1067,7 +1067,7 @@ export default function DocsPage() {
 
       {/* Three-column layout */}
       <div className="pt-[86px]">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-[260px_1fr] xl:grid-cols-[260px_1fr_218px]">
+        <div className="max-w-[1500px] mx-auto grid grid-cols-1 md:grid-cols-[260px_1fr] xl:grid-cols-[260px_1fr_218px]">
 
           {/* ── Left sidebar ── */}
           <aside
@@ -1127,7 +1127,7 @@ export default function DocsPage() {
           </aside>
 
           {/* ── Main content ── */}
-          <main className="min-w-0 px-6 py-8 md:px-12 md:py-12 max-w-[820px]">
+          <main className="min-w-0 px-6 py-8 md:px-12 md:py-12 ">
 
             {/* Introduction */}
             <div id="introduction" className="scroll-mt-[86px] mb-16">
@@ -1139,7 +1139,7 @@ export default function DocsPage() {
                 ModelBridge <span className="text-indigo-600">Docs</span>
               </h1>
               <p className="text-[17px] text-slate-600 leading-[1.72] mb-4 max-w-[580px]">
-                Access 400+ AI models through a single, unified API — with multi-model parallel routing, streaming, retries, and full type-safety built in.
+                Access 150+ AI models through a single, unified API — with multi-model parallel routing, streaming, retries, and full type-safety built in.
               </p>
 
               {/* SDK language pills */}
@@ -1305,7 +1305,7 @@ export default function DocsPage() {
                   ))}
                 </div>
                 <p className="text-center text-[12px] text-slate-400 font-medium mt-4">
-                  Single API call → ModelBridge routes to any of 400+ providers
+                  Single API call → ModelBridge routes to any of 150+ models across multiple providers, returning a unified response with usage and billing.
                 </p>
               </div>
               <SectionNext currentId="architecture" />
@@ -1399,7 +1399,7 @@ export default function DocsPage() {
             <section className="mb-14">
               <SecHead id="platform-models" eyebrow="SDK Reference" title="Listing Models" />
               <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
-                Browse, filter, and retrieve metadata for all 400+ available models including real-time pricing and capabilities.
+                Browse, filter, and retrieve metadata for all 150+ available models including real-time pricing and capabilities.
               </p>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
               <LangCodeBlock codes={CODES.platform_models} activeLang={activeLang} />

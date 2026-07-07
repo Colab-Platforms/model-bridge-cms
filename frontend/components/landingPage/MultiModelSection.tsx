@@ -257,7 +257,7 @@ export default function MultiModelSection() {
                 "Per-model latency tracking",
                 "Token usage per model",
                 "Streaming (single model)",
-                "400+ models",
+                "150+ models",
                 "OpenAI-compatible shape",
               ].map((feat) => (
                 <div key={feat} className="flex items-center gap-2 text-[13px] font-medium text-indigo-100">
