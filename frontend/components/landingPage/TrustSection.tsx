@@ -10,7 +10,7 @@ const PROVIDERS = [
 ];
 
 const METRICS = [
-  { value: "400+",    label: "Models Supported",    sub: "Every major provider" },
+  { value: "150+",    label: "Models Supported",    sub: "Every major provider" },
   { value: "99.9%",   label: "Uptime SLA",          sub: "Enterprise reliability" },
   { value: "0.2s",    label: "Fastest Latency",     sub: "Global edge network" },
   { value: "30%",     label: "Avg. Savings",        sub: "Via smart routing" },
