@@ -266,7 +266,11 @@ export const apiKeyAuth = async (
       );
     }
 
-    if (apiKeyRecord.creditLimit !== null && apiKeyRecord.limitType) { 
+    if (
+      apiKeyRecord.creditLimit !== null &&
+      apiKeyRecord.limitType &&
+      apiKeyRecord.limitType !== LimitType.UNLIMITED
+    ) {
       const windowStart = getLimitWindowStart(apiKeyRecord.limitType);
 
       if (windowStart) {

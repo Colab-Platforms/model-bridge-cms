@@ -34,6 +34,7 @@ enum RequestStatus {
 }
 
 enum LimitType {
+  UNLIMITED
   DAILY
   WEEKLY
   MONTHLY
@@ -106,6 +107,7 @@ enum ModelOutputPricingUnit {
   TOKEN
   IMAGE
 }
+
 
 model Role {
   id        String    @id @default(cuid(2))

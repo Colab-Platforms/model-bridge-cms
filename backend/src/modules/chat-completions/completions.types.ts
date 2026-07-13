@@ -60,6 +60,10 @@ export interface ApiKeyRequestContext {
     email?: string;
   };
   creditCheck: CreditCheckEstimate;
+  readonly requestedModelSlug?: string;
+  readonly routingReason?: string;
+  readonly complexityTier?: string;
+  readonly complexityScore?: number;
 }
 
 export type ChatCompletionsRequest = Request<

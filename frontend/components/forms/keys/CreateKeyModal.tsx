@@ -24,7 +24,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useProjectStore } from "@/store/projectStore";
 
-const LIMIT_TYPES = ["DAILY", "WEEKLY", "MONTHLY", "QUATERLY", "YEARLY"] as const;
+const LIMIT_TYPES = ["UNLIMITED", "DAILY", "WEEKLY", "MONTHLY", "QUATERLY", "YEARLY"] as const;
 
 const schema = z.object({
   name:        z.string().min(1, "Name is required"),
@@ -196,13 +196,13 @@ export default function CreateKeyModal({ open, onClose, onKeyCreated }: Props) {
                   className="h-10 rounded-xl border border-border bg-background px-2.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                   {...register("limitType")}
                 >
-                  <option value="">No period</option>
-                  {LIMIT_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t.charAt(0) + t.slice(1).toLowerCase()}
-                    </option>
-                  ))}
-                </select>
+                    <option value="">No period</option>
+                    {LIMIT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t === "UNLIMITED" ? "Unlimited" : t.charAt(0) + t.slice(1).toLowerCase()}
+                      </option>
+                    ))}
+                  </select>
               </div>
             </div>
 
