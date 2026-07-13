@@ -297,6 +297,7 @@ export const apiKeyAuth = async (
     (req as any).project = {
       id: apiKeyRecord.project.id,
       name: apiKeyRecord.project.name,
+      planTier: apiKeyRecord.project.planTier,
     };
 
     (req as any).user = {

@@ -1,3 +1,4 @@
+import type { ComplexityTier, PlanTier } from "@prisma/client";
 import type { Request } from "express";
 import type z from "zod";
 
@@ -20,6 +21,7 @@ export interface ApiKeyRequestContext {
   project: {
     id: string;
     name?: string | null;
+    planTier: PlanTier;
   };
   user: {
     id: string;
@@ -35,6 +37,13 @@ export interface ApiKeyRequestContext {
     totalEstimatedCost: number;
     isFreeModel: boolean;
   };
+  /** Original model value the caller sent (e.g. "auto") before routing.middleware.ts resolved it to a real slug. */
+  requestedModelSlug?: string;
+  /** Why routing.middleware.ts resolved the model the way it did (see routing.types.ts RoutingReason). Persisted on InferenceRequest for observability. */
+  routingReason?: string;
+  /** Set only on the "auto" path — complexity-router.ts's resolved tier and raw score, persisted on InferenceRequest. */
+  complexityTier?: ComplexityTier;
+  complexityScore?: number;
 }
 
 export type ChatCompletionsRequest = Request<
