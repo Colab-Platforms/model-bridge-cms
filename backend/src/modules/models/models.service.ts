@@ -22,6 +22,8 @@ const modelSelect = {
   tokenizer: true,
   inputPricePerToken: true,
   outputPricePerToken: true,
+  outputPricingUnit: true,
+  imageOutputPrice: true,
   cacheWritePricePerToken: true,
   cacheReadPricePerToken: true,
   inputModalities: true,
@@ -40,7 +42,7 @@ const modelSelect = {
       isActive: true,
     },
   },
-} satisfies Prisma.ModelSelect;
+} as Prisma.ModelSelect;
 
 const formatDecimalValue = (value: Prisma.Decimal | null) => {
   if (value === null) {
@@ -55,6 +57,7 @@ const formatModelPriceFields = <
   T extends {
     inputPricePerToken: Prisma.Decimal | null;
     outputPricePerToken: Prisma.Decimal | null;
+    imageOutputPrice: Prisma.Decimal | null;
     cacheWritePricePerToken: Prisma.Decimal | null;
     cacheReadPricePerToken: Prisma.Decimal | null;
   },
@@ -64,6 +67,7 @@ const formatModelPriceFields = <
   ...model,
   inputPricePerToken: formatDecimalValue(model.inputPricePerToken),
   outputPricePerToken: formatDecimalValue(model.outputPricePerToken),
+  imageOutputPrice: formatDecimalValue(model.imageOutputPrice),
   cacheWritePricePerToken: formatDecimalValue(model.cacheWritePricePerToken),
   cacheReadPricePerToken: formatDecimalValue(model.cacheReadPricePerToken),
 });

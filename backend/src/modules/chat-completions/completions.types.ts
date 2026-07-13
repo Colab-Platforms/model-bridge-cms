@@ -6,6 +6,10 @@ import type {
   ProviderChatRequest,
   ProviderChatResponse,
   ProviderContentPart,
+  ProviderTool,
+  ProviderToolCall,
+  ProviderToolCallDelta,
+  ProviderToolChoice,
   ProviderUsage,
 } from "../providers/adapters/base/provider.types.js";
 import type { BillingResult } from "../../services/inference-tracking.service.js";
@@ -68,10 +72,15 @@ export type ChatCompletionsRequest = Request<
 export interface ResolvedModelRecord {
   id: string;
   slug: string;
+  providerId: string;
   providerModelId?: string | null;
   isFreeModel: boolean;
   inputPricePerToken: number;
   outputPricePerToken: number;
+  outputPricingUnit: "TOKEN" | "IMAGE";
+  imageOutputPrice: number;
+  cacheWritePricePerToken: number;
+  cacheReadPricePerToken: number;
   provider: {
     slug: string;
     isActive: boolean;
@@ -91,7 +100,8 @@ export interface ChatCompletionChoice {
   index: number;
   message: {
     role: "assistant";
-    content: string | ProviderContentPart[];
+    content: string | ProviderContentPart[] | null;
+    tool_calls?: ProviderToolCall[];
   };
   finish_reason: string | null;
 }
@@ -119,6 +129,7 @@ export interface OpenAICompatibleChatCompletionChunk {
     delta: {
       role?: "assistant";
       content?: string;
+      tool_calls?: ProviderToolCallDelta[];
     };
     finish_reason: string | null;
   }>;
@@ -151,7 +162,7 @@ export interface MultiModelChatCompletionResult {
   inferenceRequestId?: string;
   latencyMs?: number;
   response?: OpenAICompatibleChatCompletionResponse;
-  content?: string | ProviderContentPart[];
+  content?: string | ProviderContentPart[] | null;
   usage?: OpenAICompatibleChatCompletionResponse["usage"];
   finish_reason?: string | null;
   billing?: BillingResult;
@@ -179,7 +190,10 @@ export interface StreamAccumulator {
   usage?: ProviderUsage;
   finishReason?: string;
   content?: string;
+  toolCalls?: Record<number, ProviderToolCall>;
 }
 
 export type UnifiedChatMessages = ProviderChatMessage[];
 export type UnifiedChatRequest = ProviderChatRequest;
+export type UnifiedToolChoice = ProviderToolChoice;
+export type UnifiedTools = ProviderTool[];

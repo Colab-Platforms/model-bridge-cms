@@ -18,6 +18,8 @@ const toSingleModelBody = (
   ...(body.modalities !== undefined ? { modalities: body.modalities } : {}),
   ...(body.temperature !== undefined ? { temperature: body.temperature } : {}),
   ...(body.max_tokens !== undefined ? { max_tokens: body.max_tokens } : {}),
+  ...(body.tools !== undefined ? { tools: body.tools } : {}),
+  ...(body.tool_choice !== undefined ? { tool_choice: body.tool_choice } : {}),
   stream: body.stream ?? false,
 });
 
