@@ -63,19 +63,6 @@ enum AuthProvider {
   GOOGLE
 }
 
-enum PlanTier {
-  FREE
-  PAYG
-  SCALE
-}
-
-enum ComplexityTier {
-  SIMPLE
-  MEDIUM
-  COMPLEX
-  REASONING
-}
-
 enum ActivityType {
   USER_REGISTERED
   USER_LOGIN
@@ -254,7 +241,6 @@ model Project {
   name               String
   description        String?  @db.Text
   isActive           Boolean  @default(true) @map("is_active")
-  planTier           PlanTier @default(FREE) @map("plan_tier")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
   createdBy          String?  @map("created_by")
@@ -411,11 +397,6 @@ model InferenceRequest {
   requestType           RequestType?
   requestedModelSlug    String?          @map("requested_model_slug")
   resolvedModelSlug     String?          @map("resolved_model_slug")
-  routedTier            PlanTier?        @map("routed_tier")
-  routingReason         String?          @map("routing_reason")
-  downgradedFromModelSlug String?        @map("downgraded_from_model_slug")
-  complexityTier        ComplexityTier?  @map("complexity_tier")
-  complexityScore       Float?           @map("complexity_score")
   stream                Boolean?
   status                RequestStatus?
   responseCompletionTimeMs Int?             @map("response_completion_time_ms")
