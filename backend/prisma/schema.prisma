@@ -89,6 +89,22 @@ enum ActivityType {
 
   PROVIDER_ENABLED
   PROVIDER_DISABLED
+  PROVIDER_BALANCE_RECHARGED
+  PROVIDER_BALANCE_ADJUSTED
+  PROVIDER_LOW_BALANCE_ALERT_SENT
+  PROVIDER_LOW_BALANCE_ALERT_RESOLVED
+}
+
+enum ProviderBalanceTransactionType {
+  RECHARGE
+  USAGE_DEDUCTION
+  REFUND
+  ADJUSTMENT
+}
+
+enum ModelOutputPricingUnit {
+  TOKEN
+  IMAGE
 }
 
 model Role {
@@ -279,9 +295,57 @@ model Provider {
   isDeleted   Boolean  @default(false) @map("is_deleted")
   deletedAt   DateTime? @map("deleted_at")
 
-  models Model[]
+  models           Model[]
+  providerBalance  ProviderBalance?
 
   @@map("providers")
+}
+
+model ProviderBalance {
+  id                    String    @id @default(cuid(2))
+  providerId            String    @unique @map("provider_id")
+  currentBalance        Decimal   @default(0) @map("current_balance") @db.Decimal(18, 8)
+  currency              String    @default("USD")
+  lowBalanceThreshold   Decimal   @default(5) @map("low_balance_threshold") @db.Decimal(18, 8)
+  alertsEnabled         Boolean   @default(true) @map("alerts_enabled")
+  lowBalanceAlertActive Boolean   @default(false) @map("low_balance_alert_active")
+  lastAlertSentAt       DateTime? @map("last_alert_sent_at")
+  lastAlertResolvedAt   DateTime? @map("last_alert_resolved_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  createdBy             String?   @map("created_by")
+  updatedBy             String?   @map("updated_by")
+
+  provider      Provider                      @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  transactions  ProviderBalanceTransaction[]
+
+  @@index([alertsEnabled])
+  @@index([lowBalanceAlertActive])
+  @@map("provider_balances")
+}
+
+model ProviderBalanceTransaction {
+  id                 String                         @id @default(cuid(2))
+  providerBalanceId  String                         @map("provider_balance_id")
+  inferenceRequestId String?                        @map("inference_request_id")
+  referenceId        String?                        @map("reference_id")
+  type               ProviderBalanceTransactionType
+  amount             Decimal                        @db.Decimal(18, 8)
+  balanceBefore      Decimal                        @map("balance_before") @db.Decimal(18, 8)
+  balanceAfter       Decimal                        @map("balance_after") @db.Decimal(18, 8)
+  description        String?                        @db.Text
+  metadata           Json?
+  createdBy          String?                        @map("created_by")
+  createdAt          DateTime                       @default(now()) @map("created_at")
+  isDeleted          Boolean                        @default(false) @map("is_deleted")
+
+  providerBalance    ProviderBalance                @relation(fields: [providerBalanceId], references: [id], onDelete: Cascade)
+  inferenceRequest   InferenceRequest?              @relation(fields: [inferenceRequestId], references: [id], onDelete: SetNull)
+
+  @@index([providerBalanceId])
+  @@index([inferenceRequestId])
+  @@index([createdAt])
+  @@map("provider_balance_transactions")
 }
 
 model Model {
@@ -297,8 +361,10 @@ model Model {
   tokenizer              String?
 
 
-  inputPricePerToken        Decimal? @map("input_price_per_token") @db.Decimal(18, 8)
-  outputPricePerToken       Decimal? @map("output_price_per_token") @db.Decimal(18, 8)
+  inputPricePerToken        Decimal?                @map("input_price_per_token") @db.Decimal(18, 8)
+  outputPricePerToken       Decimal?                @map("output_price_per_token") @db.Decimal(18, 8)
+  outputPricingUnit         ModelOutputPricingUnit  @default(TOKEN) @map("output_pricing_unit")
+  imageOutputPrice          Decimal?                @map("image_output_price") @db.Decimal(18, 8)
 
   cacheWritePricePerToken   Decimal?  @map("cache_write_price_per_token") @db.Decimal(18, 8)
   cacheReadPricePerToken    Decimal?  @map("cache_read_price_per_token") @db.Decimal(18, 8)
@@ -351,6 +417,7 @@ model InferenceRequest {
   apiKey                ApiKey            @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
   model                 Model     @relation(fields: [modelId], references: [id], onDelete: Cascade)
   walletTransactions    WalletTransaction[]
+  providerBalanceTransactions ProviderBalanceTransaction[]
   requestMetadata       RequestMetadata[]
 
   // @@index([userId])

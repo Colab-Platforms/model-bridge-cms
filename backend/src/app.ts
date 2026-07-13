@@ -24,6 +24,16 @@ if (trustProxy === "false") {
   app.set("trust proxy", 1);
 }
 
+// const run = async () => {
+//   try {
+//     await syncModelsForProvider("mistralai");
+//   } catch (error) {
+//     console.error("Error syncing models:", error);
+//   }
+// }
+
+// run();
+
 app.use(cors());
 app.use(helmet());
 app.use(compression());
@@ -41,7 +51,7 @@ app.use(sanitizeMiddleware);
 app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
 app.use("/api/v1", globalAppRateLimiter, routes);
 app.use("/health", (_req: Request, res: Response) => {
-    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 app.use(notFoundHandler);

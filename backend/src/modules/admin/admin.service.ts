@@ -120,6 +120,8 @@ const adminModelSelect = {
   tokenizer: true,
   inputPricePerToken: true,
   outputPricePerToken: true,
+  outputPricingUnit: true,
+  imageOutputPrice: true,
   cacheWritePricePerToken: true,
   cacheReadPricePerToken: true,
   inputModalities: true,
@@ -138,7 +140,7 @@ const adminModelSelect = {
       isActive: true,
     },
   },
-} satisfies Prisma.ModelSelect;
+} as Prisma.ModelSelect;
 
 const activityLogSelect = {
   id: true,
@@ -237,6 +239,25 @@ const formatRequestFinancials = <
   platformMarkupPercent: formatDecimalValue(row.platformMarkupPercent) ?? "0",
   platformMarkup: formatDecimalValue(row.platformMarkup) ?? "0",
   totalCost: formatDecimalValue(row.totalCost) ?? "0",
+});
+
+const formatModelPriceFields = <
+  T extends {
+    inputPricePerToken: Prisma.Decimal | null;
+    outputPricePerToken: Prisma.Decimal | null;
+    imageOutputPrice: Prisma.Decimal | null;
+    cacheWritePricePerToken: Prisma.Decimal | null;
+    cacheReadPricePerToken: Prisma.Decimal | null;
+  },
+>(
+  model: T
+) => ({
+  ...model,
+  inputPricePerToken: formatDecimalValue(model.inputPricePerToken),
+  outputPricePerToken: formatDecimalValue(model.outputPricePerToken),
+  imageOutputPrice: formatDecimalValue(model.imageOutputPrice),
+  cacheWritePricePerToken: formatDecimalValue(model.cacheWritePricePerToken),
+  cacheReadPricePerToken: formatDecimalValue(model.cacheReadPricePerToken),
 });
 
 const getDefaultDateRange = (preset?: AdminOverviewQuery["dateRangePreset"]) => {
@@ -915,13 +936,7 @@ export const getAdminModelsService = async (_actor: AdminActor, query: AdminMode
   ]);
 
   return formatPaginationResponse(
-    models.map((model) => ({
-      ...model,
-      inputPricePerToken: formatDecimalValue(model.inputPricePerToken),
-      outputPricePerToken: formatDecimalValue(model.outputPricePerToken),
-      cacheWritePricePerToken: formatDecimalValue(model.cacheWritePricePerToken),
-      cacheReadPricePerToken: formatDecimalValue(model.cacheReadPricePerToken),
-    })),
+    models.map((model) => formatModelPriceFields(model)),
     totalRecords,
     page,
     pageSize
@@ -931,13 +946,7 @@ export const getAdminModelsService = async (_actor: AdminActor, query: AdminMode
 export const getAdminModelByIdService = async (_actor: AdminActor, modelId: string) => {
   const model = await getAdminModelOrThrow(modelId);
 
-  return {
-    ...model,
-    inputPricePerToken: formatDecimalValue(model.inputPricePerToken),
-    outputPricePerToken: formatDecimalValue(model.outputPricePerToken),
-    cacheWritePricePerToken: formatDecimalValue(model.cacheWritePricePerToken),
-    cacheReadPricePerToken: formatDecimalValue(model.cacheReadPricePerToken),
-  };
+  return formatModelPriceFields(model);
 };
 
 export const createAdminModelService = async (actor: AdminActor, body: AdminModelBody) => {
@@ -954,6 +963,8 @@ export const createAdminModelService = async (actor: AdminActor, body: AdminMode
           tokenizer: body.tokenizer,
           inputPricePerToken: body.inputPricePerToken,
           outputPricePerToken: body.outputPricePerToken,
+          outputPricingUnit: body.outputPricingUnit ?? "TOKEN",
+          imageOutputPrice: body.imageOutputPrice,
           cacheWritePricePerToken: body.cacheWritePricePerToken,
           cacheReadPricePerToken: body.cacheReadPricePerToken,
           inputModalities: body.inputModalities ?? ["text"],
@@ -981,13 +992,7 @@ export const createAdminModelService = async (actor: AdminActor, body: AdminMode
         tx
       );
 
-      return {
-        ...model,
-        inputPricePerToken: formatDecimalValue(model.inputPricePerToken),
-        outputPricePerToken: formatDecimalValue(model.outputPricePerToken),
-        cacheWritePricePerToken: formatDecimalValue(model.cacheWritePricePerToken),
-        cacheReadPricePerToken: formatDecimalValue(model.cacheReadPricePerToken),
-      };
+      return formatModelPriceFields(model);
     });
   } catch (error: unknown) {
     if (
@@ -1028,6 +1033,12 @@ export const updateAdminModelService = async (
           ...(body.outputPricePerToken !== undefined
             ? { outputPricePerToken: body.outputPricePerToken }
             : {}),
+          ...(body.outputPricingUnit !== undefined
+            ? { outputPricingUnit: body.outputPricingUnit }
+            : {}),
+          ...(body.imageOutputPrice !== undefined
+            ? { imageOutputPrice: body.imageOutputPrice }
+            : {}),
           ...(body.cacheWritePricePerToken !== undefined
             ? { cacheWritePricePerToken: body.cacheWritePricePerToken }
             : {}),
@@ -1061,13 +1072,7 @@ export const updateAdminModelService = async (
         tx
       );
 
-      return {
-        ...model,
-        inputPricePerToken: formatDecimalValue(model.inputPricePerToken),
-        outputPricePerToken: formatDecimalValue(model.outputPricePerToken),
-        cacheWritePricePerToken: formatDecimalValue(model.cacheWritePricePerToken),
-        cacheReadPricePerToken: formatDecimalValue(model.cacheReadPricePerToken),
-      };
+      return formatModelPriceFields(model);
     });
   } catch (error: unknown) {
     if (
@@ -1111,13 +1116,7 @@ export const deleteAdminModelService = async (actor: AdminActor, modelId: string
       tx
     );
 
-    return {
-      ...model,
-      inputPricePerToken: formatDecimalValue(model.inputPricePerToken),
-      outputPricePerToken: formatDecimalValue(model.outputPricePerToken),
-      cacheWritePricePerToken: formatDecimalValue(model.cacheWritePricePerToken),
-      cacheReadPricePerToken: formatDecimalValue(model.cacheReadPricePerToken),
-    };
+    return formatModelPriceFields(model);
   });
 };
 
