@@ -17,7 +17,7 @@ type MessageContentPart =
     };
 
 type ChatMessage = {
-  content: string | MessageContentPart[];
+  content: string | MessageContentPart[] | null;
 };
 
 type ModalitiesRequestBody = {
@@ -42,6 +42,10 @@ const getRequestedModalities = (messages: ChatMessage[] = []) => {
   for (const message of messages) {
     if (typeof message.content === "string") {
       requested.add("text");
+      continue;
+    }
+
+    if (!Array.isArray(message.content)) {
       continue;
     }
 
