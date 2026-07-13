@@ -22,7 +22,7 @@ type MessageContentPart =
     };
 
 type ChatCompletionMessage = {
-  content: string | MessageContentPart[];
+  content: string | MessageContentPart[] | null;
 };
 
 type CreditCheckRequestBody = {
@@ -42,6 +42,10 @@ const extractPromptText = (messages: ChatCompletionMessage[] = []) =>
     .map((message) => {
       if (typeof message.content === "string") {
         return message.content;
+      }
+
+      if (message.content === null) {
+        return "";
       }
 
       return message.content
@@ -95,6 +99,8 @@ export const checkCredits = async (
         isFreeModel: true,
         inputPricePerToken: true,
         outputPricePerToken: true,
+        outputPricingUnit: true,
+        imageOutputPrice: true,
         maxOutputTokens: true,
       },
     });
@@ -172,7 +178,11 @@ export const checkCredits = async (
       const inputTokenPrice = Number(modelRecord.inputPricePerToken ?? 0);
       const outputTokenPrice = Number(modelRecord.outputPricePerToken ?? 0);
       const estimatedInputCost = isFreeModel ? 0 : estimatedPromptTokens * inputTokenPrice;
-      const estimatedOutputCost = isFreeModel ? 0 : modelMaxOutputTokens * outputTokenPrice;
+      const estimatedOutputCost = isFreeModel
+        ? 0
+        : modelRecord.outputPricingUnit === "IMAGE"
+          ? Number(modelRecord.imageOutputPrice ?? 0)
+          : modelMaxOutputTokens * outputTokenPrice;
       const estimatedCost = estimatedInputCost + estimatedOutputCost;
       const platformFee = isFreeModel ? 0 : (estimatedCost * PLATFORM_FEE_PERCENT) / 100;
       const totalModelEstimatedCost = estimatedCost + platformFee;

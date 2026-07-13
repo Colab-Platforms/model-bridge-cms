@@ -12,6 +12,7 @@ const AVG_CHARS_PER_TOKEN = 2.5;
 type ChatCompletionMessage = {
   content:
     | string
+    | null
     | Array<
         | {
             type: "text";
@@ -25,6 +26,9 @@ type ChatCompletionMessage = {
           }
       >;
 };
+
+type ChatCompletionMessageContentPart =
+  Exclude<ChatCompletionMessage["content"], string | null>[number];
 
 type ApiKeyLimitedRequestBody = {
   model: string | string[];
@@ -58,8 +62,15 @@ const extractPromptText = (messages: ChatCompletionMessage[] = []) =>
         return message.content;
       }
 
+      if (message.content === null) {
+        return "";
+      }
+
       return message.content
-        .filter((part): part is Extract<ChatCompletionMessage["content"][number], { type: "text" }> => part.type === "text")
+        .filter(
+          (part): part is Extract<ChatCompletionMessageContentPart, { type: "text" }> =>
+            part.type === "text"
+        )
         .map((part) => part.text)
         .join(" ");
     })
@@ -88,6 +99,8 @@ const estimateRequestCost = async (body: ApiKeyLimitedRequestBody) => {
       isFreeModel: true,
       inputPricePerToken: true,
       outputPricePerToken: true,
+      outputPricingUnit: true,
+      imageOutputPrice: true,
       maxOutputTokens: true,
     },
   });
@@ -113,7 +126,9 @@ const estimateRequestCost = async (body: ApiKeyLimitedRequestBody) => {
     const estimatedInputCost =
       estimatedPromptTokens * Number(modelRecord.inputPricePerToken ?? 0);
     const estimatedOutputCost =
-      requestedMaxTokens * Number(modelRecord.outputPricePerToken ?? 0);
+      modelRecord.outputPricingUnit === "IMAGE"
+        ? Number(modelRecord.imageOutputPrice ?? 0)
+        : requestedMaxTokens * Number(modelRecord.outputPricePerToken ?? 0);
     const estimatedProviderCost = estimatedInputCost + estimatedOutputCost;
     const platformFee = (estimatedProviderCost * PLATFORM_FEE_PERCENT) / 100;
 
@@ -251,7 +266,11 @@ export const apiKeyAuth = async (
       );
     }
 
-    if (apiKeyRecord.creditLimit !== null && apiKeyRecord.limitType) { 
+    if (
+      apiKeyRecord.creditLimit !== null &&
+      apiKeyRecord.limitType &&
+      apiKeyRecord.limitType !== LimitType.UNLIMITED
+    ) {
       const windowStart = getLimitWindowStart(apiKeyRecord.limitType);
 
       if (windowStart) {

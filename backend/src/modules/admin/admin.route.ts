@@ -11,6 +11,7 @@ import {
 } from "./admin.controller.js";
 import usersRoutes from "./users/users.route.js";
 import overviewRoutes from "./overview/overview.route.js";
+import providerBalancesRoutes from "./provider-balances/provider-balances.route.js";
 import revenueRoutes from "./revenue/revenue.route.js";
 import {
   adminModelBodyValidator,
@@ -25,6 +26,7 @@ router.use("/overview", overviewRoutes);
 router.use("/revenue", revenueRoutes);
 router.use("/activity", activityRoutes);
 router.use("/users", usersRoutes);
+router.use("/provider-balances", providerBalancesRoutes);
 
 router.get("/models", auth("ADMIN", "SUPERADMIN"), adminModelsQueryValidator, getAdminModelsController);
 router.get(

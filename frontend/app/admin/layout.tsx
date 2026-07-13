@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { useAuthStore } from "@/store/authStore";
@@ -19,7 +19,6 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
@@ -38,6 +37,7 @@ import {
   Server,
   CreditCard,
   LayoutDashboard,
+  Wallet,
 } from "lucide-react";
 
 const adminNav = [
@@ -45,6 +45,7 @@ const adminNav = [
   { title: "Users",      url: "/admin/users",      icon: Users },
   { title: "Models",     url: "/admin/models",     icon: BrainCircuit },
   { title: "Providers",  url: "/admin/providers",  icon: Server },
+  { title: "Provider Balances", url: "/admin/provider-balances", icon: Wallet },
   { title: "Revenue",    url: "/admin/credits",    icon: CreditCard },
 ];
 
@@ -54,6 +55,7 @@ const ROUTE_LABELS: Record<string, string> = {
   users: "Users",
   models: "Models",
   providers: "Providers",
+  "provider-balances": "Provider Balances",
   credits: "Credits",
 };
 
@@ -120,24 +122,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const user = useAuthStore((s) => s.user);
   const isAdmin = useAuthStore((s) => s.isAdmin);
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
   const crumbs = useBreadcrumbs();
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (mounted) {
-      if (!user) {
-        router.replace("/auth/login");
-      } else if (!isAdmin()) {
-        router.replace("/dashboard");
-      }
+    if (!user) {
+      router.replace("/auth/login");
+    } else if (!isAdmin()) {
+      router.replace("/dashboard");
     }
-  }, [mounted, user, isAdmin, router]);
+  }, [user, isAdmin, router]);
 
-  if (!mounted || !user) return null;
+  if (!user) return null;
   if (!isAdmin()) return null;
 
   return (

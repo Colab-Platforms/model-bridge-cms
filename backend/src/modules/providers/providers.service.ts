@@ -4,6 +4,7 @@ import prisma from "../../../prisma.js";
 import AppError from "../../shared/errors/index.js";
 import { activityLogService } from "../../services/activity-log.service.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
+import { ensureProviderBalance } from "./provider-balance.service.js";
 import type {
   CreateProviderInput,
   ProviderListQuery,
@@ -62,6 +63,8 @@ export const createProviderService = async (body: CreateProviderInput, actorId?:
         },
         select: providerSelect,
       });
+
+      await ensureProviderBalance(provider.id, tx, actorId);
 
       await activityLogService.log(
         {
