@@ -8,6 +8,7 @@ type ChatMessage = {
   role: "system" | "user" | "assistant" | "tool";
   content:
     | string
+    | null
     | Array<
         | {
             type: "text";
@@ -21,6 +22,8 @@ type ChatMessage = {
           }
       >;
 };
+
+type ChatMessageContentPart = Exclude<ChatMessage["content"], string | null>[number];
 
 type GuardrailRequestBody = {
   messages?: ChatMessage[];
@@ -37,8 +40,12 @@ const extractPromptText = (messages: ChatMessage[] = []) =>
         return `[${message.role}] ${message.content}`;
       }
 
+      if (message.content === null) {
+        return "";
+      }
+
       const textContent = message.content
-        .filter((part): part is Extract<ChatMessage["content"][number], { type: "text" }> => part.type === "text")
+        .filter((part): part is Extract<ChatMessageContentPart, { type: "text" }> => part.type === "text")
         .map((part) => part.text)
         .join(" ");
 

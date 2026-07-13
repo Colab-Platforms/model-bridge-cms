@@ -9,7 +9,7 @@ export { activityLogQueue } from "./queues/activity-log.queue.js";
 // Phase 4: export { providerSyncQueue } from "./queues/provider-sync.queue.js";
 // Phase 5: export { retryQueue } from "./queues/retry.queue.js";
 // Phase 5: export { billingReportQueue } from "./queues/billing-report.queue.js";
-// Phase 5: export { scheduledJobsQueue } from "./queues/scheduled-jobs.queue.js";
+export { scheduledJobsQueue } from "./queues/scheduled-jobs.queue.js";
 
 export async function startWorkers(): Promise<void> {
   try {
@@ -25,8 +25,9 @@ export async function startWorkers(): Promise<void> {
     // Phase 4: await import("./workers/provider-sync.worker.js");
     // Phase 5: await import("./workers/retry.worker.js");
     // Phase 5: await import("./workers/billing-report.worker.js");
-    // Phase 5: await import("./workers/scheduled-jobs.worker.js");
-    // Phase 5: await import("./schedulers/jobs.scheduler.js");
+    await import("./workers/scheduled-jobs.worker.js");
+    const { registerScheduledJobs } = await import("./schedulers/jobs.scheduler.js");
+    await registerScheduledJobs();
 
     console.log("✅ [BullMQ] All workers registered");
   } catch (err) {

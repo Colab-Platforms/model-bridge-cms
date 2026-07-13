@@ -78,6 +78,7 @@ export const adminApiKeyStatusBodySchema = z.object({
 });
 
 const decimalValueSchema = z.union([z.number(), z.string().trim().min(1)]);
+const modelOutputPricingUnitSchema = z.enum(["TOKEN", "IMAGE"]);
 
 export const adminProviderQuerySchema = z.object({
   slug: z.string().trim().min(1).optional(),
@@ -128,6 +129,8 @@ export const adminModelBodySchema = z.object({
   tokenizer: z.string().trim().min(1).optional(),
   inputPricePerToken: decimalValueSchema.optional(),
   outputPricePerToken: decimalValueSchema.optional(),
+  outputPricingUnit: modelOutputPricingUnitSchema.optional(),
+  imageOutputPrice: decimalValueSchema.optional(),
   cacheWritePricePerToken: decimalValueSchema.optional(),
   cacheReadPricePerToken: decimalValueSchema.optional(),
   inputModalities: z.array(z.string().trim().min(1)).optional(),
@@ -135,6 +138,14 @@ export const adminModelBodySchema = z.object({
   supportedParameters: z.array(z.string().trim().min(1)).optional(),
   defaultForCapabilities: z.array(z.string().trim().min(1)).optional(),
   isActive: z.boolean().optional(),
+}).superRefine((value, ctx) => {
+  if (value.outputPricingUnit === "IMAGE" && value.imageOutputPrice == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["imageOutputPrice"],
+      message: "imageOutputPrice is required when outputPricingUnit is IMAGE",
+    });
+  }
 });
 
 export const adminModelUpdateBodySchema = z
@@ -148,6 +159,8 @@ export const adminModelUpdateBodySchema = z
     tokenizer: z.string().trim().min(1).nullable().optional(),
     inputPricePerToken: decimalValueSchema.nullable().optional(),
     outputPricePerToken: decimalValueSchema.nullable().optional(),
+    outputPricingUnit: modelOutputPricingUnitSchema.optional(),
+    imageOutputPrice: decimalValueSchema.nullable().optional(),
     cacheWritePricePerToken: decimalValueSchema.nullable().optional(),
     cacheReadPricePerToken: decimalValueSchema.nullable().optional(),
     inputModalities: z.array(z.string().trim().min(1)).optional(),
@@ -156,8 +169,24 @@ export const adminModelUpdateBodySchema = z
     defaultForCapabilities: z.array(z.string().trim().min(1)).optional(),
     isActive: z.boolean().optional(),
   })
-  .refine((value) => Object.keys(value).length > 0, {
-    message: "At least one field is required for update",
+  .superRefine((value, ctx) => {
+    if (Object.keys(value).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one field is required for update",
+      });
+    }
+
+    if (
+      value.outputPricingUnit === "IMAGE" &&
+      value.imageOutputPrice == null
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["imageOutputPrice"],
+        message: "imageOutputPrice is required when outputPricingUnit is IMAGE",
+      });
+    }
   });
 
 export const adminOverviewQueryValidator = validateQuery(adminOverviewQuerySchema);

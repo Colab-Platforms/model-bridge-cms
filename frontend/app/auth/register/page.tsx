@@ -56,7 +56,7 @@ export default function SignupPage() {
               Integrate Once. <br/>Scale Infinitely.
             </h2>
             <p className="text-slate-400 text-base font-medium">
-              Start building with 400+ models in minutes. Simple SDK, robust logging, and smart fallbacks.
+              Start building with 150+ models in minutes. Simple SDK, robust logging, and smart fallbacks.
             </p>
           </div>
 

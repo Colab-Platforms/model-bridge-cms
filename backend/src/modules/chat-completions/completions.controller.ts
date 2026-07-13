@@ -1,10 +1,53 @@
 import { Request, Response } from "express";
 
 import { completionsService } from "./completions.service.js";
-import type { ChatCompletionsRequest } from "./completions.types.js";
+import { multiModelCompletionsService } from "./multi-model.service.js";
+import type {
+  ChatCompletionsRequest,
+  SingleModelChatCompletionsInput,
+} from "./completions.types.js";
+
+const getRequestedModels = (body: ChatCompletionsRequest["body"]) =>
+  Array.isArray(body.model) ? body.model : [body.model];
+
+const toSingleModelBody = (
+  body: ChatCompletionsRequest["body"]
+): SingleModelChatCompletionsInput => ({
+  model: getRequestedModels(body)[0] as string,
+  messages: body.messages,
+  ...(body.modalities !== undefined ? { modalities: body.modalities } : {}),
+  ...(body.temperature !== undefined ? { temperature: body.temperature } : {}),
+  ...(body.max_tokens !== undefined ? { max_tokens: body.max_tokens } : {}),
+  ...(body.tools !== undefined ? { tools: body.tools } : {}),
+  ...(body.tool_choice !== undefined ? { tool_choice: body.tool_choice } : {}),
+  stream: body.stream ?? false,
+});
 
 export const chatCompletionsController = async (req: Request, res: Response) => {
   const typedRequest = req as ChatCompletionsRequest;
+  const requestedModels = getRequestedModels(typedRequest.body);
+  const isMultiModelRequest = requestedModels.length > 1;
+
+  if (isMultiModelRequest && typedRequest.body.stream) {
+    return res.status(501).json({
+      status: false,
+      message: "Multi-model streaming is not implemented yet",
+    });
+  }
+
+  if (isMultiModelRequest) {
+    const result = await multiModelCompletionsService.execute({
+      body: typedRequest.body,
+      context: {
+        user: typedRequest.user,
+        project: typedRequest.project,
+        apiKey: typedRequest.apiKey,
+        creditCheck: typedRequest.creditCheck,
+      },
+    });
+
+    return res.status(200).json(result);
+  }
 
   if (typedRequest.body.stream) {
     let clientConnected = true;
@@ -14,7 +57,7 @@ export const chatCompletionsController = async (req: Request, res: Response) => 
 
     const stream = await completionsService.executeStream(
       {
-        body: typedRequest.body,
+        body: toSingleModelBody(typedRequest.body),
         context: {
           user: typedRequest.user,
           project: typedRequest.project,
@@ -56,7 +99,7 @@ export const chatCompletionsController = async (req: Request, res: Response) => 
   }
 
   const result = await completionsService.execute({
-    body: typedRequest.body,
+    body: toSingleModelBody(typedRequest.body),
     context: {
       user: typedRequest.user,
       project: typedRequest.project,

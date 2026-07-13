@@ -18,6 +18,8 @@ import {
   toProviderUsage,
 } from "./anthropic.mapper.js";
 import type {
+  AnthropicContentBlockStartEvent,
+  AnthropicContentBlockDeltaEvent,
   AnthropicMessageStartEvent,
   AnthropicMessageDeltaEvent,
   AnthropicMessagesResponse,
@@ -64,6 +66,11 @@ export class AnthropicClient {
       data: mapProviderChatRequestToAnthropic(request),
     });
 
+    console.info("Anthropic response payload", {
+      model: request.model,
+      response,
+    });
+
     return mapAnthropicResponseToProviderResponse(
       this.config.name,
       request.model,
@@ -93,11 +100,22 @@ export class AnthropicClient {
       let emittedEnd = false;
       let messageStartEvent: AnthropicMessageStartEvent | undefined;
       let latestOutputTokens = 0;
+      let latestCacheCreationInputTokens = 0;
+      let latestCacheReadInputTokens = 0;
+      const toolCallIndexes = new Map<number, { id: string; name: string }>();
 
       const buildLatestUsage = (inputTokens?: number) =>
         toProviderUsage({
           input_tokens: inputTokens ?? messageStartEvent?.message.usage?.input_tokens ?? 0,
           output_tokens: latestOutputTokens,
+          cache_creation_input_tokens:
+            latestCacheCreationInputTokens ||
+            messageStartEvent?.message.usage?.cache_creation_input_tokens ||
+            0,
+          cache_read_input_tokens:
+            latestCacheReadInputTokens ||
+            messageStartEvent?.message.usage?.cache_read_input_tokens ||
+            0,
         });
 
       const parseFrame = async function* (frame: string): AsyncGenerator<ProviderStreamEvent> {
@@ -114,6 +132,19 @@ export class AnthropicClient {
           }
 
           const event = JSON.parse(rawData) as AnthropicStreamEvent;
+
+          if (
+            event.type === "message_start" ||
+            event.type === "message_delta" ||
+            event.type === "message_stop" ||
+            event.type === "error"
+          ) {
+            console.info("Anthropic stream event", {
+              model: requestModel,
+              type: event.type,
+              event,
+            });
+          }
 
           if (event.type === "ping") {
             continue;
@@ -132,6 +163,10 @@ export class AnthropicClient {
 
           if (event.type === "message_start") {
             messageStartEvent = event;
+            latestCacheCreationInputTokens =
+              event.message.usage?.cache_creation_input_tokens ?? 0;
+            latestCacheReadInputTokens =
+              event.message.usage?.cache_read_input_tokens ?? 0;
 
             if (!emittedStart) {
               emittedStart = true;
@@ -148,7 +183,8 @@ export class AnthropicClient {
           }
 
           if (event.type === "content_block_start") {
-            const text = event.content_block?.type === "text" ? event.content_block.text : "";
+            const typedEvent = event as AnthropicContentBlockStartEvent;
+            const text = typedEvent.content_block?.type === "text" ? typedEvent.content_block.text : "";
 
             if (text) {
               yield {
@@ -162,11 +198,40 @@ export class AnthropicClient {
               };
             }
 
+            if (typedEvent.content_block?.type === "tool_use") {
+              toolCallIndexes.set(typedEvent.index, {
+                id: typedEvent.content_block.id,
+                name: typedEvent.content_block.name,
+              });
+
+              yield {
+                type: "tool_call",
+                requestId: extractRequestId(messageStartEvent, providerName),
+                provider: providerName,
+                model: extractModel(requestModel, messageStartEvent),
+                toolCallDeltas: [
+                  {
+                    index: typedEvent.index,
+                    id: typedEvent.content_block.id,
+                    type: "function",
+                    function: {
+                      name: typedEvent.content_block.name,
+                    },
+                  },
+                ],
+                usage: buildLatestUsage(),
+                rawChunk: event,
+              };
+            }
+
             continue;
           }
 
           if (event.type === "content_block_delta") {
-            const text = event.delta?.type === "text_delta" ? event.delta.text ?? "" : "";
+            const typedEvent = event as AnthropicContentBlockDeltaEvent;
+            const text = typedEvent.delta?.type === "text_delta" ? typedEvent.delta.text ?? "" : "";
+            const partialJson =
+              typedEvent.delta?.type === "input_json_delta" ? typedEvent.delta.partial_json ?? "" : "";
 
             if (text) {
               yield {
@@ -175,6 +240,29 @@ export class AnthropicClient {
                 provider: providerName,
                 model: extractModel(requestModel, messageStartEvent),
                 delta: text,
+                usage: buildLatestUsage(),
+                rawChunk: event,
+              };
+            }
+
+            if (partialJson) {
+              const toolCall = toolCallIndexes.get(typedEvent.index);
+
+              yield {
+                type: "tool_call",
+                requestId: extractRequestId(messageStartEvent, providerName),
+                provider: providerName,
+                model: extractModel(requestModel, messageStartEvent),
+                toolCallDeltas: [
+                  {
+                    index: typedEvent.index,
+                    ...(toolCall ? { id: toolCall.id, type: "function" } : {}),
+                    function: {
+                      ...(toolCall ? { name: toolCall.name } : {}),
+                      arguments: partialJson,
+                    },
+                  },
+                ],
                 usage: buildLatestUsage(),
                 rawChunk: event,
               };
@@ -186,6 +274,10 @@ export class AnthropicClient {
           if (event.type === "message_delta") {
             latestOutputTokens =
               event.usage?.output_tokens ?? latestOutputTokens;
+            latestCacheCreationInputTokens =
+              event.usage?.cache_creation_input_tokens ?? latestCacheCreationInputTokens;
+            latestCacheReadInputTokens =
+              event.usage?.cache_read_input_tokens ?? latestCacheReadInputTokens;
 
             const typedEvent = event as AnthropicMessageDeltaEvent;
 

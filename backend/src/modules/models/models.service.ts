@@ -22,6 +22,8 @@ const modelSelect = {
   tokenizer: true,
   inputPricePerToken: true,
   outputPricePerToken: true,
+  outputPricingUnit: true,
+  imageOutputPrice: true,
   cacheWritePricePerToken: true,
   cacheReadPricePerToken: true,
   inputModalities: true,
@@ -40,7 +42,7 @@ const modelSelect = {
       isActive: true,
     },
   },
-} satisfies Prisma.ModelSelect;
+} as Prisma.ModelSelect;
 
 const formatDecimalValue = (value: Prisma.Decimal | null) => {
   if (value === null) {
@@ -55,6 +57,7 @@ const formatModelPriceFields = <
   T extends {
     inputPricePerToken: Prisma.Decimal | null;
     outputPricePerToken: Prisma.Decimal | null;
+    imageOutputPrice: Prisma.Decimal | null;
     cacheWritePricePerToken: Prisma.Decimal | null;
     cacheReadPricePerToken: Prisma.Decimal | null;
   },
@@ -64,6 +67,7 @@ const formatModelPriceFields = <
   ...model,
   inputPricePerToken: formatDecimalValue(model.inputPricePerToken),
   outputPricePerToken: formatDecimalValue(model.outputPricePerToken),
+  imageOutputPrice: formatDecimalValue(model.imageOutputPrice),
   cacheWritePricePerToken: formatDecimalValue(model.cacheWritePricePerToken),
   cacheReadPricePerToken: formatDecimalValue(model.cacheReadPricePerToken),
 });
@@ -71,6 +75,16 @@ const formatModelPriceFields = <
 export const getAllModelsService = async (query: GetAllModelsQuery) => {
   const { take, skip, page, pageSize } = getPaginationOptions(query, 10);
   console.log(" query params:", query);
+  const cacheKey = CACHE_KEYS.MODELS.LIST(
+    page,
+    pageSize,
+    query.providerId,
+    query.slug,
+    typeof query.isActive === "boolean" ? query.isActive : undefined
+  );
+
+  const cached = await cacheGet<any>(cacheKey);
+  if (cached) return cached;
   const where: Prisma.ModelWhereInput = {
     isDeleted: false,
     ...(query.q
@@ -117,8 +131,7 @@ export const getAllModelsService = async (query: GetAllModelsQuery) => {
   ]);
 
   console.log(`Fetched ${models.length} models out of ${totalRecords} total records.`);
-
-  return formatPaginationResponse(
+  const result = formatPaginationResponse(
     models.map((model) => formatModelPriceFields(model)),
     totalRecords,
     page,

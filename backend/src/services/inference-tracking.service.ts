@@ -2,7 +2,8 @@ import { ComplexityTier, PlanTier, Prisma, RequestStatus, RequestType } from "@p
 
 import prisma from "../../prisma.js";
 import { cacheInvalidatePattern } from "../shared/utils/cache.js";
-import { deductCredits, refundCredits } from "../modules/wallets/wallets.service.js";
+import { deductCreditsInTransaction, refundCredits } from "../modules/wallets/wallets.service.js";
+import { deductProviderUsageCost } from "../modules/providers/provider-balance.service.js";
 
 export interface BillingResult {
   providerCost: number;
@@ -28,14 +29,22 @@ export interface CreatePendingInferenceInput {
 export interface CompleteInferenceInput {
   inferenceRequestId: string;
   userId: string;
+  providerId: string;
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  cachedPromptTokens?: number;
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
   latencyMs: number;
   responseCompletionTimeMs: number;
   isFreeModel?: boolean;
   inputPricePerToken: number;
   outputPricePerToken: number;
+  outputPricingUnit?: "TOKEN" | "IMAGE";
+  imageOutputPrice?: number;
+  cacheWritePricePerToken: number;
+  cacheReadPricePerToken: number;
   platformMarkupPercent: number;
   walletDeductionDescription?: string;
   walletCreatedBy?: string;
@@ -73,9 +82,16 @@ export class InferenceTrackingService {
   calculateBilling(input: {
     promptTokens: number;
     completionTokens: number;
+    cachedPromptTokens?: number;
+    cacheCreationInputTokens?: number;
+    cacheReadInputTokens?: number;
     isFreeModel?: boolean;
     inputPricePerToken: number;
     outputPricePerToken: number;
+    outputPricingUnit?: "TOKEN" | "IMAGE";
+    imageOutputPrice?: number;
+    cacheWritePricePerToken: number;
+    cacheReadPricePerToken: number;
     platformMarkupPercent: number;
   }): BillingResult {
     if (input.isFreeModel) {
@@ -86,8 +102,34 @@ export class InferenceTrackingService {
       };
     }
 
-    const inputCost = input.promptTokens * input.inputPricePerToken;
-    const outputCost = input.completionTokens * input.outputPricePerToken;
+    const cacheWriteTokens = Math.min(
+      Math.max(input.cacheCreationInputTokens ?? 0, 0),
+      input.promptTokens
+    );
+    const remainingPromptTokensAfterWrites = Math.max(input.promptTokens - cacheWriteTokens, 0);
+    const cacheReadTokens = Math.min(
+      Math.max(input.cacheReadInputTokens ?? input.cachedPromptTokens ?? 0, 0),
+      remainingPromptTokensAfterWrites
+    );
+    const uncachedPromptTokens = Math.max(
+      input.promptTokens - cacheWriteTokens - cacheReadTokens,
+      0
+    );
+
+    const inputCost =
+      uncachedPromptTokens * input.inputPricePerToken +
+      cacheWriteTokens *
+        (input.cacheWritePricePerToken > 0
+          ? input.cacheWritePricePerToken
+          : input.inputPricePerToken) +
+      cacheReadTokens *
+        (input.cacheReadPricePerToken > 0
+          ? input.cacheReadPricePerToken
+          : input.inputPricePerToken);
+    const outputCost =
+      input.outputPricingUnit === "IMAGE"
+        ? Math.max(input.imageOutputPrice ?? 0, 0)
+        : input.completionTokens * input.outputPricePerToken;
     const providerCost = inputCost + outputCost;
     const platformMarkup = (providerCost * input.platformMarkupPercent) / 100;
     const totalCost = providerCost + platformMarkup;
@@ -103,49 +145,73 @@ export class InferenceTrackingService {
     const billing = this.calculateBilling({
       promptTokens: input.promptTokens,
       completionTokens: input.completionTokens,
+      cachedPromptTokens: input.cachedPromptTokens,
+      cacheCreationInputTokens: input.cacheCreationInputTokens,
+      cacheReadInputTokens: input.cacheReadInputTokens,
       isFreeModel: input.isFreeModel,
       inputPricePerToken: input.inputPricePerToken,
       outputPricePerToken: input.outputPricePerToken,
+      outputPricingUnit: input.outputPricingUnit,
+      imageOutputPrice: input.imageOutputPrice,
+      cacheWritePricePerToken: input.cacheWritePricePerToken,
+      cacheReadPricePerToken: input.cacheReadPricePerToken,
       platformMarkupPercent: input.platformMarkupPercent,
     });
 
-    let creditsDeducted = false;
-
     try {
-      if (billing.totalCost > 0) {
-        await deductCredits({
-          userId: input.userId,
-          amount: billing.totalCost,
-          inferenceRequestId: input.inferenceRequestId,
-          createdBy: input.walletCreatedBy,
-          referenceId: input.walletReferenceId,
-          description: input.walletDeductionDescription ?? "AI Model Usage",
-        });
-        creditsDeducted = true;
-      }
+      const updatedRequest = await prisma.$transaction(async (tx) => {
+        if (billing.totalCost > 0) {
+          await deductCreditsInTransaction(
+            {
+              userId: input.userId,
+              amount: billing.totalCost,
+              inferenceRequestId: input.inferenceRequestId,
+              createdBy: input.walletCreatedBy,
+              referenceId: input.walletReferenceId,
+              description: input.walletDeductionDescription ?? "AI Model Usage",
+            },
+            tx
+          );
+        }
 
-      const updatedRequest = await prisma.inferenceRequest.update({
-        where: {
-          id: input.inferenceRequestId,
-        },
-        data: {
-          status: RequestStatus.SUCCESS,
-          promptTokens: input.promptTokens,
-          completionTokens: input.completionTokens,
-          totalTokens: input.totalTokens,
-          providerCost: new Prisma.Decimal(billing.providerCost),
-          platformMarkupPercent: new Prisma.Decimal(input.platformMarkupPercent),
-          platformMarkup: new Prisma.Decimal(billing.platformMarkup),
-          totalCost: new Prisma.Decimal(billing.totalCost),
-          latencyMs: input.latencyMs,
-          responseCompletionTimeMs: input.responseCompletionTimeMs,
-          inputPriceSnapshot: new Prisma.Decimal(input.inputPricePerToken),
-          outputPriceSnapshot: new Prisma.Decimal(input.outputPricePerToken),
-          ...(input.modelId ? { modelId: input.modelId } : {}),
-          ...(input.resolvedModelSlug ? { resolvedModelSlug: input.resolvedModelSlug } : {}),
-          ...(input.downgradedFromModelSlug ? { downgradedFromModelSlug: input.downgradedFromModelSlug } : {}),
-          ...(input.routingReason ? { routingReason: input.routingReason } : {}),
-        },
+        if (billing.providerCost > 0) {
+          await deductProviderUsageCost(
+            {
+              providerId: input.providerId,
+              amount: billing.providerCost,
+              inferenceRequestId: input.inferenceRequestId,
+              createdBy: input.walletCreatedBy,
+              referenceId: input.walletReferenceId,
+              description: "Provider usage deduction",
+              metadata: {
+                userId: input.userId,
+                totalCost: billing.totalCost,
+                platformMarkup: billing.platformMarkup,
+              },
+            },
+            tx
+          );
+        }
+
+        return tx.inferenceRequest.update({
+          where: {
+            id: input.inferenceRequestId,
+          },
+          data: {
+            status: RequestStatus.SUCCESS,
+            promptTokens: input.promptTokens,
+            completionTokens: input.completionTokens,
+            totalTokens: input.totalTokens,
+            providerCost: new Prisma.Decimal(billing.providerCost),
+            platformMarkupPercent: new Prisma.Decimal(input.platformMarkupPercent),
+            platformMarkup: new Prisma.Decimal(billing.platformMarkup),
+            totalCost: new Prisma.Decimal(billing.totalCost),
+            latencyMs: input.latencyMs,
+            responseCompletionTimeMs: input.responseCompletionTimeMs,
+            inputPriceSnapshot: new Prisma.Decimal(input.inputPricePerToken),
+            outputPriceSnapshot: new Prisma.Decimal(input.outputPricePerToken),
+          },
+        });
       });
 
       await Promise.all([
@@ -158,21 +224,6 @@ export class InferenceTrackingService {
         billing,
       };
     } catch (error) {
-      if (creditsDeducted) {
-        try {
-          await refundCredits({
-            userId: input.userId,
-            amount: billing.totalCost,
-            inferenceRequestId: input.inferenceRequestId,
-            createdBy: input.walletCreatedBy,
-            referenceId: input.walletReferenceId,
-            description: "Rollback refund after inference completion failure",
-          });
-        } catch (refundError) {
-          console.error("Refund rollback failed after inference completion error:", refundError);
-        }
-      }
-
       try {
         await this.failRequest(input.inferenceRequestId, RequestStatus.FAILED);
       } catch (failRequestError) {

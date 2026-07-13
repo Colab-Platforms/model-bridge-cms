@@ -111,13 +111,17 @@ const mapProviderContentPartToGeminiPart = (part: ProviderContentPart): GeminiPa
   };
 };
 
-const mapProviderContentToGeminiParts = (content: string | ProviderContentPart[]): GeminiPart[] =>
-  typeof content === "string"
+const mapProviderContentToGeminiParts = (content: string | ProviderContentPart[] | null): GeminiPart[] =>
+  content === null
+    ? [{ text: "" }]
+    : typeof content === "string"
     ? [{ text: content }]
     : content.map(mapProviderContentPartToGeminiPart);
 
-const extractTextFromProviderContent = (content: string | ProviderContentPart[]) =>
-  typeof content === "string"
+const extractTextFromProviderContent = (content: string | ProviderContentPart[] | null) =>
+  content === null
+    ? ""
+    : typeof content === "string"
     ? content
     : content
         .filter((part) => part.type === "text")
@@ -152,12 +156,14 @@ const toProviderUsage = (usageMetadata?: {
   promptTokenCount?: number;
   candidatesTokenCount?: number;
   totalTokenCount?: number;
+  cachedContentTokenCount?: number;
 }) => ({
   promptTokens: usageMetadata?.promptTokenCount ?? 0,
   completionTokens: usageMetadata?.candidatesTokenCount ?? 0,
   totalTokens:
     usageMetadata?.totalTokenCount ??
     (usageMetadata?.promptTokenCount ?? 0) + (usageMetadata?.candidatesTokenCount ?? 0),
+  cachedPromptTokens: usageMetadata?.cachedContentTokenCount ?? 0,
 });
 
 export const extractGeminiText = (response: GeminiGenerateContentResponse) =>
