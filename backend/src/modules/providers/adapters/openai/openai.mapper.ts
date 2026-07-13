@@ -12,7 +12,7 @@ import type {
   OpenAIEmbeddingResponse,
 } from "./openai.types.js";
 
-const mapProviderContentToOpenAI = (content: string | ProviderContentPart[]) => content;
+const mapProviderContentToOpenAI = (content: string | ProviderContentPart[] | null) => content;
 
 export const mapProviderChatRequestToOpenAI = (
   request: ProviderChatRequest
@@ -23,11 +23,21 @@ export const mapProviderChatRequestToOpenAI = (
     content: mapProviderContentToOpenAI(message.content),
     ...(message.name ? { name: message.name } : {}),
     ...(message.toolCallId ? { tool_call_id: message.toolCallId } : {}),
+    ...(message.toolCalls ? { tool_calls: message.toolCalls } : {}),
   })),
   ...(request.modalities?.length ? { modalities: request.modalities } : {}),
   ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
   ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
   ...(request.stream ? { stream: true, stream_options: { include_usage: true } } : {}),
+  ...(request.tools?.length ? { tools: request.tools } : {}),
+  ...(request.toolChoice !== undefined ? { tool_choice: request.toolChoice } : {}),
+});
+
+const toProviderUsage = (usage?: OpenAIChatCompletionResponse["usage"]) => ({
+  promptTokens: usage?.prompt_tokens ?? 0,
+  completionTokens: usage?.completion_tokens ?? 0,
+  totalTokens: usage?.total_tokens ?? 0,
+  cachedPromptTokens: usage?.prompt_tokens_details?.cached_tokens ?? 0,
 });
 
 export const mapOpenAIChatResponseToProviderResponse = (
@@ -40,11 +50,8 @@ export const mapOpenAIChatResponseToProviderResponse = (
   model: response.model,
   content: response.choices[0]?.message.content ?? "",
   finishReason: response.choices[0]?.finish_reason ?? undefined,
-  usage: {
-    promptTokens: response.usage?.prompt_tokens ?? 0,
-    completionTokens: response.usage?.completion_tokens ?? 0,
-    totalTokens: response.usage?.total_tokens ?? 0,
-  },
+  toolCalls: response.choices[0]?.message.tool_calls,
+  usage: toProviderUsage(response.usage),
   metrics: {
     latencyMs,
     responseCompletionTimeMs: latencyMs,

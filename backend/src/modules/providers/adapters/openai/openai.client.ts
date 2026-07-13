@@ -72,6 +72,7 @@ export class OpenAIClient {
             promptTokens: number;
             completionTokens: number;
             totalTokens: number;
+            cachedPromptTokens?: number;
           }
         | undefined;
 
@@ -114,6 +115,7 @@ export class OpenAIClient {
                   promptTokens: parsedChunk.usage.prompt_tokens,
                   completionTokens: parsedChunk.usage.completion_tokens,
                   totalTokens: parsedChunk.usage.total_tokens,
+                  cachedPromptTokens: parsedChunk.usage.prompt_tokens_details?.cached_tokens ?? 0,
                 };
               }
 
@@ -130,6 +132,7 @@ export class OpenAIClient {
 
               const choice = parsedChunk.choices[0];
               const delta = choice?.delta.content;
+              const toolCalls = choice?.delta.tool_calls;
 
               if (delta) {
                 yield {
@@ -138,6 +141,19 @@ export class OpenAIClient {
                   provider: providerName,
                   model: parsedChunk.model,
                   delta,
+                  finishReason: choice.finish_reason ?? undefined,
+                  usage: latestUsage,
+                  rawChunk: parsedChunk,
+                };
+              }
+
+              if (toolCalls?.length) {
+                yield {
+                  type: "tool_call",
+                  requestId: parsedChunk.id,
+                  provider: providerName,
+                  model: parsedChunk.model,
+                  toolCallDeltas: toolCalls,
                   finishReason: choice.finish_reason ?? undefined,
                   usage: latestUsage,
                   rawChunk: parsedChunk,
@@ -195,6 +211,7 @@ export class OpenAIClient {
                   promptTokens: parsedChunk.usage.prompt_tokens,
                   completionTokens: parsedChunk.usage.completion_tokens,
                   totalTokens: parsedChunk.usage.total_tokens,
+                  cachedPromptTokens: parsedChunk.usage.prompt_tokens_details?.cached_tokens ?? 0,
                 };
               }
 
@@ -211,6 +228,7 @@ export class OpenAIClient {
 
               const choice = parsedChunk.choices[0];
               const delta = choice?.delta.content;
+              const toolCalls = choice?.delta.tool_calls;
 
               if (delta) {
                 yield {
@@ -219,6 +237,19 @@ export class OpenAIClient {
                   provider: providerName,
                   model: parsedChunk.model,
                   delta,
+                  finishReason: choice.finish_reason ?? undefined,
+                  usage: latestUsage,
+                  rawChunk: parsedChunk,
+                };
+              }
+
+              if (toolCalls?.length) {
+                yield {
+                  type: "tool_call",
+                  requestId: parsedChunk.id,
+                  provider: providerName,
+                  model: parsedChunk.model,
+                  toolCallDeltas: toolCalls,
                   finishReason: choice.finish_reason ?? undefined,
                   usage: latestUsage,
                   rawChunk: parsedChunk,

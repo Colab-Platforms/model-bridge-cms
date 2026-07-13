@@ -28,11 +28,53 @@ export type ProviderContentPart =
   | ProviderTextContentPart
   | ProviderImageUrlContentPart;
 
+export interface ProviderFunctionTool {
+  type: "function";
+  function: {
+    name: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+  };
+}
+
+export type ProviderTool = ProviderFunctionTool;
+
+export type ProviderToolChoice =
+  | "auto"
+  | "none"
+  | "required"
+  | {
+      type: "function";
+      function: {
+        name: string;
+      };
+    };
+
+export interface ProviderToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+export interface ProviderToolCallDelta {
+  index: number;
+  id?: string | null;
+  type?: "function" | null;
+  function?: {
+    name?: string | null;
+    arguments?: string;
+  };
+}
+
 export interface ProviderChatMessage {
   role: "system" | "user" | "assistant" | "tool";
-  content: string | ProviderContentPart[];
+  content: string | ProviderContentPart[] | null;
   name?: string;
   toolCallId?: string;
+  toolCalls?: ProviderToolCall[];
 }
 
 export interface ProviderChatRequest {
@@ -42,21 +84,30 @@ export interface ProviderChatRequest {
   temperature?: number;
   maxTokens?: number;
   stream?: boolean;
+  tools?: ProviderTool[];
+  toolChoice?: ProviderToolChoice;
+  cacheControl?: {
+    type: "ephemeral";
+  };
 }
 
 export interface ProviderUsage {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  cachedPromptTokens?: number;
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
 }
 
 export interface ProviderChatResponse {
   requestId: string;
   provider: string;
   model: string;
-  content: string | ProviderContentPart[];
+  content: string | ProviderContentPart[] | null;
   finishReason?: string;
   usage: ProviderUsage;
+  toolCalls?: ProviderToolCall[];
   metrics: {
     latencyMs: number;
     responseCompletionTimeMs: number;
@@ -64,8 +115,17 @@ export interface ProviderChatResponse {
   rawResponse?: unknown;
 }
 
-export interface ProviderStreamEvent {
-  type: "start" | "content" | "end";
+export interface ProviderStreamStartEvent {
+  type: "start";
+  requestId: string;
+  provider: string;
+  model: string;
+  usage?: ProviderUsage;
+  rawChunk?: unknown;
+}
+
+export interface ProviderStreamContentEvent {
+  type: "content";
   requestId: string;
   provider: string;
   model: string;
@@ -74,6 +134,33 @@ export interface ProviderStreamEvent {
   usage?: ProviderUsage;
   rawChunk?: unknown;
 }
+
+export interface ProviderStreamToolCallEvent {
+  type: "tool_call";
+  requestId: string;
+  provider: string;
+  model: string;
+  toolCallDeltas: ProviderToolCallDelta[];
+  finishReason?: string;
+  usage?: ProviderUsage;
+  rawChunk?: unknown;
+}
+
+export interface ProviderStreamEndEvent {
+  type: "end";
+  requestId: string;
+  provider: string;
+  model: string;
+  finishReason?: string;
+  usage?: ProviderUsage;
+  rawChunk?: unknown;
+}
+
+export type ProviderStreamEvent =
+  | ProviderStreamStartEvent
+  | ProviderStreamContentEvent
+  | ProviderStreamToolCallEvent
+  | ProviderStreamEndEvent;
 
 export interface ProviderEmbeddingRequest {
   model: string;

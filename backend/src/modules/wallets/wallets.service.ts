@@ -382,11 +382,35 @@ export const addBalanceToOwnWallet = async (
 
 export const deductBalance = async (input: DeductBalanceInput) => {
   const amount = assertPositiveAmount(input.amount);
-  const wallet = await getWalletOrThrow(input.userId);
+  const executor = async (tx: TransactionClient) => {
+    const wallet = await getWalletOrThrow(input.userId, tx);
 
-  return prisma.$transaction(async (tx) =>
-    formatWalletRecord(
+    return formatWalletRecord(
       await updateWalletBalanceWithTransaction(tx, {
+        walletId: wallet.id,
+        userId: input.userId,
+        amount,
+        operation: "debit",
+        description: buildWalletDescription("Wallet debit", input.description),
+        createdBy: input.createdBy,
+        referenceId: input.referenceId,
+        inferenceRequestId: input.inferenceRequestId,
+      })
+    );
+  };
+
+  return prisma.$transaction(executor);
+};
+
+export const deductBalanceInTransaction = async (
+  input: DeductBalanceInput,
+  tx: TransactionClient
+) => {
+  const amount = assertPositiveAmount(input.amount);
+  const wallet = await getWalletOrThrow(input.userId, tx);
+
+  return formatWalletRecord(
+    await updateWalletBalanceWithTransaction(tx, {
       walletId: wallet.id,
       userId: input.userId,
       amount,
@@ -395,16 +419,14 @@ export const deductBalance = async (input: DeductBalanceInput) => {
       createdBy: input.createdBy,
       referenceId: input.referenceId,
       inferenceRequestId: input.inferenceRequestId,
-      })
-    )
+    })
   );
 };
 
 export const refundBalance = async (input: RefundBalanceInput) => {
   const amount = assertPositiveAmount(input.amount);
-  const wallet = await getWalletOrThrow(input.userId);
-
-  return prisma.$transaction(async (tx) => {
+  const executor = async (tx: TransactionClient) => {
+    const wallet = await getWalletOrThrow(input.userId, tx);
     const updatedWallet = await updateWalletBalanceWithTransaction(tx, {
       walletId: wallet.id,
       userId: input.userId,
@@ -434,7 +456,47 @@ export const refundBalance = async (input: RefundBalanceInput) => {
     );
 
     return formatWalletRecord(updatedWallet);
+  };
+
+  return prisma.$transaction(executor);
+};
+
+export const refundBalanceInTransaction = async (
+  input: RefundBalanceInput,
+  tx: TransactionClient
+) => {
+  const amount = assertPositiveAmount(input.amount);
+  const wallet = await getWalletOrThrow(input.userId, tx);
+
+  const updatedWallet = await updateWalletBalanceWithTransaction(tx, {
+    walletId: wallet.id,
+    userId: input.userId,
+    amount,
+    operation: "refund",
+    description: buildWalletDescription("Wallet refund", input.description),
+    createdBy: input.createdBy,
+    referenceId: input.referenceId,
+    inferenceRequestId: input.inferenceRequestId,
   });
+
+  await activityLogService.log(
+    {
+      activityType: ActivityType.REFUND_ISSUED,
+      entityType: "WALLET",
+      entityId: updatedWallet.id,
+      actorId: input.createdBy ?? input.userId,
+      userId: input.userId,
+      metadata: {
+        amount: amount.toString(),
+        balance: updatedWallet.balance.toString(),
+        referenceId: input.referenceId ?? null,
+        inferenceRequestId: input.inferenceRequestId ?? null,
+      },
+    },
+    tx
+  );
+
+  return formatWalletRecord(updatedWallet);
 };
 
 export const deductCredits = async (input: {
@@ -444,15 +506,37 @@ export const deductCredits = async (input: {
   createdBy?: string;
   referenceId?: string;
   description?: string;
-}) =>
-  deductBalance({
-    userId: input.userId,
-    amount: input.amount instanceof Prisma.Decimal ? input.amount.toString() : input.amount,
-    inferenceRequestId: input.inferenceRequestId,
-    createdBy: input.createdBy,
-    referenceId: input.referenceId ?? input.inferenceRequestId,
-    description: buildWalletDescription("AI Model Usage", input.description),
-  });
+}) => deductBalance({
+  userId: input.userId,
+  amount: input.amount instanceof Prisma.Decimal ? input.amount.toString() : input.amount,
+  inferenceRequestId: input.inferenceRequestId,
+  createdBy: input.createdBy,
+  referenceId: input.referenceId ?? input.inferenceRequestId,
+  description: buildWalletDescription("AI Model Usage", input.description),
+});
+
+export const deductCreditsInTransaction = async (
+  input: {
+    userId: string;
+    amount: number | string | Prisma.Decimal;
+    inferenceRequestId: string;
+    createdBy?: string;
+    referenceId?: string;
+    description?: string;
+  },
+  tx: TransactionClient
+) =>
+  deductBalanceInTransaction(
+    {
+      userId: input.userId,
+      amount: input.amount instanceof Prisma.Decimal ? input.amount.toString() : input.amount,
+      inferenceRequestId: input.inferenceRequestId,
+      createdBy: input.createdBy,
+      referenceId: input.referenceId ?? input.inferenceRequestId,
+      description: buildWalletDescription("AI Model Usage", input.description),
+    },
+    tx
+  );
 
 export const refundCredits = async (input: {
   userId: string;
@@ -461,15 +545,37 @@ export const refundCredits = async (input: {
   createdBy?: string;
   referenceId?: string;
   description?: string;
-}) =>
-  refundBalance({
-    userId: input.userId,
-    amount: input.amount instanceof Prisma.Decimal ? input.amount.toString() : input.amount,
-    inferenceRequestId: input.inferenceRequestId,
-    createdBy: input.createdBy,
-    referenceId: input.referenceId ?? input.inferenceRequestId,
-    description: buildWalletDescription("AI Usage Refund", input.description),
-  });
+}) => refundBalance({
+  userId: input.userId,
+  amount: input.amount instanceof Prisma.Decimal ? input.amount.toString() : input.amount,
+  inferenceRequestId: input.inferenceRequestId,
+  createdBy: input.createdBy,
+  referenceId: input.referenceId ?? input.inferenceRequestId,
+  description: buildWalletDescription("AI Usage Refund", input.description),
+});
+
+export const refundCreditsInTransaction = async (
+  input: {
+    userId: string;
+    amount: number | string | Prisma.Decimal;
+    inferenceRequestId: string;
+    createdBy?: string;
+    referenceId?: string;
+    description?: string;
+  },
+  tx: TransactionClient
+) =>
+  refundBalanceInTransaction(
+    {
+      userId: input.userId,
+      amount: input.amount instanceof Prisma.Decimal ? input.amount.toString() : input.amount,
+      inferenceRequestId: input.inferenceRequestId,
+      createdBy: input.createdBy,
+      referenceId: input.referenceId ?? input.inferenceRequestId,
+      description: buildWalletDescription("AI Usage Refund", input.description),
+    },
+    tx
+  );
 
 export const freezeWallet = async (userId: string, updatedBy?: string) => {
   const wallet = await getWalletOrThrow(userId);
