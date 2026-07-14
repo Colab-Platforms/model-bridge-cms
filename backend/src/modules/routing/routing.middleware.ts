@@ -47,18 +47,30 @@ const FREE_PLAN_REJECTION_MESSAGE =
   "This model isn't available on the Free plan. Upgrade to Pay As You Go or Scale to use it.";
 
 /**
+ * Kill switch for FREE-tier enforcement — off by default until a payment gateway
+ * exists to let a FREE project actually upgrade. `Project.planTier` keeps getting
+ * written/read as normal (no schema/data changes), and the complexity-router still
+ * runs for "auto" requests (cost-optimized routing keeps working) — this only turns
+ * off the FREE_TIER_CAP and the 403 gate below. Flip ENABLE_TIER_RESTRICTIONS=true
+ * once upgrades are possible; no code change needed at that point.
+ */
+const TIER_RESTRICTIONS_ENABLED = process.env.ENABLE_TIER_RESTRICTIONS === "true";
+
+/**
  * Runs right after apiKeyAuth and before any middleware that looks the model up by
  * slug (validateRequestedModalities, checkCredits). Two responsibilities:
  *
  * 1. Resolves `model: "auto"` to a concrete slug via the native complexity-router.ts
  *    classifier (no external call) — classifies the last user/system message, maps
  *    the resulting tier to a model, and for FREE-tier projects caps the tier at
- *    FREE_TIER_CAP before that mapping happens (routing.service.ts).
+ *    FREE_TIER_CAP before that mapping happens (routing.service.ts) — only while
+ *    TIER_RESTRICTIONS_ENABLED is true.
  * 2. Enforces that FREE-tier projects can only use models where Model.isFreeModel is
  *    true. This check runs on every request, including ones that name a model
  *    explicitly — not just "auto" ones — otherwise a FREE-tier project could bypass
  *    the restriction just by naming a paid model directly. Rejects with 403 rather
  *    than silently downgrading, so callers know why their request didn't go through.
+ *    Only while TIER_RESTRICTIONS_ENABLED is true.
  */
 export const resolveRoutingModel = async (
   req: Request,
@@ -67,7 +79,7 @@ export const resolveRoutingModel = async (
 ) => {
   try {
     const project = (req as any).project as { id: string; planTier: PlanTier } | undefined;
-    const isFreeTierProject = project?.planTier === PlanTier.FREE;
+    const isFreeTierProject = TIER_RESTRICTIONS_ENABLED && project?.planTier === PlanTier.FREE;
     const requestedModel = req.body.model as string;
 
     if (requestedModel === AUTO_ROUTE_SENTINEL) {

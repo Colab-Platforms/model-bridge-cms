@@ -2,7 +2,14 @@ import { PlanTier } from "@prisma/client";
 import type { NextFunction, Request, Response } from "express";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findFirstMock } = vi.hoisted(() => ({ findFirstMock: vi.fn() }));
+const { findFirstMock } = vi.hoisted(() => {
+  // TIER_RESTRICTIONS_ENABLED is read once at module-import time — this file tests
+  // the enforcement logic itself, so it needs the flag on. The default-off behavior
+  // (no payment gateway yet) is covered separately in
+  // routing.middleware.tier-restrictions-disabled.test.ts, in its own module load.
+  process.env.ENABLE_TIER_RESTRICTIONS = "true";
+  return { findFirstMock: vi.fn() };
+});
 
 vi.mock("../../../prisma.js", () => ({
   default: {
