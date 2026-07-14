@@ -1,4 +1,4 @@
-import { Prisma, RequestStatus, RequestType } from "@prisma/client";
+import { ComplexityTier, PlanTier, Prisma, RequestStatus, RequestType } from "@prisma/client";
 
 import prisma from "../../prisma.js";
 import { cacheInvalidatePattern } from "../shared/utils/cache.js";
@@ -20,6 +20,10 @@ export interface CreatePendingInferenceInput {
   resolvedModelSlug: string;
   stream: boolean;
   requestType?: RequestType;
+  routedTier?: PlanTier;
+  routingReason?: string;
+  complexityTier?: ComplexityTier;
+  complexityScore?: number;
 }
 
 export interface CompleteInferenceInput {
@@ -45,6 +49,11 @@ export interface CompleteInferenceInput {
   walletDeductionDescription?: string;
   walletCreatedBy?: string;
   walletReferenceId?: string;
+  /** Set only when a free-tier fallback swapped the model after the initial provider call failed. */
+  modelId?: string;
+  resolvedModelSlug?: string;
+  downgradedFromModelSlug?: string;
+  routingReason?: string;
 }
 
 const roundCurrency = (value: number) => Number(value.toFixed(8));
@@ -62,6 +71,10 @@ export class InferenceTrackingService {
         stream: input.stream,
         requestType: input.requestType ?? RequestType.CHAT,
         status: RequestStatus.PENDING,
+        routedTier: input.routedTier,
+        routingReason: input.routingReason,
+        complexityTier: input.complexityTier,
+        complexityScore: input.complexityScore,
       },
     });
   }

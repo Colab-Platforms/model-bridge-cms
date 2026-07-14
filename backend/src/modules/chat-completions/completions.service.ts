@@ -1,10 +1,11 @@
-import { RequestStatus, RequestType } from "@prisma/client";
+import { PlanTier, RequestStatus, RequestType } from "@prisma/client";
 
 import AppError from "../../shared/errors/index.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import prisma from "../../../prisma.js";
 import { inferenceTrackingService } from "../../services/inference-tracking.service.js";
 import { createProviderFactory } from "../providers/registry/provider.factory.js";
+import { getNextFreeTierFallback } from "../routing/routing.service.js";
 import type {
   ExecuteCompletionInput,
   ExecuteCompletionResult,
@@ -87,6 +88,50 @@ const resolveModelRecord = async (modelSlug: string): Promise<ResolvedModelRecor
       isActive: modelRecord.provider.isActive,
     },
   };
+};
+
+interface FreeTierFallbackOutcome<T> {
+  result: T;
+  modelRecord: ResolvedModelRecord;
+  /** Set only when the original model's provider call failed and a free-tier fallback served the request instead. */
+  downgradedFromModelSlug?: string;
+}
+
+/**
+ * Runs `call` against `modelRecord`. If it throws and the request is a FREE-tier
+ * project on a free model, retries once against another free-tier model
+ * (routing.service.ts's getNextFreeTierFallback never returns a paid model). Paid
+ * requests, and free-tier requests with no other free model to fall back to, just
+ * propagate the original error — this only ever substitutes free-for-free.
+ */
+const callWithFreeTierFallback = async <T>(
+  isFreeTierProject: boolean,
+  modelRecord: ResolvedModelRecord,
+  call: (modelRecord: ResolvedModelRecord) => Promise<T>
+): Promise<FreeTierFallbackOutcome<T>> => {
+  try {
+    const result = await call(modelRecord);
+    return { result, modelRecord };
+  } catch (error) {
+    if (!isFreeTierProject || !modelRecord.isFreeModel) {
+      throw error;
+    }
+
+    const fallback = await getNextFreeTierFallback(modelRecord.id);
+
+    if (!fallback) {
+      throw error;
+    }
+
+    console.warn(
+      `[completions] free-tier provider failure on "${modelRecord.slug}", falling back to "${fallback.slug}"`
+    );
+
+    const fallbackModelRecord = await resolveModelRecord(fallback.slug);
+    const result = await call(fallbackModelRecord);
+
+    return { result, modelRecord: fallbackModelRecord, downgradedFromModelSlug: modelRecord.slug };
+  }
 };
 
 const buildProviderRequest = (
@@ -324,24 +369,34 @@ const applyToolCallDeltas = (
 export class CompletionsService {
   async executeDetailed(input: ExecuteCompletionInput): Promise<ExecuteCompletionResult> {
     const modelRecord = await resolveModelRecord(input.body.model);
-    const providerRequest = buildProviderRequest(input, modelRecord);
+    const isFreeTierProject = input.context.project.planTier === PlanTier.FREE;
 
     const inferenceRequest = await inferenceTrackingService.createPendingRequest({
       userId: input.context.user.id,
       projectId: input.context.project.id,
       apiKeyId: input.context.apiKey.id,
       modelId: modelRecord.id,
-      requestedModelSlug: input.body.model,
+      requestedModelSlug: input.context.requestedModelSlug ?? input.body.model,
       resolvedModelSlug: modelRecord.slug,
       stream: input.body.stream ?? false,
       requestType: "CHAT",
+      routedTier: input.context.project.planTier,
+      routingReason: input.context.routingReason,
+      complexityTier: input.context.complexityTier,
+      complexityScore: input.context.complexityScore,
     });
 
     let providerResponse: ProviderChatResponse;
+    let usedModelRecord = modelRecord;
+    let downgradedFromModelSlug: string | undefined;
 
     try {
-      const adapter = providerFactory.get(modelRecord.provider.slug);
-      providerResponse = await adapter.chatCompletion(providerRequest);
+      const outcome = await callWithFreeTierFallback(isFreeTierProject, modelRecord, (record) =>
+        providerFactory.get(record.provider.slug).chatCompletion(buildProviderRequest(input, record))
+      );
+      providerResponse = outcome.result;
+      usedModelRecord = outcome.modelRecord;
+      downgradedFromModelSlug = outcome.downgradedFromModelSlug;
     } catch (error) {
       await inferenceTrackingService.handleProviderFailure(inferenceRequest.id);
       throw error;
@@ -369,6 +424,14 @@ export class CompletionsService {
       platformMarkupPercent: input.context.creditCheck.platformMarkupPercent,
       walletReferenceId: inferenceRequest.id,
       walletDeductionDescription: "AI Model Usage",
+      ...(downgradedFromModelSlug
+        ? {
+            modelId: usedModelRecord.id,
+            resolvedModelSlug: usedModelRecord.slug,
+            downgradedFromModelSlug,
+            routingReason: "FREE_TIER_FALLBACK",
+          }
+        : {}),
     });
 
     return {
@@ -389,37 +452,45 @@ export class CompletionsService {
     options: ExecuteStreamOptions
   ): Promise<AsyncIterable<string>> {
     const modelRecord = await resolveModelRecord(input.body.model);
+    const isFreeTierProject = input.context.project.planTier === PlanTier.FREE;
     const startedAt = Date.now();
     const shouldUseSyntheticImageStream = hasImageOutputModality(input.body.modalities);
-    const providerRequest = buildProviderRequest({
-      ...input,
-      body: {
-        ...input.body,
-        stream: shouldUseSyntheticImageStream ? false : true,
-      },
-    }, modelRecord);
 
     const inferenceRequest = await inferenceTrackingService.createPendingRequest({
       userId: input.context.user.id,
       projectId: input.context.project.id,
       apiKeyId: input.context.apiKey.id,
       modelId: modelRecord.id,
-      requestedModelSlug: input.body.model,
+      requestedModelSlug: input.context.requestedModelSlug ?? input.body.model,
       resolvedModelSlug: modelRecord.slug,
       stream: true,
       requestType: RequestType.STREAM,
+      routedTier: input.context.project.planTier,
+      routingReason: input.context.routingReason,
+      complexityTier: input.context.complexityTier,
+      complexityScore: input.context.complexityScore,
     });
 
     if (shouldUseSyntheticImageStream) {
       let providerResponse: ProviderChatResponse;
+      let usedModelRecord = modelRecord;
+      let downgradedFromModelSlug: string | undefined;
 
       try {
-        const adapter = providerFactory.get(modelRecord.provider.slug);
-        providerResponse = await adapter.chatCompletion(providerRequest);
+        const outcome = await callWithFreeTierFallback(isFreeTierProject, modelRecord, (record) =>
+          providerFactory.get(record.provider.slug).chatCompletion(
+            buildProviderRequest({ ...input, body: { ...input.body, stream: false } }, record)
+          )
+        );
+        providerResponse = outcome.result;
+        usedModelRecord = outcome.modelRecord;
+        downgradedFromModelSlug = outcome.downgradedFromModelSlug;
       } catch (error) {
         await inferenceTrackingService.handleProviderFailure(inferenceRequest.id, RequestStatus.FAILED);
         throw error;
       }
+
+      const effectiveModelSlug = usedModelRecord.slug;
 
       const iterator = async function* (): AsyncGenerator<string> {
         const serializedContent = serializeProviderContentForStreaming(providerResponse.content);
@@ -455,24 +526,32 @@ export class CompletionsService {
             platformMarkupPercent: input.context.creditCheck.platformMarkupPercent,
             walletReferenceId: inferenceRequest.id,
             walletDeductionDescription: "AI Model Usage",
+            ...(downgradedFromModelSlug
+              ? {
+                  modelId: usedModelRecord.id,
+                  resolvedModelSlug: usedModelRecord.slug,
+                  downgradedFromModelSlug,
+                  routingReason: "FREE_TIER_FALLBACK",
+                }
+              : {}),
           });
 
-          yield toSseMessage(buildOpenAIStartChunk(providerResponse.requestId, input.body.model));
+          yield toSseMessage(buildOpenAIStartChunk(providerResponse.requestId, effectiveModelSlug));
 
           if (serializedContent) {
             yield toSseMessage(
               buildOpenAIContentChunk(
                 providerResponse.requestId,
-                input.body.model,
+                effectiveModelSlug,
                 serializedContent
               )
             );
           }
 
           yield toSseMessage(
-            buildOpenAIFinalChunk(providerResponse.requestId, input.body.model, providerResponse.finishReason, {
+            buildOpenAIFinalChunk(providerResponse.requestId, effectiveModelSlug, providerResponse.finishReason, {
               requestId: providerResponse.requestId,
-              model: input.body.model,
+              model: effectiveModelSlug,
               content: serializedContent,
               usage: providerResponse.usage,
               finishReason: providerResponse.finishReason,
@@ -498,19 +577,29 @@ export class CompletionsService {
     }
 
     let providerStream: AsyncIterable<ProviderStreamEvent>;
+    let usedModelRecord = modelRecord;
+    let downgradedFromModelSlug: string | undefined;
 
     try {
-      const adapter = providerFactory.get(modelRecord.provider.slug);
-      providerStream = await adapter.streamCompletion(providerRequest);
+      const outcome = await callWithFreeTierFallback(isFreeTierProject, modelRecord, (record) =>
+        providerFactory.get(record.provider.slug).streamCompletion(
+          buildProviderRequest({ ...input, body: { ...input.body, stream: true } }, record)
+        )
+      );
+      providerStream = outcome.result;
+      usedModelRecord = outcome.modelRecord;
+      downgradedFromModelSlug = outcome.downgradedFromModelSlug;
     } catch (error) {
       await inferenceTrackingService.handleProviderFailure(inferenceRequest.id, RequestStatus.FAILED);
       throw error;
     }
 
+    const effectiveModelSlug = usedModelRecord.slug;
+
     const iterator = async function* (): AsyncGenerator<string> {
       const accumulator: StreamAccumulator = {
         requestId: inferenceRequest.id,
-        model: input.body.model,
+        model: effectiveModelSlug,
         content: "",
         toolCalls: {},
       };
@@ -536,7 +625,7 @@ export class CompletionsService {
             if (!streamStarted) {
               streamStarted = true;
               firstChunkAt = firstChunkAt ?? Date.now();
-              yield toSseMessage(buildOpenAIStartChunk(accumulator.requestId, input.body.model));
+              yield toSseMessage(buildOpenAIStartChunk(accumulator.requestId, effectiveModelSlug));
             }
             continue;
           }
@@ -545,13 +634,13 @@ export class CompletionsService {
             if (!streamStarted) {
               streamStarted = true;
               firstChunkAt = firstChunkAt ?? Date.now();
-              yield toSseMessage(buildOpenAIStartChunk(accumulator.requestId, input.body.model));
+              yield toSseMessage(buildOpenAIStartChunk(accumulator.requestId, effectiveModelSlug));
             }
 
             if (event.delta) {
               accumulator.content = `${accumulator.content ?? ""}${event.delta}`;
               yield toSseMessage(
-                buildOpenAIContentChunk(accumulator.requestId, input.body.model, event.delta)
+                buildOpenAIContentChunk(accumulator.requestId, effectiveModelSlug, event.delta)
               );
             }
 
@@ -634,6 +723,14 @@ export class CompletionsService {
           platformMarkupPercent: input.context.creditCheck.platformMarkupPercent,
           walletReferenceId: inferenceRequest.id,
           walletDeductionDescription: "AI Model Usage",
+          ...(downgradedFromModelSlug
+            ? {
+                modelId: usedModelRecord.id,
+                resolvedModelSlug: usedModelRecord.slug,
+                downgradedFromModelSlug,
+                routingReason: "FREE_TIER_FALLBACK",
+              }
+            : {}),
         });
         settled = true;
 

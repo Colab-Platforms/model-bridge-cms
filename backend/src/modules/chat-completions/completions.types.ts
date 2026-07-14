@@ -1,3 +1,4 @@
+import type { ComplexityTier, PlanTier } from "@prisma/client";
 import type { Request } from "express";
 import type z from "zod";
 
@@ -54,6 +55,7 @@ export interface ApiKeyRequestContext {
   project: {
     id: string;
     name?: string | null;
+    planTier: PlanTier;
   };
   user: {
     id: string;

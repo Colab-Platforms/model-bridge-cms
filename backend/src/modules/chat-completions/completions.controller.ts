@@ -63,6 +63,8 @@ export const chatCompletionsController = async (req: Request, res: Response) => 
           project: typedRequest.project,
           apiKey: typedRequest.apiKey,
           creditCheck: typedRequest.creditCheck,
+          requestedModelSlug: (typedRequest as any).routingMeta?.requestedModelSlug,
+          routingReason: (typedRequest as any).routingMeta?.routingReason,
         },
       },
       {
@@ -103,6 +105,10 @@ export const chatCompletionsController = async (req: Request, res: Response) => 
       project: typedRequest.project,
       apiKey: typedRequest.apiKey,
       creditCheck: typedRequest.creditCheck,
+      requestedModelSlug: (typedRequest as any).routingMeta?.requestedModelSlug,
+      routingReason: (typedRequest as any).routingMeta?.routingReason,
+      complexityTier: (typedRequest as any).routingMeta?.complexityTier,
+      complexityScore: (typedRequest as any).routingMeta?.complexityScore,
     },
   });
 

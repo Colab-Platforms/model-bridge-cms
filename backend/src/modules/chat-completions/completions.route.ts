@@ -6,6 +6,7 @@ import validateRequestedModalities from "../../shared/middlewares/validateReques
 import { chatCompletionsController } from "./completions.controller.js";
 import { chatCompletionsValidator } from "./completions.validators.js";
 import guardrailMiddleware from "../guardrails/guardrail.middleware.js";
+import resolveRoutingModel from "../routing/routing.middleware.js";
 
 const router = Router();
 
@@ -13,6 +14,7 @@ router.post(
   "/",
   chatCompletionsValidator,
   apiKeyAuth,
+  resolveRoutingModel,
   validateRequestedModalities,
   guardrailMiddleware,
   checkCredits,

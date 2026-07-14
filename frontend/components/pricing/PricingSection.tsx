@@ -151,7 +151,7 @@ function PricingCard({ tier }: { tier: PricingTier }) {
 
 export default function PricingSection() {
   return (
-    <section className="py-24">
+    <section id="pricing" className="scroll-mt-[86px] py-24">
       <div className="mx-auto max-w-6xl px-6">
         <div className="mb-14 text-center">
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
