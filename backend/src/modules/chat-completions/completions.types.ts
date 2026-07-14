@@ -62,6 +62,13 @@ export interface ApiKeyRequestContext {
     email?: string;
   };
   creditCheck: CreditCheckEstimate;
+  /** Original model value the caller sent (e.g. "auto") before routing.middleware.ts resolved it to a real slug. */
+  requestedModelSlug?: string;
+  /** Why routing.middleware.ts resolved the model the way it did. Persisted on InferenceRequest for observability. */
+  routingReason?: string;
+  /** Set only on the "auto" path — complexity-router.ts's resolved tier and raw score, persisted on InferenceRequest. */
+  complexityTier?: ComplexityTier;
+  complexityScore?: number;
 }
 
 export type ChatCompletionsRequest = Request<
