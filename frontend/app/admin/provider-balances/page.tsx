@@ -195,13 +195,14 @@ function ProviderBalanceFormDialog({
       onClose();
     },
     onError: (err: unknown) => {
-      const errorMessage =
-        typeof err === "object" &&
-        err !== null &&
-        "response" in err &&
-        typeof (err as { response?: { data?: { message?: string } } }).response?.data?.message ===
-          "string"
+      const responseMessage =
+        typeof err === "object" && err !== null && "response" in err
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+
+      const errorMessage =
+        typeof responseMessage === "string"
+          ? responseMessage
           : err instanceof Error
           ? err.message
           : "Something went wrong";
