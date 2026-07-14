@@ -410,7 +410,7 @@ model InferenceRequest {
   apiKeyId              String           @map("api_key_id")
   modelId               String           @map("model_id") 
   requestType           RequestType?
-  requestedModelSlug    String?          @map("requested_model_slug")
+  requestedModelSlug    String[]          @map("requested_model_slug")
   resolvedModelSlug     String?          @map("resolved_model_slug")
   routedTier            PlanTier?        @map("routed_tier")
   routingReason         String?          @map("routing_reason")
