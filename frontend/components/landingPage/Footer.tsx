@@ -72,7 +72,7 @@ export default function Footer() {
               Ready to simplify your AI stack?
             </h3>
             <p className="text-lg text-slate-500 font-medium">
-              Join 12,000+ developers already building on ModelBridge.
+              Join 12,000+ developers already building on ColabOne.
             </p>
           </div>
           <div className="flex items-center gap-4 flex-shrink-0 w-full md:w-auto">
@@ -106,7 +106,7 @@ export default function Footer() {
                 </svg>
               </div>
               <span className="font-black text-[#0F172A] text-xl tracking-tighter uppercase opacity-80">
-                ModelBridge
+                ColabOne
               </span>
             </Link>
 
@@ -157,7 +157,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="mt-16 pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-slate-400 font-bold tracking-tight">
-            © {new Date().getFullYear()} ModelBridge. All rights reserved.
+            © {new Date().getFullYear()} ColabOne. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
              <Link href="/status" className="flex items-center gap-2 text-sm text-slate-400 font-bold hover:text-indigo-600">

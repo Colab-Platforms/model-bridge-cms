@@ -53,7 +53,7 @@ export default function Navbar() {
             </svg>
           </div>
           <span className="font-bold text-[#0F172A] text-[16px] tracking-[-0.03em]">
-            ModelBridge
+            ColabOne
           </span>
         </Link>
 

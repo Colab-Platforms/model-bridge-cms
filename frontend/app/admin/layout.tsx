@@ -103,7 +103,7 @@ function AdminSidebar() {
           </div>
           <div className="flex flex-col leading-none">
             <span className="text-sm font-semibold">Admin Panel</span>
-            <span className="text-xs text-muted-foreground">Model Bridge</span>
+            <span className="text-xs text-muted-foreground">Colab One</span>
           </div>
         </div>
       </SidebarHeader>
@@ -121,17 +121,20 @@ function AdminSidebar() {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const isAdmin = useAuthStore((s) => s.isAdmin);
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const router = useRouter();
   const crumbs = useBreadcrumbs();
 
   useEffect(() => {
+    if (!hasHydrated) return;
     if (!user) {
       router.replace("/auth/login");
     } else if (!isAdmin()) {
       router.replace("/dashboard");
     }
-  }, [user, isAdmin, router]);
+  }, [hasHydrated, user, isAdmin, router]);
 
+  if (!hasHydrated) return null;
   if (!user) return null;
   if (!isAdmin()) return null;
 

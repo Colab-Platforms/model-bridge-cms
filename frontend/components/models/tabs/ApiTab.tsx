@@ -24,13 +24,13 @@ function buildSnippet(
   const keyValue = apiKey;
   const importLine =
     language === "typescript"
-      ? `import ModelBridge from '@model-bridge/sdk';`
-      : `const ModelBridge = require('@model-bridge/sdk');`;
+      ? `import ColabOne from '@colab-one/sdk';`
+      : `const ColabOne = require('@colab-one/sdk');`;
 
   if (type === "standard") {
     return `${importLine}
 
-const client = new ModelBridge({
+const client = new ColabOne({
   apiKey: '${keyValue}',
 });
 
@@ -44,7 +44,7 @@ console.log(response.choices[0].message.content);`;
 
   return `${importLine}
 
-const client = new ModelBridge({
+const client = new ColabOne({
   apiKey: '${keyValue}',
 });
 

@@ -6,6 +6,8 @@ interface AuthStore {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
+  hasHydrated: boolean;
+  setHasHydrated: (hasHydrated: boolean) => void;
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   setUser: (user: User) => void;
   logout: () => void;
@@ -18,6 +20,8 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       accessToken: null,
       refreshToken: null,
+      hasHydrated: false,
+      setHasHydrated: (hasHydrated) => set({ hasHydrated }),
       setAuth: (user, accessToken, refreshToken) =>
         set({ user, accessToken, refreshToken }),
       setUser: (user) => set({ user }),
@@ -30,13 +34,23 @@ export const useAuthStore = create<AuthStore>()(
             body: JSON.stringify({ refreshToken }),
           }).catch(() => {});
         }
-        set({ user: null, accessToken: null, refreshToken: null }); 
+        set({ user: null, accessToken: null, refreshToken: null });
       },
       isAdmin: () => {
         const role = get().user?.role;
         return role?.toLowerCase() === "admin";
       },
     }),
-    { name: "auth-storage" }
+    {
+      name: "auth-storage",
+      partialize: (state) => ({
+        user: state.user,
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    }
   )
 );

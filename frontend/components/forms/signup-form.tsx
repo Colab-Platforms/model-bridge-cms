@@ -114,7 +114,7 @@ export function SignupForm({ className }: React.ComponentProps<"form">) {
       try {
         await api.post("/wallets");
       } catch {}
-      toast.success("Account verified! Welcome to ModelBridge.");
+      toast.success("Account verified! Welcome to ColabOne.");
       router.push("/dashboard");
     } catch (err) {
       if (axios.isAxiosError(err)) {

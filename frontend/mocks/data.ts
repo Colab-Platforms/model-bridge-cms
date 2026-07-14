@@ -7,7 +7,7 @@ const P_META = { id: "prv_04", slug: "meta", displayName: "Meta" };
 // ── User ──────────────────────────────────────────────────────────────────────
 export const mockUser = {
   id: "usr_01",
-  email: "dev@modelbridge.io",
+  email: "dev@colabone.io",
   firstName: "Alex",
   lastName: "Chen",
   role: "USER" as const,
@@ -271,7 +271,7 @@ export const mockActivity = [
   { id: "act_17", activityType: "API_KEY_CREATED", entityType: "ApiKey", entityId: "key_02", metadata: { keyName: "Development" }, ipAddress: "192.168.1.1", createdAt: "2026-02-10T10:00:00Z" },
   { id: "act_18", activityType: "API_KEY_CREATED", entityType: "ApiKey", entityId: "key_01", metadata: { keyName: "Production" }, ipAddress: "192.168.1.1", createdAt: "2026-01-20T10:00:00Z" },
   { id: "act_19", activityType: "PROJECT_CREATED", entityType: "Project", entityId: "proj_01", metadata: { projectName: "Personal" }, ipAddress: "192.168.1.1", createdAt: "2026-01-15T10:05:00Z" },
-  { id: "act_20", activityType: "USER_REGISTERED", entityType: null, entityId: null, metadata: { email: "dev@modelbridge.io" }, ipAddress: "192.168.1.1", createdAt: "2026-01-15T10:00:00Z" },
+  { id: "act_20", activityType: "USER_REGISTERED", entityType: null, entityId: null, metadata: { email: "dev@colabone.io" }, ipAddress: "192.168.1.1", createdAt: "2026-01-15T10:00:00Z" },
 ];
 
 // ── Sessions ──────────────────────────────────────────────────────────────────

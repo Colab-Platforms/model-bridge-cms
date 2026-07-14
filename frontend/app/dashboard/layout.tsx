@@ -57,6 +57,7 @@ export default function DashboardLayout({
   const setProjects = useProjectStore((s) => s.setProjects);
   const user = useAuthStore((s) => s.user);
   const isAdmin = useAuthStore((s) => s.isAdmin);
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const crumbs = useBreadcrumbs();
@@ -81,16 +82,16 @@ useEffect(() => {
 
 
   useEffect(() => {
-    if (mounted) {
+    if (hasHydrated) {
       if (!user) {
         router.replace("/auth/login");
       } else if (isAdmin()) {
         router.replace("/admin/statistics");
       }
     }
-  }, [mounted, user, isAdmin, router]);
+  }, [hasHydrated, user, isAdmin, router]);
 
-  if (!mounted || !user) return null;
+  if (!hasHydrated || !user) return null;
   if (isAdmin()) return null;
 
   return (

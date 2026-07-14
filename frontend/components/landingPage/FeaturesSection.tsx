@@ -33,7 +33,7 @@ const FEATURES: Feature[] = [
     iconColor: "#16A34A",
     title: "Automatic Failover",
     description:
-      "If a provider goes down, ModelBridge instantly reroutes to a backup with zero code changes. Your app stays live even when providers don't.",
+      "If a provider goes down, ColabOne instantly reroutes to a backup with zero code changes. Your app stays live even when providers don't.",
     tag: "99.9% SLA",
   },
   {

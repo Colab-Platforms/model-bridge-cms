@@ -28,7 +28,7 @@ function DashboardMockup() {
           <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
           <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
           <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
-          <span className="ml-3 text-[11px] font-medium text-[#94A3B8] select-none">ModelBridge Analytics</span>
+          <span className="ml-3 text-[11px] font-medium text-[#94A3B8] select-none">ColabOne Analytics</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">

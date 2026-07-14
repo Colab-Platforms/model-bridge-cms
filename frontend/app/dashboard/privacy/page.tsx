@@ -66,7 +66,7 @@ const DATA_TOGGLES = [
   {
     key: "discount",
     title: "Allow 1% data discount in projects",
-    description: "Allow projects to consent to Model Bridge using your inputs/outputs to improve the product. Each project consents separately.",
+    description: "Allow projects to consent to Colab One using your inputs/outputs to improve the product. Each project consents separately.",
     defaultChecked: false,
   },
 ] as const;

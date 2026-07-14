@@ -81,8 +81,8 @@ export default function DeveloperSection() {
                 <Kw t="const" /> client = <Kw t="new" /> <Fn t="OpenAI" />{"({ "}<Prop t="apiKey" />{": process.env."}<Val t="OPENAI_API_KEY" />{" });"}{"\n"}
                 {"\n"}
                 <Cm t="// ── After: all providers, one SDK ──────────────────" />{"\n"}
-                <Kw t="import" /> <Obj t="ModelBridge" /> <Kw t="from" /> <Str t="'@modelbridge/sdk'" />{"\n"}
-                <Kw t="const" /> client = <Kw t="new" /> <Fn t="ModelBridge" />{"({ "}<Prop t="apiKey" />{": process.env."}<Val t="MODELBRIDGE_API_KEY" />{" });"}{"\n"}
+                <Kw t="import" /> <Obj t="ColabOne" /> <Kw t="from" /> <Str t="'@colabone/sdk'" />{"\n"}
+                <Kw t="const" /> client = <Kw t="new" /> <Fn t="ColabOne" />{"({ "}<Prop t="apiKey" />{": process.env."}<Val t="COLABONE_API_KEY" />{" });"}{"\n"}
                 {"\n"}
                 <Cm t="// ── Smart routing — picks the best model for you ───" />{"\n"}
                 <Kw t="const" /> response = <Kw t="await" /> client.<Obj t="chat" />.<Obj t="completions" />.<Fn t="create" />{"({"}{"\n"}
@@ -136,7 +136,7 @@ export default function DeveloperSection() {
             <div className="mt-2 flex items-center gap-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-3">
               <Terminal className="w-4 h-4 text-[#94A3B8] flex-shrink-0" />
               <code className="text-[12.5px] font-mono text-[#334155]">
-                npm install @modelbridge/sdk
+                npm install @colabone/sdk
               </code>
               <div className="ml-auto flex items-center gap-1 text-[11px] text-[#94A3B8]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />

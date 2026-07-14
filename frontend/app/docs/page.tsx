@@ -84,21 +84,21 @@ const FLAT_SECTIONS = SECTIONS.flatMap(s => s.items);
 
 // ── Install commands ──────────────────────────────────────────────────────────
 const INSTALL_PKG: Record<string, string> = {
-  npm:  "npm install @model-bridge/sdk",
-  pnpm: "pnpm add @model-bridge/sdk",
-  yarn: "yarn add @model-bridge/sdk",
-  bun:  "bun add @model-bridge/sdk",
+  npm:  "npm install @colab-one/sdk",
+  pnpm: "pnpm add @colab-one/sdk",
+  yarn: "yarn add @colab-one/sdk",
+  bun:  "bun add @colab-one/sdk",
 };
 
-const INSTALL_PYTHON = `pip install model-bridge-sdk`;
+const INSTALL_PYTHON = `pip install colab-one-sdk`;
 
 // ── Code samples: TypeScript + Python ─────────────────────────────────────────
 const CODES: Record<string, Record<LangTab, string | null>> = {
   quickstart: {
-    typescript: `import { ModelBridge } from "@model-bridge/sdk";
+    typescript: `import { ColabOne } from "@colab-one/sdk";
 
-const client = new ModelBridge({
-  apiKey: process.env.MODELBRIDGE_API_KEY,
+const client = new ColabOne({
+  apiKey: process.env.COLABONE_API_KEY,
 });
 
 // Single model request
@@ -106,17 +106,17 @@ const response = await client.chat.completions.create({
   model: "gpt-4o",
   messages: [
     { role: "system", content: "You are a helpful assistant." },
-    { role: "user",   content: "Hello, ModelBridge!" },
+    { role: "user",   content: "Hello, ColabOne!" },
   ],
 });
 
 console.log(response.choices[0].message.content);`,
     python: `import asyncio
 import os
-from model_bridge_sdk import ModelBridge
+from colab_one_sdk import ColabOne
 
-client = ModelBridge(
-    api_key=os.environ.get("MODELBRIDGE_API_KEY", "mb_your_api_key"),
+client = ColabOne(
+    api_key=os.environ.get("COLABONE_API_KEY", "mb_your_api_key"),
     timeout=30.0,
     max_retries=3,
 )
@@ -127,7 +127,7 @@ async def main():
         model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user",   "content": "Hello, ModelBridge!"},
+            {"role": "user",   "content": "Hello, ColabOne!"},
         ],
     )
     print(response.choices[0].message.content)
@@ -208,7 +208,7 @@ print(response.usage.completion_tokens) # 152`,
 
   multimodel: {
     typescript: `// Send the same prompt to multiple models simultaneously.
-// All models execute in parallel — ModelBridge handles routing.
+// All models execute in parallel — ColabOne handles routing.
 const result = await client.chat.completions.create({
   model: ["gpt-4o", "claude-3-5-sonnet", "gemini-2-flash"],
   messages: [{ role: "user", content: "Summarise the history of the internet." }],
@@ -231,7 +231,7 @@ result.results.forEach(r => {
 
 console.log(result.summary.billing.totalCost);`,
     python: `# Send the same prompt to multiple models simultaneously.
-# All models execute in parallel — ModelBridge handles routing.
+# All models execute in parallel — ColabOne handles routing.
 result = await client.chat.completions.create(
     model=["gpt-4o", "claude-3-5-sonnet", "gemini-2-flash"],
     messages=[{"role": "user", "content": "Summarise the history of the internet."}],
@@ -256,9 +256,9 @@ print(result.summary.billing.total_cost)`,
   },
 
   agent: {
-    typescript: `import { ModelBridge } from "@model-bridge/sdk";
+    typescript: `import { ColabOne } from "@colab-one/sdk";
 
-const client = new ModelBridge({ apiKey: process.env.MODELBRIDGE_API_KEY });
+const client = new ColabOne({ apiKey: process.env.COLABONE_API_KEY });
 
 const history = [
   { role: "system" as const, content: "You are a helpful coding assistant." },
@@ -285,10 +285,10 @@ console.log(reply.text);   // answer from fastest model
 console.log(reply.model);  // which model answered`,
     python: `import asyncio
 import os
-from model_bridge_sdk import ModelBridge
+from colab_one_sdk import ColabOne
 
-client = ModelBridge(
-    api_key=os.environ.get("MODELBRIDGE_API_KEY", "mb_your_api_key"),
+client = ColabOne(
+    api_key=os.environ.get("COLABONE_API_KEY", "mb_your_api_key"),
     timeout=30.0,
     max_retries=3,
 )
@@ -339,9 +339,9 @@ for await (const chunk of stream) {
 // Use stream: false for multi-model requests.`,
     python: `import asyncio
 import os
-from model_bridge_sdk import ModelBridge
+from colab_one_sdk import ColabOne
 
-client = ModelBridge(api_key=os.environ.get("MODELBRIDGE_API_KEY", "mb_your_api_key"))
+client = ColabOne(api_key=os.environ.get("COLABONE_API_KEY", "mb_your_api_key"))
 
 async def main():
     # Streaming is supported for single-model requests
@@ -394,8 +394,8 @@ print(model.context_length)              # 128000`,
   },
 
   config: {
-    typescript: `const client = new ModelBridge({
-  apiKey: "mb_...",        // Your ModelBridge API key (required)
+    typescript: `const client = new ColabOne({
+  apiKey: "mb_...",        // Your ColabOne API key (required)
   baseURL: "https://...",  // Custom base URL (optional)
   timeout: 30_000,         // Request timeout in ms (default: 60 000)
   maxRetries: 3,           // Max retry attempts (default: 2)
@@ -403,11 +403,11 @@ print(model.context_length)              # 128000`,
     "X-Custom-Header": "value",
   },
 });`,
-    python: `from model_bridge_sdk import ModelBridge
+    python: `from colab_one_sdk import ColabOne
 
-client = ModelBridge(
+client = ColabOne(
     api_key="mb_...",                                   # required
-    base_url="https://custom.api.modelbridge.ai/v1",    # optional
+    base_url="https://custom.api.colabone.ai/v1",    # optional
     timeout=30.0,          # seconds (default: 60.0)
     max_retries=3,         # default: 3
 )
@@ -487,9 +487,9 @@ print("Payment methods:", payment_methods)`,
   },
 
   errors: {
-    typescript: `import { ModelBridge, APIError, ModelBridgeError } from "@model-bridge/sdk";
+    typescript: `import { ColabOne, APIError, ColabOneError } from "@colab-one/sdk";
 
-const client = new ModelBridge({ apiKey: process.env.MODELBRIDGE_API_KEY });
+const client = new ColabOne({ apiKey: process.env.COLABONE_API_KEY });
 
 try {
   const response = await client.chat.completions.create({
@@ -501,7 +501,7 @@ try {
     console.log(error.status);   // 429
     console.log(error.message);  // "Rate limit exceeded"
     console.log(error.code);     // "rate_limit_error"
-  } else if (error instanceof ModelBridgeError) {
+  } else if (error instanceof ColabOneError) {
     console.log("SDK error:", error.message);
   }
 }
@@ -517,8 +517,8 @@ result.results.forEach(r => {
     console.log(r.error?.message); // human-readable reason
   }
 });`,
-    python: `from model_bridge_sdk import (
-    ModelBridge,
+    python: `from colab_one_sdk import (
+    ColabOne,
     ApiError,
     AuthenticationError,
     RateLimitError,
@@ -528,7 +528,7 @@ result.results.forEach(r => {
 )
 import os
 
-client = ModelBridge(api_key=os.environ.get("MODELBRIDGE_API_KEY", "mb_key"))
+client = ColabOne(api_key=os.environ.get("COLABONE_API_KEY", "mb_key"))
 
 try:
     response = await client.chat.completions.create(
@@ -577,10 +577,10 @@ const res2 = await client.chat.completions.create(
 );`,
     python: `import asyncio
 import os
-from model_bridge_sdk import ModelBridge
+from colab_one_sdk import ColabOne
 
-client = ModelBridge(
-    api_key=os.environ.get("MODELBRIDGE_API_KEY", "mb_key"),
+client = ColabOne(
+    api_key=os.environ.get("COLABONE_API_KEY", "mb_key"),
     timeout=60.0,
     max_retries=3,
 )
@@ -631,8 +631,8 @@ asyncio.run(main())`,
   Model,
   UsageRecord,
   CreditBalance,
-  ModelBridgeClientOptions,
-} from "@model-bridge/sdk";
+  ColabOneClientOptions,
+} from "@colab-one/sdk";
 
 // Single-model response
 const completion: ChatCompletion = await client.chat.completions.create({
@@ -645,9 +645,9 @@ const multi: MultiModelChatCompletionResponse = await client.chat.completions.cr
   model: ["gpt-4o", "claude-3-5-sonnet"],
   messages: [{ role: "user", content: "Hello!" }],
 });`,
-    python: `# model_bridge_sdk is fully typed with dataclasses + type stubs
-from model_bridge_sdk import (
-    ModelBridge,
+    python: `# colab_one_sdk is fully typed with dataclasses + type stubs
+from colab_one_sdk import (
+    ColabOne,
     ApiError,
     AuthenticationError,
     RateLimitError,
@@ -655,15 +655,15 @@ from model_bridge_sdk import (
     ProviderError,
     ValidationError,
 )
-from model_bridge_sdk.types import (
+from colab_one_sdk.types import (
     ChatCompletion,
     MultiModelChatCompletionResponse,
     MultiModelChatCompletionResult,
     Model,
 )
 
-client = ModelBridge(
-    api_key=os.environ.get("MODELBRIDGE_API_KEY", "mb_key"),
+client = ColabOne(
+    api_key=os.environ.get("COLABONE_API_KEY", "mb_key"),
     timeout=30.0,
     max_retries=3,
 )
@@ -688,7 +688,7 @@ await client.close()`,
 };
 
 const CODE_REST_SINGLE = `# Single-model request via REST (language-agnostic)
-curl https://api.modelbridge.io/v1/chat/completions \\
+curl https://api.colabone.io/v1/chat/completions \\
   -H "Authorization: Bearer mb_YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -697,7 +697,7 @@ curl https://api.modelbridge.io/v1/chat/completions \\
   }'`;
 
 const CODE_REST_MULTI = `# Multi-model request — runs all models in parallel
-curl https://api.modelbridge.io/v1/chat/completions \\
+curl https://api.colabone.io/v1/chat/completions \\
   -H "Authorization: Bearer mb_YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -743,8 +743,8 @@ const PLATFORM_FEATURES: { Icon: LucideIcon; title: string; desc: string }[] = [
 ];
 
 const CONFIG_PARAMS = [
-  { param: "apiKey / api_key",   type: "string",                 default: "—",                          desc: "Your ModelBridge API key (required)" },
-  { param: "baseURL / base_url", type: "string",                 default: "https://api.modelbridge.io", desc: "Override the API base URL" },
+  { param: "apiKey / api_key",   type: "string",                 default: "—",                          desc: "Your ColabOne API key (required)" },
+  { param: "baseURL / base_url", type: "string",                 default: "https://api.colabone.io", desc: "Override the API base URL" },
   { param: "timeout",            type: "number / int",           default: "60 000ms / 60s",             desc: "Request timeout" },
   { param: "maxRetries",         type: "number / int",           default: "2",                          desc: "Max retry attempts on transient errors" },
   { param: "defaultHeaders",     type: "Record<string, string>", default: "{}",                         desc: "Headers sent with every request" },
@@ -761,7 +761,7 @@ const ENVIRONMENTS = [
 
 const ERROR_TYPES = [
   // TypeScript
-  "APIError", "ModelBridgeError", "AuthenticationError", "RateLimitError", "NotFoundError",
+  "APIError", "ColabOneError", "AuthenticationError", "RateLimitError", "NotFoundError",
   // Python
   "ApiError", "ValidationError", "InsufficientCreditsError", "ProviderError", "TimeoutError",
 ];
@@ -1083,7 +1083,7 @@ export default function DocsPage() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-[13px] font-black text-[#0F172A] tracking-tight leading-none">ModelBridge</p>
+                  <p className="text-[13px] font-black text-[#0F172A] tracking-tight leading-none">ColabOne</p>
                   <p className="text-[11px] text-slate-400 font-medium leading-none mt-0.5">Docs</p>
                 </div>
                 <span className="ml-auto text-[10px] font-bold text-indigo-600 border border-indigo-200 bg-indigo-50 rounded-full px-2 py-0.5 tracking-wide">
@@ -1136,7 +1136,7 @@ export default function DocsPage() {
                 <span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.18em]">Documentation · v1.0.0</span>
               </div>
               <h1 className="text-5xl font-black text-[#0F172A] tracking-tight leading-[1.05] mb-5">
-                ModelBridge <span className="text-indigo-600">Docs</span>
+                ColabOne <span className="text-indigo-600">Docs</span>
               </h1>
               <p className="text-[17px] text-slate-600 leading-[1.72] mb-4 max-w-[580px]">
                 Access 150+ AI models through a single, unified API — with multi-model parallel routing, streaming, retries, and full type-safety built in.
@@ -1175,23 +1175,23 @@ export default function DocsPage() {
                 <code className="font-mono text-[13px]" style={{ color: SYN.plain }}>
                   <span style={{ color: SYN.comment }}>$</span>{" "}
                   <span style={{ color: SYN.keyword }}>npm</span>{" "}
-                  <span style={{ color: SYN.string }}>install @model-bridge/sdk</span>
+                  <span style={{ color: SYN.string }}>install @colab-one/sdk</span>
                 </code>
-                <CopyBtn code="npm install @model-bridge/sdk" />
+                <CopyBtn code="npm install @colab-one/sdk" />
               </div>
               <div className="flex items-center justify-between px-4 py-3.5 bg-[#0F172A] rounded-2xl mb-4">
                 <code className="font-mono text-[13px]" style={{ color: SYN.plain }}>
                   <span style={{ color: SYN.comment }}>$</span>{" "}
                   <span style={{ color: SYN.keyword }}>pip</span>{" "}
-                  <span style={{ color: SYN.string }}>install model-bridge-sdk</span>
+                  <span style={{ color: SYN.string }}>install colab-one-sdk</span>
                 </code>
-                <CopyBtn code="pip install model-bridge-sdk" />
+                <CopyBtn code="pip install colab-one-sdk" />
               </div>
 
               <div className="mt-4 bg-indigo-50 border border-indigo-200 rounded-xl p-4">
                 <p className="text-[13px] font-bold text-indigo-800 mb-1">💡 Unified model selection</p>
                 <p className="text-[13px] text-indigo-700 leading-relaxed">
-                  ModelBridge uses the unified <InlineCode>model</InlineCode> field, which accepts either a single model string or an array of model strings for parallel routing. See the <a href="#sdk-model-field" className="underline font-semibold">model field docs →</a>
+                  ColabOne uses the unified <InlineCode>model</InlineCode> field, which accepts either a single model string or an array of model strings for parallel routing. See the <a href="#sdk-model-field" className="underline font-semibold">model field docs →</a>
                 </p>
               </div>
 
@@ -1231,7 +1231,7 @@ export default function DocsPage() {
             <section className="mb-14">
               <SecHead id="quickstart" eyebrow="Getting Started" title="Quick Start" />
               <Callout type="tip">
-                Get your API key from the <a href="/dashboard/keys" className="text-indigo-600 font-semibold hover:underline">ModelBridge Dashboard</a>. Set it as <InlineCode>MODELBRIDGE_API_KEY</InlineCode> in your environment.
+                Get your API key from the <a href="/dashboard/keys" className="text-indigo-600 font-semibold hover:underline">ColabOne Dashboard</a>. Set it as <InlineCode>COLABONE_API_KEY</InlineCode> in your environment.
               </Callout>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
               <LangCodeBlock codes={CODES.quickstart} activeLang={activeLang} />
@@ -1291,11 +1291,11 @@ export default function DocsPage() {
             <section className="mb-14">
               <SecHead id="architecture" eyebrow="Core Concepts" title="Architecture" />
               <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
-                All SDK resources share a single configured client. Requests flow through the ModelBridge gateway which handles routing, billing, and logging.
+                All SDK resources share a single configured client. Requests flow through the ColabOne gateway which handles routing, billing, and logging.
               </p>
               <div className="bg-white border border-slate-200 rounded-xl p-8 mb-5">
                 <div className="flex items-center justify-center flex-wrap gap-y-3">
-                  {["SDK Client", "ModelBridge Gateway", "Provider Router", "AI Providers"].map((node, i, arr) => (
+                  {["SDK Client", "ColabOne Gateway", "Provider Router", "AI Providers"].map((node, i, arr) => (
                     <div key={node} className="flex items-center">
                       <div className={`border rounded-lg px-4 py-2 text-[13px] font-semibold font-mono whitespace-nowrap ${
                         i === 0 ? "border-indigo-300 bg-indigo-50 text-indigo-700" : i === arr.length - 1 ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-700"
@@ -1305,7 +1305,7 @@ export default function DocsPage() {
                   ))}
                 </div>
                 <p className="text-center text-[12px] text-slate-400 font-medium mt-4">
-                  Single API call → ModelBridge routes to any of 150+ models across multiple providers, returning a unified response with usage and billing.
+                  Single API call → ColabOne routes to any of 150+ models across multiple providers, returning a unified response with usage and billing.
                 </p>
               </div>
               <SectionNext currentId="architecture" />
@@ -1358,7 +1358,7 @@ export default function DocsPage() {
             <section className="mb-14">
               <SecHead id="multimodel" eyebrow="SDK Reference" title="Multi-Model Requests" />
               <p className="text-[15px] text-slate-600 leading-[1.75] mb-3">
-                Pass two or more model names in a string array to the <InlineCode>model</InlineCode> field. ModelBridge executes all models <strong>in parallel</strong> and returns a grouped response with per-model results, latency, usage, and billing.
+                Pass two or more model names in a string array to the <InlineCode>model</InlineCode> field. ColabOne executes all models <strong>in parallel</strong> and returns a grouped response with per-model results, latency, usage, and billing.
               </p>
               <Callout type="info">
                 Multi-model requests do <strong>not</strong> support streaming. Use <InlineCode>stream: false</InlineCode> (the default) for multi-model calls.
@@ -1437,7 +1437,7 @@ export default function DocsPage() {
             <section className="mb-14">
               <SecHead id="platform-overview" eyebrow="Platform Features" title="Platform Overview" />
               <p className="text-[15px] text-slate-600 leading-[1.75] mb-6">
-                ModelBridge is more than an SDK — it is a full AI gateway platform with multi-provider routing, unified billing, and a model registry.
+                ColabOne is more than an SDK — it is a full AI gateway platform with multi-provider routing, unified billing, and a model registry.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {PLATFORM_FEATURES.map(f => (
@@ -1473,7 +1473,7 @@ export default function DocsPage() {
                 <div className="flex flex-col gap-3">
                   {[
                     { step: "1", title: "Send one request", desc: "Pass multiple model names as an array in the model field along with your messages." },
-                    { step: "2", title: "Parallel execution", desc: "ModelBridge fans out the request to all models simultaneously. No extra code needed." },
+                    { step: "2", title: "Parallel execution", desc: "ColabOne fans out the request to all models simultaneously. No extra code needed." },
                     { step: "3", title: "Per-model results", desc: "Each model returns its own response, status, latency, usage, and billing." },
                     { step: "4", title: "Pick the best", desc: "In your app, select the first successful result, the cheapest, or the fastest." },
                   ].map(item => (
@@ -1496,7 +1496,7 @@ export default function DocsPage() {
             <section className="mb-14">
               <SecHead id="guardrails" eyebrow="Platform Features" title="Guardrails" />
               <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
-                ModelBridge includes a guardrails module for content safety. Guardrails run between your request and the provider, allowing you to block or flag harmful content before it is sent or returned.
+                ColabOne includes a guardrails module for content safety. Guardrails run between your request and the provider, allowing you to block or flag harmful content before it is sent or returned.
               </p>
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6">
                 <p className="text-[13px] text-slate-500 italic">Guardrails configuration is managed via the platform dashboard. SDK-level guardrails configuration coming in a future release.</p>

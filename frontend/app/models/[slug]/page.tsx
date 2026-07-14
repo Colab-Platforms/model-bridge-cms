@@ -82,7 +82,7 @@ export default function ModelDetailPage() {
   // Set page title once the model loads
   useEffect(() => {
     if (model) {
-      document.title = `${model.displayName} — Models | Model Bridge`;
+      document.title = `${model.displayName} — Models | Colab One`;
     }
   }, [model]);
 

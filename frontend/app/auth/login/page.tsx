@@ -21,7 +21,7 @@ export default function LoginPage() {
               </svg>
             </div>
             <span className="font-extrabold text-[#0F172A] tracking-tight uppercase text-sm">
-              ModelBridge
+              ColabOne
             </span>
           </Link>
         </div>
@@ -31,7 +31,7 @@ export default function LoginPage() {
           </div>
         </div>
         <div className="text-center md:text-left text-xs text-muted-foreground/60">
-          © {new Date().getFullYear()} ModelBridge Inc. All rights reserved.
+          © {new Date().getFullYear()} ColabOne Inc. All rights reserved.
         </div>
       </div>
       

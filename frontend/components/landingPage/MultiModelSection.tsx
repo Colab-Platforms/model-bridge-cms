@@ -36,10 +36,10 @@ function highlight(code: string) {
   ));
 }
 
-const CODE_BOT = `import { ModelBridge } from "@model-bridge/sdk";
+const CODE_BOT = `import { ColabOne } from "@colab-one/sdk";
 
-const client = new ModelBridge({
-  apiKey: process.env.MODELBRIDGE_API_KEY,
+const client = new ColabOne({
+  apiKey: process.env.COLABONE_API_KEY,
 });
 
 const history = [
@@ -61,8 +61,8 @@ async function chat(userMsg: string) {
 }`;
 
 const STEPS = [
-  { num: "01", title: "Install the SDK", code: "npm install @model-bridge/sdk" },
-  { num: "02", title: "Get your API key", code: "MODELBRIDGE_API_KEY=mb_..." },
+  { num: "01", title: "Install the SDK", code: "npm install @colab-one/sdk" },
+  { num: "02", title: "Get your API key", code: "COLABONE_API_KEY=mb_..." },
   { num: "03", title: "Pick your models", code: 'models: ["gpt-4o", "claude-3-5-sonnet"]' },
   { num: "04", title: "Ship your bot", code: "npx ts-node your-agent.ts" },
 ];

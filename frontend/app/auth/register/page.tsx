@@ -21,7 +21,7 @@ export default function SignupPage() {
               </svg>
             </div>
             <span className="font-extrabold text-[#0F172A] tracking-tight uppercase text-sm">
-              ModelBridge
+              ColabOne
             </span>
           </Link>
         </div>
@@ -31,7 +31,7 @@ export default function SignupPage() {
           </div>
         </div>
         <div className="text-center md:text-left text-xs text-muted-foreground/60">
-          © {new Date().getFullYear()} ModelBridge Inc. All rights reserved.
+          © {new Date().getFullYear()} ColabOne Inc. All rights reserved.
         </div>
       </div>
       
@@ -69,14 +69,14 @@ export default function SignupPage() {
                 <span className="w-3 h-3 rounded-full bg-yellow-500" />
                 <span className="w-3 h-3 rounded-full bg-green-500" />
               </div>
-              <span className="text-[10px] font-mono text-slate-500">model-bridge.ts</span>
+              <span className="text-[10px] font-mono text-slate-500">colab-one.ts</span>
             </div>
 
             <pre className="text-xs font-mono text-slate-300 leading-relaxed overflow-x-auto">
               <code>
-<span className="text-indigo-400">import</span> ModelBridge <span className="text-indigo-400">from</span> <span className="text-emerald-400">'@modelbridge/node'</span>;
+<span className="text-indigo-400">import</span> ColabOne <span className="text-indigo-400">from</span> <span className="text-emerald-400">'@colabone/node'</span>;
 <br />
-<br /><span className="text-indigo-400">const</span> client = <span className="text-indigo-400">new</span> <span className="text-yellow-400">ModelBridge</span>(&#123;
+<br /><span className="text-indigo-400">const</span> client = <span className="text-indigo-400">new</span> <span className="text-yellow-400">ColabOne</span>(&#123;
 <br />  apiKey: <span className="text-emerald-400">"mb_live_9a2f7c0d"</span>
 <br />&#125;);
 <br />
