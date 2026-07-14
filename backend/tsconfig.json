@@ -40,6 +40,11 @@
     "./prisma/**/*.ts",
     "./prisma.ts"
   ],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "node_modules"
+  ],
   "ts-node": {
     "transpileOnly": true,
     "esm": true
