@@ -114,6 +114,35 @@ enum PlanTier {
   SCALE
 }
 
+enum BillingProvider {
+  PADDLE
+  DODO
+  STRIPE
+  RAZORPAY
+  LEMON_SQUEEZY
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+enum InvoiceStatus {
+  PENDING
+  ISSUED
+  PAID
+  VOID
+}
+
+enum BillingWebhookStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
 enum ComplexityTier {
   SIMPLE
   MEDIUM
@@ -146,6 +175,7 @@ model User {
   state                        String?
   country                      String?
   profileImage                 String?
+  paddleCustomerId             String?        @unique @map("paddle_customer_id")
   status                       UserStatus     @default(ACTIVE)
   googleId                     String?        @unique @map("google_id")
   authProvider                 AuthProvider   @default(LOCAL) @map("auth_provider")
@@ -168,6 +198,9 @@ model User {
   userRoles         UserRole[]
   projects          Project[]
   apiKeys           ApiKey[]
+  payments          Payment[]
+  invoices          Invoice[]
+  billingWebhookEvents BillingWebhookEvent[]
   inferenceRequests  InferenceRequest[]
   activityLogs      ActivityLog[]
 
@@ -221,6 +254,7 @@ model Wallet {
   isDeleted  Boolean      @default(false) @map("is_deleted")
 
   user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments      Payment[]
   transactions  WalletTransaction[]
 
   @@map("wallets")
@@ -489,4 +523,73 @@ model ActivityLog {
   @@index([entityType])
   @@index([entityId])
   @@map("activity_logs")
+}
+
+model Payment {
+  id                    String          @id @default(cuid(2))
+  userId                String          @map("user_id")
+  walletId              String          @map("wallet_id")
+  provider              BillingProvider
+  providerTransactionId String          @unique @map("provider_transaction_id")
+  providerCustomerId    String?         @map("provider_customer_id")
+  invoiceId             String?         @unique @map("invoice_id")
+  amount                Decimal         @db.Decimal(18, 8)
+  currency              String          @default("USD")
+  status                PaymentStatus   @default(PENDING)
+  metadata              Json?
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet                Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  invoice               Invoice?
+
+  @@index([userId, createdAt])
+  @@index([walletId, createdAt])
+  @@index([provider, status])
+  @@map("payments")
+}
+
+model Invoice {
+  id                String        @id @default(cuid(2))
+  paymentId         String        @unique @map("payment_id")
+  userId            String        @map("user_id")
+  providerInvoiceId String?       @unique @map("provider_invoice_id")
+  invoiceNumber     String?       @map("invoice_number")
+  invoiceUrl        String?       @map("invoice_url")
+  amount            Decimal       @db.Decimal(18, 8)
+  currency          String        @default("USD")
+  status            InvoiceStatus @default(PENDING)
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  payment           Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("invoices")
+}
+
+model BillingWebhookEvent {
+  id                   String               @id @default(cuid(2))
+  userId               String?              @map("user_id")
+  provider             BillingProvider
+  providerEventId      String               @unique @map("provider_event_id")
+  providerNotificationId String?            @unique @map("provider_notification_id")
+  eventType            String               @map("event_type")
+  signature            String?              @db.Text
+  payloadHash          String               @map("payload_hash")
+  rawBody              String               @map("raw_body") @db.Text
+  status               BillingWebhookStatus @default(RECEIVED)
+  errorMessage         String?              @map("error_message") @db.Text
+  processedAt          DateTime?            @map("processed_at")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+
+  user                 User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([provider, eventType, createdAt])
+  @@index([status, createdAt])
+  @@map("billing_webhook_events")
 }

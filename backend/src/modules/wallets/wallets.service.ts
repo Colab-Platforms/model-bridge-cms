@@ -371,6 +371,48 @@ export const addBalance = async (input: AddBalanceInput) => {
   });
 };
 
+export const addBalanceInTransaction = async (
+  input: Omit<AddBalanceInput, "amount"> & { amount: number | string | Prisma.Decimal },
+  tx: TransactionClient
+) => {
+  const amount = assertPositiveAmount(input.amount);
+
+  await getExistingUser(input.userId, tx);
+
+  const wallet = await createWallet(input.userId, input.createdBy, tx);
+  const updatedWallet = await updateWalletBalanceWithTransaction(tx, {
+    walletId: wallet.id,
+    userId: input.userId,
+    amount,
+    operation: "credit",
+    description: buildWalletDescription("Wallet credit", input.description),
+    createdBy: input.createdBy,
+    referenceId: input.referenceId,
+  });
+
+  await activityLogService.log(
+    {
+      activityType:
+        input.createdBy && input.createdBy !== input.userId
+          ? ActivityType.CREDIT_GRANTED
+          : ActivityType.WALLET_TOPUP,
+      entityType: "WALLET",
+      entityId: updatedWallet.id,
+      actorId: input.createdBy ?? input.userId,
+      userId: input.userId,
+      metadata: {
+        amount: amount.toString(),
+        balance: updatedWallet.balance.toString(),
+        currency: updatedWallet.currency,
+        referenceId: input.referenceId ?? null,
+      },
+    },
+    tx
+  );
+
+  return formatWalletRecord(updatedWallet);
+};
+
 export const addBalanceToOwnWallet = async (
   userId: string,
   input: Omit<AddBalanceInput, "userId">

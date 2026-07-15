@@ -1,10 +1,12 @@
 "use client";
 
+import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { CoinsIcon, ExternalLink, FileText } from "lucide-react";
 import { motion } from "motion/react";
+import { toast } from "sonner";
 
 import {
   Card,
@@ -56,14 +58,17 @@ interface CreditTransaction {
   inferenceRequestId?: string | null;
 }
 
-interface TransactionsResponse {
-  data: CreditTransaction[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
 type Preset = "7d" | "30d" | "90d" | "custom";
+type BillingCurrency = "USD";
+
+interface RecentUsageLog {
+  modelId?: string | null;
+  model?: {
+    id?: string | null;
+    displayName?: string | null;
+  } | null;
+  resolvedModelSlug?: string | null;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -121,12 +126,26 @@ function presetDates(days: number) {
   };
 }
 
+function extractErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError(error)) {
+    return error.response?.data?.message ?? error.message ?? fallback;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 const PRESET_LABELS: { key: Preset; label: string }[] = [
   { key: "7d",     label: "7d" },
   { key: "30d",    label: "30d" },
   { key: "90d",    label: "90d" },
   { key: "custom", label: "Custom" },
 ];
+
+const TOP_UP_PRESETS = ["10", "25", "50", "100", "250"];
 
 // ── Chart helpers ─────────────────────────────────────────────────────────────
 
@@ -201,33 +220,53 @@ function mergeTimeseries(
 // ── TopUpModal ────────────────────────────────────────────────────────────────
 
 function TopUpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const qc = useQueryClient();
-  const [amount, setAmount]       = useState("");
-  const [description, setDesc]    = useState("");
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState("");
+  const [amount, setAmount] = useState("");
+  const [currency] = useState<BillingCurrency>("USD");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const reset = () => { setAmount(""); setDesc(""); setError(""); };
+  const reset = () => {
+    setAmount("");
+    setError("");
+  };
 
-  const handleClose = () => { reset(); onClose(); };
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const n = parseFloat(amount);
-    if (!n || n <= 0) { setError("Enter a valid amount greater than 0."); return; }
+
+    if (!n || n <= 0) {
+      setError("Enter a valid amount greater than 0.");
+      return;
+    }
+
     setLoading(true);
     setError("");
+
     try {
-      await api.post("/wallets/me/add-balance", {
-        amount:      n.toFixed(2),
-        description: description.trim() || undefined,
-        referenceId: `topup-${Date.now()}`,
+      const response = await api.post("/billing/create-checkout", {
+        amount: n.toFixed(2),
+        currency,
       });
-      await qc.invalidateQueries({ queryKey: ["wallet-balance"] });
-      await qc.invalidateQueries({ queryKey: ["wallet-transactions"] });
-      handleClose();
-    } catch {
-      setError("Failed to add credits. Please try again.");
+      const checkoutUrl = response.data?.checkoutUrl as string | undefined;
+
+      if (!checkoutUrl) {
+        throw new Error("Checkout URL not returned");
+      }
+
+      toast.success("Redirecting to secure checkout...");
+      window.location.assign(checkoutUrl);
+    } catch (err: unknown) {
+      const message = extractErrorMessage(
+        err,
+        "Failed to start checkout. Please try again."
+      );
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -239,18 +278,39 @@ function TopUpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
         <DialogHeader>
           <DialogTitle>Add Credits</DialogTitle>
           <DialogDescription>
-            Enter the amount you want to add to your balance.
+            Choose an amount and continue to secure checkout.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Quick amounts</label>
+            <div className="grid grid-cols-3 gap-2">
+              {TOP_UP_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setAmount(preset)}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                    amount === preset
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-background text-foreground hover:bg-accent"
+                  )}
+                >
+                  ${preset}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Amount (USD)</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
               <input
                 type="number"
-                min="0.01"
+                min="5"
                 step="0.01"
                 placeholder="10.00"
                 value={amount}
@@ -260,17 +320,8 @@ function TopUpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">
-              Description <span className="text-muted-foreground font-normal">(optional)</span>
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Monthly top-up"
-              value={description}
-              onChange={(e) => setDesc(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-            />
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-3 text-xs text-muted-foreground">
+            Your wallet will be credited only after payment confirmation, and an invoice will be generated automatically.
           </div>
 
           {error && <p className="text-sm text-red-500">{error}</p>}
@@ -280,7 +331,7 @@ function TopUpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Adding…" : "Add Credits"}
+              {loading ? "Redirecting..." : "Continue to Checkout"}
             </Button>
           </div>
         </form>
@@ -349,10 +400,6 @@ export default function CreditsPage() {
     const days = preset === "7d" ? 7 : preset === "30d" ? 30 : 90;
     return presetDates(days);
   }, [preset, customStart, customEnd]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [typeFilter, preset, customStart, customEnd, limit]);
 
   // ── Balance query ──────────────────────────────────────────────────────────
 
@@ -428,7 +475,8 @@ export default function CreditsPage() {
 
   const total      = filteredTxs.length;
   const totalPages = Math.ceil(total / limit);
-  const txs        = filteredTxs.slice((page - 1) * limit, page * limit);
+  const currentPage = Math.min(page, Math.max(totalPages, 1));
+  const txs        = filteredTxs.slice((currentPage - 1) * limit, currentPage * limit);
 
   // Parallel timeseries — one call per active key
   const keyTimeseriesResults = useQueries({
@@ -467,12 +515,19 @@ export default function CreditsPage() {
   });
 
   const topModels = useMemo(() => {
-    const logs: any[] = recentLogsData?.data ?? [];
+    const logs = (recentLogsData?.data ?? []) as RecentUsageLog[];
     const seen = new Map<string, { id: string; displayName: string }>();
     for (const log of logs) {
-      const id          = log.modelId ?? log.model?.id;
-      const displayName = log.model?.displayName ?? log.resolvedModelSlug ?? id;
-      if (id && !seen.has(id)) seen.set(id, { id, displayName });
+      const id = log.modelId ?? log.model?.id ?? null;
+      const displayName =
+        log.model?.displayName ??
+        log.resolvedModelSlug ??
+        id ??
+        "Unknown model";
+
+      if (id && !seen.has(id)) {
+        seen.set(id, { id, displayName });
+      }
     }
     return Array.from(seen.values()).slice(0, 5);
   }, [recentLogsData]);
@@ -693,7 +748,7 @@ export default function CreditsPage() {
           <div>
             <p className="font-medium text-foreground text-lg">Failed to load transactions</p>
             <p className="mt-1 text-sm text-red-500 font-mono">
-              {(error as any)?.response?.data?.message ?? (error as any)?.message ?? "Unknown error — check browser console"}
+              {extractErrorMessage(error, "Unknown error — check browser console")}
             </p>
           </div>
         </div>
@@ -795,7 +850,7 @@ export default function CreditsPage() {
           <p className="text-sm text-muted-foreground">
             Showing{" "}
             <span className="font-medium text-foreground">
-              {(page - 1) * limit + 1}–{Math.min(page * limit, total)}
+              {(currentPage - 1) * limit + 1}–{Math.min(currentPage * limit, total)}
             </span>{" "}
             of{" "}
             <span className="font-medium text-foreground">
@@ -819,16 +874,16 @@ export default function CreditsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
+                disabled={currentPage <= 1}
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
               >
                 Previous
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((p) => Math.min(p + 1, Math.max(totalPages, 1)))}
               >
                 Next
               </Button>
