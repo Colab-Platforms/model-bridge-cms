@@ -114,6 +114,9 @@ export const validateRequestedModalities = async (
     const modelMap = new Map(modelRecords.map((modelRecord) => [modelRecord.slug, modelRecord]));
     const missingModels = requestedModels.filter((model) => !modelMap.has(model));
 
+    console.log("Requested Models:", requestedModels);
+    console.log("Requested Input Modalities:", missingModels);
+
     if (missingModels.length > 0) {
       return sendResponse(
         res,
@@ -141,6 +144,8 @@ export const validateRequestedModalities = async (
       const unsupportedOutputModalities = requestedOutputModalities.filter(
         (modality) => !supportedOutputModalities.includes(normalizeModality(modality))
       );
+
+      console.log(" it is reached it yet")
 
       if (unsupportedInputModalities.length > 0 || unsupportedOutputModalities.length > 0) {
         return sendResponse(
