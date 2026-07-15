@@ -1,4 +1,4 @@
-import { ActivityType, ApiKeyStatus, Prisma } from "@prisma/client";
+import { ActivityType, ApiKeyStatus, LimitType, Prisma } from "@prisma/client";
 
 import prisma from "../../../prisma.js";
 import AppError from "../../shared/errors/index.js";
@@ -29,6 +29,27 @@ const formatApiKeyRecord = <
   ...apiKey,
   creditLimit: formatDecimalValue(apiKey.creditLimit),
 });
+
+const normalizeApiKeyLimitInput = <
+  T extends {
+    creditLimit?: Prisma.Decimal | string | number | null;
+    limitType?: LimitType | null;
+  },
+>(
+  input: T
+) => {
+  if (input.limitType === LimitType.UNLIMITED) {
+    return {
+      creditLimit: null,
+      limitType: LimitType.UNLIMITED,
+    };
+  }
+
+  return {
+    creditLimit: input.creditLimit,
+    limitType: input.limitType,
+  };
+};
 
 const apiKeySelect = {
   id: true,
@@ -106,6 +127,7 @@ export const createApiKeyService = async (body: CreateApiKeyInput, actorId?: str
   await ensureUserAndProject(body.userId, body.projectId);
 
   const generatedKey = generateApiKey();
+  const normalizedLimit = normalizeApiKeyLimitInput(body);
 
   const apiKey = await prisma.$transaction(async (tx) => {
     const createdApiKey = await tx.apiKey.create({
@@ -115,8 +137,8 @@ export const createApiKeyService = async (body: CreateApiKeyInput, actorId?: str
         name: body.name,
         keyPrefix: generatedKey.keyPrefix,
         keyHash: generatedKey.keyHash,
-        creditLimit: body.creditLimit,
-        limitType: body.limitType,
+        creditLimit: normalizedLimit.creditLimit,
+        limitType: normalizedLimit.limitType,
         status: body.status ?? ApiKeyStatus.ACTIVE,
         expiresAt: body.expiresAt,
       },
@@ -189,12 +211,16 @@ export const updateApiKeyService = async (id: string, body: UpdateApiKeyInput, _
     throw new AppError("API key not found", STATUS_CODES.NOT_FOUND);
   }
 
+  const normalizedLimit = normalizeApiKeyLimitInput(body);
+
   const apiKey = await prisma.apiKey.update({
     where: { id },
     data: {
       ...(body.name !== undefined ? { name: body.name } : {}),
-      ...(body.creditLimit !== undefined ? { creditLimit: body.creditLimit } : {}),
-      ...(body.limitType !== undefined ? { limitType: body.limitType } : {}),
+      ...(body.creditLimit !== undefined || body.limitType === LimitType.UNLIMITED
+        ? { creditLimit: normalizedLimit.creditLimit }
+        : {}),
+      ...(body.limitType !== undefined ? { limitType: normalizedLimit.limitType } : {}),
       ...(body.status !== undefined ? { status: body.status } : {}),
       ...(body.expiresAt !== undefined ? { expiresAt: body.expiresAt } : {}),
     },

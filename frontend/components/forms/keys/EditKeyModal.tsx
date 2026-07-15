@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import type { ApiKey } from "@/types";
 
-const LIMIT_TYPES = ["DAILY", "WEEKLY", "MONTHLY", "QUATERLY", "YEARLY"] as const;
+const LIMIT_TYPES = ["UNLIMITED", "DAILY", "WEEKLY", "MONTHLY", "QUATERLY", "YEARLY"] as const;
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -140,7 +140,7 @@ export default function EditKeyModal({ apiKey, onClose }: Props) {
                 <option value="">No period</option>
                 {LIMIT_TYPES.map((t) => (
                   <option key={t} value={t}>
-                    {t.charAt(0) + t.slice(1).toLowerCase()}
+                    {t === "UNLIMITED" ? "Unlimited" : t.charAt(0) + t.slice(1).toLowerCase()}
                   </option>
                 ))}
               </select>

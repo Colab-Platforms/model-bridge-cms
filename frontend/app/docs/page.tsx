@@ -5,6 +5,7 @@ import {
   Copy, Check, Search, X, ExternalLink,
   Package, Globe, Zap, Layers, Shield, RefreshCw, AlertTriangle, Box,
   Cpu, GitBranch, Boxes, MessageSquare, Bot, Workflow, Clock,
+  Terminal, Puzzle, MousePointer2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Navbar from "@/components/shared/Navbar";
@@ -59,6 +60,24 @@ const SECTIONS = [
       { id: "platform-models",  label: "Listing Models" },
       { id: "usage",            label: "Usage Records" },
       { id: "credits",          label: "Credits" },
+    ],
+  },
+  {
+    group: "Integrations",
+    items: [
+      { id: "integrations-overview", label: "Overview" },
+      { id: "integration-cline",       label: "Cline" },
+      { id: "integration-roo-code",    label: "Roo Code" },
+      { id: "integration-kilo-code",   label: "Kilo Code" },
+      { id: "integration-cursor",      label: "Cursor" },
+      { id: "integration-copilot",     label: "GitHub Copilot" },
+      { id: "integration-codex",       label: "Codex CLI" },
+      { id: "integration-gemini-cli",  label: "Gemini CLI" },
+      { id: "integration-continue",    label: "Continue" },
+      { id: "integration-opencode",    label: "OpenCode" },
+      { id: "integration-droid",       label: "Droid" },
+      { id: "integration-antigravity", label: "Antigravity" },
+      { id: "integration-claude-code", label: "Claude Code" },
     ],
   },
   {
@@ -375,8 +394,8 @@ const anthropicModels = models.filter(m => m.provider === "anthropic");
 
 // Retrieve a specific model's details and pricing
 const model = await client.models.retrieve("gpt-4o");
-console.log(model.pricing.inputPerToken);   // "$2.50"
-console.log(model.pricing.outputPerToken);  // "$10.00"
+console.log(model.pricing.inputPricePerToken);   // "$2.50"
+console.log(model.pricing.outputPricePerToken);  // "$10.00"
 console.log(model.contextLength);             // 128000`,
     python: `# List all available models on the platform
 models = await client.models.list(limit=10, offset=0)
@@ -772,6 +791,209 @@ const MULTI_MODEL_STATUSES = [
   { status: "timeout", color: "bg-amber-50 text-amber-700 border-amber-200", desc: "Model did not respond within MULTI_MODEL_TIMEOUT_MS (default 60s)." },
 ];
 
+// ── Coding-agent integrations ───────────────────────────────────────────────────
+const INTEGRATIONS_BASE_URL = "https://model-bridge-cms-backend.onrender.com/api/v1";
+
+type IntegrationCategory = "VS Code Extension" | "IDE" | "CLI";
+
+type IntegrationEntry = {
+  id: string;
+  name: string;
+  category: IntegrationCategory;
+  blurb: string;
+  steps: string[];
+  blocks: { lang: string; code: string }[];
+  note?: { type: "tip" | "info" | "warn"; text: string };
+};
+
+const INTEGRATIONS: IntegrationEntry[] = [
+  {
+    id: "integration-cline",
+    name: "Cline",
+    category: "VS Code Extension",
+    blurb: "Cline talks to any OpenAI-compatible endpoint, so pointing it at Colab-One is a single settings change.",
+    steps: [
+      "Open the Cline panel in VS Code and click the gear icon to open Settings.",
+      "Under API Provider, choose OpenAI Compatible.",
+      "Paste the Base URL and your Colab-One API key below, then set a Model ID.",
+      "Save — every Cline request now routes through Colab-One.",
+    ],
+    blocks: [
+      { lang: "config", code: `Base URL:  ${INTEGRATIONS_BASE_URL}\nAPI Key:   mb_your_api_key\nModel ID:  gpt-4o` },
+    ],
+  },
+  {
+    id: "integration-roo-code",
+    name: "Roo Code",
+    category: "VS Code Extension",
+    blurb: "Roo Code is a Cline fork and shares the same OpenAI Compatible provider settings.",
+    steps: [
+      "Open the Roo Code panel in VS Code and click the gear icon to open Settings.",
+      "Under API Provider, choose OpenAI Compatible.",
+      "Paste the Base URL and your Colab-One API key below, then set a Model ID.",
+      "Save — Roo Code now routes through Colab-One.",
+    ],
+    blocks: [
+      { lang: "config", code: `Base URL:  ${INTEGRATIONS_BASE_URL}\nAPI Key:   mb_your_api_key\nModel ID:  gpt-4o` },
+    ],
+  },
+  {
+    id: "integration-kilo-code",
+    name: "Kilo Code",
+    category: "VS Code Extension",
+    blurb: "Kilo Code shares the same Cline-derived settings UI — the OpenAI Compatible provider works the same way.",
+    steps: [
+      "Open the Kilo Code panel in VS Code and click the gear icon to open Settings.",
+      "Under API Provider, choose OpenAI Compatible.",
+      "Paste the Base URL and your Colab-One API key below, then set a Model ID.",
+      "Save — Kilo Code now routes through Colab-One.",
+    ],
+    blocks: [
+      { lang: "config", code: `Base URL:  ${INTEGRATIONS_BASE_URL}\nAPI Key:   mb_your_api_key\nModel ID:  gpt-4o` },
+    ],
+  },
+  {
+    id: "integration-cursor",
+    name: "Cursor",
+    category: "IDE",
+    blurb: "Cursor lets you override its OpenAI endpoint directly from the Models settings tab.",
+    steps: [
+      "Open Cursor Settings (Ctrl/Cmd + Shift + J) and go to the Models tab.",
+      "Enable Override OpenAI Base URL and paste the Base URL below.",
+      "Paste your Colab-One API key into the OpenAI API Key field and click Verify.",
+      "Add the model names you want to use (e.g. gpt-4o) under Model Names.",
+    ],
+    blocks: [
+      { lang: "config", code: `Base URL:  ${INTEGRATIONS_BASE_URL}\nAPI Key:   mb_your_api_key\nModel:     gpt-4o` },
+    ],
+  },
+  {
+    id: "integration-copilot",
+    name: "GitHub Copilot",
+    category: "VS Code Extension",
+    blurb: "Recent Copilot Chat builds support bring-your-own-key OpenAI-compatible providers via Manage Models.",
+    steps: [
+      "Open the Command Palette and run GitHub Copilot: Manage Models.",
+      "Choose OpenAI Compatible as the provider.",
+      "Enter the Base URL, your Colab-One API key, and the model id(s) to register.",
+      "Select the new Colab-One model from the Copilot Chat model picker.",
+    ],
+    blocks: [
+      { lang: "config", code: `Base URL:  ${INTEGRATIONS_BASE_URL}\nAPI Key:   mb_your_api_key\nModel ID:  gpt-4o` },
+    ],
+    note: { type: "info", text: "BYOK provider support is rolling out gradually across Copilot builds. If Manage Models isn't available, update the extension to the latest version." },
+  },
+  {
+    id: "integration-codex",
+    name: "Codex CLI",
+    category: "CLI",
+    blurb: "The OpenAI Codex CLI supports custom model providers through its TOML config file and named profiles.",
+    steps: [
+      "Open ~/.codex/config.toml and add a colab-one provider and profile (below).",
+      "Export your Colab-One key as the environment variable referenced by env_key.",
+      "Run Codex with --profile colab-one, or set it as your default profile.",
+    ],
+    blocks: [
+      { lang: "toml", code: `[model_providers.colab-one]\nname = "Colab-One"\nbase_url = "${INTEGRATIONS_BASE_URL}"\nenv_key = "COLAB_ONE_API_KEY"\n\n[profiles.colab-one]\nmodel_provider = "colab-one"\nmodel = "gpt-4o"` },
+      { lang: "bash", code: `export COLAB_ONE_API_KEY=mb_your_api_key\ncodex --profile colab-one` },
+    ],
+  },
+  {
+    id: "integration-gemini-cli",
+    name: "Gemini CLI",
+    category: "CLI",
+    blurb: "Gemini CLI can authenticate against any OpenAI-compatible endpoint instead of Google's default backend.",
+    steps: [
+      "Export the OpenAI-compatible environment variables below before launching Gemini CLI.",
+      "Choose the openai auth type when prompted (or set it in ~/.gemini/settings.json).",
+      "Run gemini — requests now flow through Colab-One.",
+    ],
+    blocks: [
+      { lang: "bash", code: `export OPENAI_API_KEY=mb_your_api_key\nexport OPENAI_BASE_URL=${INTEGRATIONS_BASE_URL}\nexport OPENAI_MODEL=gpt-4o` },
+    ],
+    note: { type: "info", text: "Flag and setting names have shifted between Gemini CLI releases — run gemini --help if this doesn't match your installed version." },
+  },
+  {
+    id: "integration-continue",
+    name: "Continue",
+    category: "VS Code Extension",
+    blurb: "Continue is config-file driven — add Colab-One as an openai provider block in config.yaml.",
+    steps: [
+      "Run Continue: Open Config from the Command Palette to open config.yaml.",
+      "Add a models entry with provider: openai and your Colab-One details (below).",
+      "Reload the window — Colab-One appears in Continue's model picker.",
+    ],
+    blocks: [
+      { lang: "yaml", code: `models:\n  - name: Colab-One\n    provider: openai\n    model: gpt-4o\n    apiKey: mb_your_api_key\n    apiBase: ${INTEGRATIONS_BASE_URL}` },
+    ],
+  },
+  {
+    id: "integration-opencode",
+    name: "OpenCode",
+    category: "CLI",
+    blurb: "OpenCode reads provider definitions from opencode.json, using the same AI SDK OpenAI-compatible adapter.",
+    steps: [
+      "Create or edit opencode.json in your project root (or ~/.config/opencode/).",
+      "Register Colab-One as an OpenAI-compatible provider (below).",
+      "Export your Colab-One key and run opencode.",
+    ],
+    blocks: [
+      { lang: "json", code: `{\n  "provider": {\n    "colab-one": {\n      "npm": "@ai-sdk/openai-compatible",\n      "options": {\n        "baseURL": "${INTEGRATIONS_BASE_URL}",\n        "apiKey": "{env:COLAB_ONE_API_KEY}"\n      },\n      "models": { "gpt-4o": {} }\n    }\n  }\n}` },
+      { lang: "bash", code: `export COLAB_ONE_API_KEY=mb_your_api_key\nopencode` },
+    ],
+  },
+  {
+    id: "integration-droid",
+    name: "Droid",
+    category: "CLI",
+    blurb: "Factory's Droid CLI supports custom OpenAI-compatible models through its in-app model manager.",
+    steps: [
+      "Run droid, then use /model → Add custom model (or edit ~/.factory/config.json directly).",
+      "Set the provider to OpenAI Compatible and fill in the fields below.",
+      "Save and select the new model — Droid now calls Colab-One.",
+    ],
+    blocks: [
+      { lang: "config", code: `Base URL:  ${INTEGRATIONS_BASE_URL}\nAPI Key:   mb_your_api_key\nModel:     gpt-4o` },
+    ],
+  },
+  {
+    id: "integration-antigravity",
+    name: "Antigravity",
+    category: "IDE",
+    blurb: "Antigravity supports custom OpenAI-compatible model providers from its Models settings panel.",
+    steps: [
+      "Open Settings → Models → Add Provider.",
+      "Choose OpenAI Compatible.",
+      "Paste in the Base URL and API key below, then add the models you want available.",
+    ],
+    blocks: [
+      { lang: "config", code: `Base URL:  ${INTEGRATIONS_BASE_URL}\nAPI Key:   mb_your_api_key\nModel:     gpt-4o` },
+    ],
+    note: { type: "info", text: "Antigravity is a newer, fast-moving tool — search its docs for \"custom model provider\" if these settings labels have moved." },
+  },
+  {
+    id: "integration-claude-code",
+    name: "Claude Code",
+    category: "CLI",
+    blurb: "Claude Code speaks Anthropic's native Messages API rather than the OpenAI format used by the tools above.",
+    steps: [
+      "Skip the Base URL / API Key fields above — Claude Code uses two environment variables instead.",
+      "Export ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN as shown below.",
+      "Run claude as usual — its requests are sent to your ANTHROPIC_BASE_URL.",
+    ],
+    blocks: [
+      { lang: "bash", code: `export ANTHROPIC_BASE_URL=${INTEGRATIONS_BASE_URL.replace(/\/api\/v1$/, "")}\nexport ANTHROPIC_AUTH_TOKEN=mb_your_api_key` },
+    ],
+    note: { type: "warn", text: "This requires Colab-One's Anthropic-compatible Messages endpoint on your deployment. If only /api/v1/chat/completions is exposed, use one of the OpenAI-compatible tools above instead." },
+  },
+];
+
+const INTEGRATION_CATEGORY_ICON: Record<IntegrationCategory, LucideIcon> = {
+  "VS Code Extension": Puzzle,
+  "IDE": MousePointer2,
+  "CLI": Terminal,
+};
+
 // ── Syntax highlighter ────────────────────────────────────────────────────────
 function highlightLine(line: string): React.ReactNode {
   if (/^\s*\/\//.test(line)) return <span style={{ color: SYN.comment }}>{line}</span>;
@@ -973,6 +1195,49 @@ function SectionNext({ currentId }: { currentId: string }) {
         Next: {next.label} →
       </a>
     </div>
+  );
+}
+
+/** Renders one coding-agent integration guide: blurb, numbered steps, config block(s), optional note */
+function IntegrationBlock({ integration }: { integration: IntegrationEntry }) {
+  const CategoryIcon = INTEGRATION_CATEGORY_ICON[integration.category];
+  return (
+    <section className="mb-14">
+      <div id={integration.id} className="scroll-mt-[86px] mb-7 group">
+        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-2">Integrations</p>
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-2xl font-black text-[#0F172A] tracking-tight leading-tight flex items-baseline gap-2">
+            {integration.name}
+            <a href={`#${integration.id}`} className="text-base text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity no-underline" aria-hidden>#</a>
+          </h2>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 border border-slate-200 bg-slate-50 rounded-full px-2.5 py-0.5">
+            <CategoryIcon size={11} />
+            {integration.category}
+          </span>
+        </div>
+      </div>
+
+      <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">{integration.blurb}</p>
+
+      <div className="flex flex-col gap-2 mb-6">
+        {integration.steps.map((step, i) => (
+          <div key={i} className="flex gap-4 items-start">
+            <div className="w-6 h-6 rounded-full bg-indigo-600 text-white text-[11px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+              {i + 1}
+            </div>
+            <p className="text-[13.5px] text-slate-600 leading-relaxed pt-0.5">{step}</p>
+          </div>
+        ))}
+      </div>
+
+      {integration.blocks.map((block, i) => (
+        <CodeBlock key={i} code={block.code} lang={block.lang} />
+      ))}
+
+      {integration.note && <Callout type={integration.note.type}>{integration.note.text}</Callout>}
+
+      <SectionNext currentId={integration.id} />
+    </section>
   );
 }
 
@@ -1431,6 +1696,41 @@ export default function DocsPage() {
               </Callout>
               <SectionNext currentId="credits" />
             </section>
+
+            {/* === INTEGRATIONS === */}
+
+            <section className="mb-14">
+              <SecHead id="integrations-overview" eyebrow="Integrations" title="Coding Agent Integrations" />
+              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+                Most AI coding agents already speak the OpenAI Chat Completions format. Point their <InlineCode>base URL</InlineCode> at Colab-One and drop in your Colab-One API key as the <InlineCode>API key</InlineCode> — no other code changes required.
+              </p>
+              <Callout type="tip">
+                Grab your key from the <a href="/dashboard/keys" className="text-indigo-600 font-semibold hover:underline">Colab-One Dashboard</a> first. Every guide below uses this Base URL: <InlineCode>{INTEGRATIONS_BASE_URL}</InlineCode>
+              </Callout>
+              <div className="grid grid-cols-3 gap-3 mt-2">
+                {INTEGRATIONS.map(integration => {
+                  const CategoryIcon = INTEGRATION_CATEGORY_ICON[integration.category];
+                  return (
+                    <a
+                      key={integration.id}
+                      href={`#${integration.id}`}
+                      className="bg-white border border-slate-200 rounded-xl p-4 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center mb-2.5">
+                        <CategoryIcon size={15} className="text-indigo-600" />
+                      </div>
+                      <p className="text-[13px] font-bold text-[#0F172A] mb-0.5 group-hover:text-indigo-700 transition-colors">{integration.name}</p>
+                      <p className="text-[11px] text-slate-400 font-medium">{integration.category}</p>
+                    </a>
+                  );
+                })}
+              </div>
+              <SectionNext currentId="integrations-overview" />
+            </section>
+
+            {INTEGRATIONS.map(integration => (
+              <IntegrationBlock key={integration.id} integration={integration} />
+            ))}
 
             {/* === PLATFORM FEATURES === */}
 

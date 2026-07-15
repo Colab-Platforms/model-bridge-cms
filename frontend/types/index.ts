@@ -1,7 +1,7 @@
 export type UserRole = "USER" | "ADMIN";
 export type UserStatus = "ACTIVE" | "SUSPENDED" | "DELETED";
 export type ApiKeyStatus = "ACTIVE" | "REVOKED" | "INACTIVE" | "EXPIRED" | "EXHAUSTED";
-export type LimitType = "DAILY" | "WEEKLY" | "MONTHLY" | "QUATERLY" | "YEARLY";
+export type LimitType = "UNLIMITED" | "DAILY" | "WEEKLY" | "MONTHLY" | "QUATERLY" | "YEARLY";
 export type RequestStatus = "SUCCESS" | "FAILED" | "PARTIAL" | "STOPPED";
 export type TransactionType =
   | "TOPUP"

@@ -264,10 +264,18 @@ This helps the backend store cleaner session/device metadata.
 Get all models.
 
 Optional query params:
+- `q`
 - `providerId`
 - `slug`
 - `capability`
+- `inputModality`
+- `outputModality`
 - `isActive=true|false`
+- `minContext`
+- `maxContext`
+- `maxInputPrice`
+- `maxOutputPrice`
+- `sort`
 - `page`
 - `pageSize`
 
@@ -278,8 +286,11 @@ GET /models?isActive=true
 GET /models?slug=gpt-4o
 GET /models?capability=TEXT
 GET /models?providerId=abc123
+GET /models?providerId=abc123&providerId=def456
+GET /models?inputModality=text&outputModality=image
+GET /models?minContext=131072&maxInputPrice=15&sort=price_input_asc
 GET /models?page=1&pageSize=10
-GET /models?providerId=abc123&capability=chat&isActive=true&page=2&pageSize=5
+GET /models?providerId=abc123&capability=TEXT&isActive=true&page=2&pageSize=5
 ```
 
 Notes:
@@ -287,7 +298,10 @@ Notes:
 - default `pageSize` is `10`
 - max `pageSize` is `100`
 - `capability` is matched against `defaultForCapabilities`
-- `capability` is case-insensitive in the query and normalized to lowercase by the backend
+- `capability` accepts repeated params and is normalized to uppercase by the backend
+- `inputModality` and `outputModality` accept repeated params and are normalized to lowercase
+- `maxInputPrice` and `maxOutputPrice` are expressed in USD per 1M tokens
+- supported sort values: `newest`, `name_asc`, `price_input_asc`, `price_input_desc`, `price_output_asc`, `price_output_desc`, `context_asc`, `context_desc`
 
 Paginated response shape:
 

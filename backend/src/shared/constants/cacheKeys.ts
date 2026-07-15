@@ -1,7 +1,6 @@
 export const CACHE_KEYS = {
   MODELS: {
-    LIST: (page: number, pageSize: number, providerId?: string, slug?: string, isActive?: boolean) => 
-      `models:list:${page}:${pageSize}:${providerId ?? ""}:${slug ?? ""}:${isActive ?? ""}`,
+    LIST: (querySignature: string) => `models:list:${querySignature}`,
     BY_ID: (id: string) => `models:id:${id}`,
     LIST_PATTERN: "models:list:*",
   },
