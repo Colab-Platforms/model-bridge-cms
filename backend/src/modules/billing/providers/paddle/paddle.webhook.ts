@@ -6,7 +6,6 @@ import {
 
 import type { BillingWebhookEventEnvelope } from "../../billing.types.js";
 import {
-  BillingNotImplementedError,
   BillingValidationError,
 } from "../../billing.utils.js";
 import {
@@ -16,6 +15,22 @@ import {
 
 const isTransactionEvent = (event: EventEntity): event is EventEntity & { data: { id: string } } =>
   Boolean((event as { data?: { id?: string } }).data?.id);
+
+const buildIgnoredWebhookEvent = (event: EventEntity): BillingWebhookEventEnvelope => ({
+  eventId: event.eventId,
+  notificationId: event.notificationId,
+  eventType: event.eventType,
+  occurredAt: event.occurredAt,
+  transactionId: isTransactionEvent(event) ? event.data.id : "",
+  status: "ignored",
+  customerId: null,
+  invoice: {
+    providerInvoiceId: null,
+    invoiceNumber: null,
+    invoiceUrl: null,
+  },
+  metadata: null,
+});
 
 export const normalizePaddleWebhookEvent = (event: EventEntity): BillingWebhookEventEnvelope => {
   switch (event.eventType) {
@@ -49,6 +64,6 @@ export const normalizePaddleWebhookEvent = (event: EventEntity): BillingWebhookE
         metadata: null,
       };
     default:
-      throw new BillingNotImplementedError(`Unhandled Paddle event type: ${event.eventType}`);
+      return buildIgnoredWebhookEvent(event);
   }
 };

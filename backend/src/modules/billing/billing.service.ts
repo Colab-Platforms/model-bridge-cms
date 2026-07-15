@@ -33,7 +33,6 @@ import type {
 } from "./billing.types.js";
 import {
   BillingDuplicateWebhookError,
-  BillingNotImplementedError,
   BillingSignatureError,
   BillingValidationError,
   assertSupportedCurrency,
@@ -289,7 +288,13 @@ export class BillingService {
     });
 
     if (!BILLING_SUPPORTED_WEBHOOK_EVENTS.has(event.eventType)) {
-      throw new BillingNotImplementedError(`Unsupported billing webhook event: ${event.eventType}`);
+      console.log("[billing] webhook ignored", {
+        eventId: event.eventId,
+        notificationId: event.notificationId,
+        eventType: event.eventType,
+      });
+
+      return formatWebhookResult("ignored", event.eventType, event.eventId);
     }
 
     let webhookEvent = await prisma.billingWebhookEvent.findUnique({
