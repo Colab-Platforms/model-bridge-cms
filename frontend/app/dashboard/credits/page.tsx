@@ -1,8 +1,9 @@
 "use client";
 
 import axios from "axios";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { initializePaddle } from "@paddle/paddle-js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { CoinsIcon, ExternalLink, FileText } from "lucide-react";
 import { motion } from "motion/react";
@@ -386,6 +387,7 @@ const itemVariants = {
 
 export default function CreditsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [topUpOpen, setTopUpOpen]     = useState(false);
   const [typeFilter, setTypeFilter]   = useState("");
@@ -394,6 +396,89 @@ export default function CreditsPage() {
   const [customEnd, setCustomEnd]     = useState("");
   const [page, setPage]               = useState(1);
   const [limit, setLimit]             = useState(20);
+  const checkoutTxnId = searchParams.get("_ptxn");
+  const checkoutStatus = searchParams.get("checkout");
+  const openedCheckoutRef = useRef<string | null>(null);
+
+  const cleanupCheckoutParams = useMemo(
+    () => () => {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete("_ptxn");
+      nextParams.delete("checkout");
+
+      const nextQuery = nextParams.toString();
+      router.replace(nextQuery ? `/dashboard/credits?${nextQuery}` : "/dashboard/credits");
+    },
+    [router, searchParams]
+  );
+
+  useEffect(() => {
+    if (checkoutStatus !== "success") return;
+
+    toast.success("Payment submitted. Your wallet will update after Paddle confirms the payment.");
+    cleanupCheckoutParams();
+  }, [checkoutStatus, cleanupCheckoutParams]);
+
+  useEffect(() => {
+    if (!checkoutTxnId || openedCheckoutRef.current === checkoutTxnId) return;
+
+    const paddleToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
+
+    if (!paddleToken) {
+      toast.error("Missing Paddle client token. Set NEXT_PUBLIC_PADDLE_CLIENT_TOKEN in the frontend environment.");
+      return;
+    }
+
+    const paddleEnvironment =
+      (process.env.NEXT_PUBLIC_PADDLE_ENV ?? "production").toLowerCase() === "sandbox"
+        ? "sandbox"
+        : "production";
+
+    let cancelled = false;
+    openedCheckoutRef.current = checkoutTxnId;
+
+    const openCheckout = async () => {
+      try {
+        const paddle = await initializePaddle({
+          token: paddleToken,
+          environment: paddleEnvironment,
+          eventCallback: (event) => {
+            if (event.name === "checkout.closed") {
+              cleanupCheckoutParams();
+            }
+          },
+        });
+
+        if (cancelled || !paddle) {
+          return;
+        }
+
+        paddle.Checkout.open({
+          transactionId: checkoutTxnId,
+          settings: {
+            displayMode: "overlay",
+            theme: "light",
+            locale: "en",
+            successUrl: `${window.location.origin}/dashboard/credits?checkout=success`,
+          },
+        });
+      } catch (error) {
+        openedCheckoutRef.current = null;
+        toast.error(
+          extractErrorMessage(
+            error,
+            "Unable to open Paddle checkout. Please try again."
+          )
+        );
+      }
+    };
+
+    void openCheckout();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutTxnId, cleanupCheckoutParams]);
 
   const dateRange = useMemo(() => {
     if (preset === "custom") return { startDate: customStart, endDate: customEnd };
