@@ -34,6 +34,7 @@ export const mapPaddleCompletedEvent = (
   invoice: {
     providerInvoiceId: event.data.invoiceId,
     invoiceNumber: event.data.invoiceNumber,
+    providerInvoiceUrl: event.data.checkout?.url ?? null,
     invoiceUrl: event.data.checkout?.url ?? null,
   },
   metadata: mapCustomData(event.data.customData),
@@ -58,6 +59,7 @@ export const mapPaddleGenericTransactionEvent = (
   invoice: {
     providerInvoiceId: event.data.invoiceId,
     invoiceNumber: event.data.invoiceNumber,
+    providerInvoiceUrl: event.data.checkout?.url ?? null,
     invoiceUrl: event.data.checkout?.url ?? null,
   },
   metadata: mapCustomData(event.data.customData),

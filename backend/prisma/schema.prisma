@@ -555,6 +555,7 @@ model Invoice {
   paymentId         String        @unique @map("payment_id")
   userId            String        @map("user_id")
   providerInvoiceId String?       @unique @map("provider_invoice_id")
+  providerInvoiceUrl String?      @map("provider_invoice_url")
   invoiceNumber     String?       @map("invoice_number")
   invoiceUrl        String?       @map("invoice_url")
   amount            Decimal       @db.Decimal(18, 8)

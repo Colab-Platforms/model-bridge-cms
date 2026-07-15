@@ -356,7 +356,10 @@ export class BillingService {
     }
 
     try {
-      const invoiceUrl = await provider.getInvoiceUrl(event.transactionId);
+      const providerInvoiceUrl =
+        (await provider.getInvoiceUrl(event.transactionId)) ??
+        event.invoice.providerInvoiceUrl ??
+        event.invoice.invoiceUrl;
       const result = await prisma.$transaction(async (tx) => {
         const payment = await tx.payment.findUnique({
           where: {
@@ -426,8 +429,8 @@ export class BillingService {
           },
           update: {
             providerInvoiceId: event.invoice.providerInvoiceId,
+            providerInvoiceUrl,
             invoiceNumber,
-            invoiceUrl: invoiceUrl ?? event.invoice.invoiceUrl,
             amount: payment.amount,
             currency: payment.currency,
             status: InvoiceStatus.PAID,
@@ -436,8 +439,9 @@ export class BillingService {
             paymentId: payment.id,
             userId: payment.userId,
             providerInvoiceId: event.invoice.providerInvoiceId,
+            providerInvoiceUrl,
             invoiceNumber,
-            invoiceUrl: invoiceUrl ?? event.invoice.invoiceUrl,
+            invoiceUrl: null,
             amount: payment.amount,
             currency: payment.currency,
             status: InvoiceStatus.PAID,

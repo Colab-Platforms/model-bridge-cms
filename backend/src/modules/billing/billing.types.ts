@@ -71,6 +71,7 @@ export interface BillingWebhookEventEnvelope {
   invoice: {
     providerInvoiceId: string | null;
     invoiceNumber: string | null;
+    providerInvoiceUrl: string | null;
     invoiceUrl: string | null;
   };
   metadata?: Record<string, unknown> | null;

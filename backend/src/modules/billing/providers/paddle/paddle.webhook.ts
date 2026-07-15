@@ -27,6 +27,7 @@ const buildIgnoredWebhookEvent = (event: EventEntity): BillingWebhookEventEnvelo
   invoice: {
     providerInvoiceId: null,
     invoiceNumber: null,
+    providerInvoiceUrl: null,
     invoiceUrl: null,
   },
   metadata: null,
@@ -59,6 +60,7 @@ export const normalizePaddleWebhookEvent = (event: EventEntity): BillingWebhookE
         invoice: {
           providerInvoiceId: null,
           invoiceNumber: null,
+          providerInvoiceUrl: null,
           invoiceUrl: null,
         },
         metadata: null,
