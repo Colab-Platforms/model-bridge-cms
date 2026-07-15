@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && tsc && tsc-alias && npx puppeteer browsers install chrome",
+    "build": "prisma generate && tsc && tsc-alias && npx puppeteer browsers install chrome --path ./.cache/puppeteer",
     "start": "node dist/src/index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
