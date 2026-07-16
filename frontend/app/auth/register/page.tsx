@@ -6,20 +6,14 @@ export default function SignupPage() {
     <div className="grid min-h-svh lg:grid-cols-2 bg-[#F8FAFC]">
       <div className="flex flex-col gap-4 p-6 md:p-10 justify-between">
         <div className="flex justify-center gap-2 md:justify-start">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20">
-              <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
-                <path
-                  d="M7.5 2L12.5 5V10L7.5 13L2.5 10V5L7.5 2Z"
-                  fill="white"
-                  fillOpacity="0.25"
-                  stroke="white"
-                  strokeWidth="1.2"
-                  strokeLinejoin="round"
-                />
-                <path d="M7.5 4.5L10 6V9L7.5 10.5L5 9V6L7.5 4.5Z" fill="white" />
-              </svg>
-            </div>
+          <Link href="/" className="flex items-center gap-2 group">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/colab_one_logo_2.png"
+              alt="ColabOne Logo"
+              style={{ height: "38px", width: "auto" }}
+              className="group-hover:scale-105 transition-transform duration-300 drop-shadow-md rounded-md"
+            />
             <span className="font-extrabold text-[#0F172A] tracking-tight uppercase text-sm">
               ColabOne
             </span>

@@ -147,6 +147,7 @@ const PRESET_LABELS: { key: Preset; label: string }[] = [
 ];
 
 const TOP_UP_PRESETS = ["10", "25", "50", "100", "250"];
+const BILLING_CHECKOUT_SUCCESS_STORAGE_KEY = "billing-checkout-success";
 
 // ── Chart helpers ─────────────────────────────────────────────────────────────
 
@@ -407,15 +408,22 @@ export default function CreditsPage() {
       nextParams.delete("checkout");
 
       const nextQuery = nextParams.toString();
-      router.replace(nextQuery ? `/dashboard/credits?${nextQuery}` : "/dashboard/credits");
+      const nextUrl = nextQuery ? `/dashboard/credits?${nextQuery}` : "/dashboard/credits";
+      window.history.replaceState({}, "", nextUrl);
     },
-    [router, searchParams]
+    [searchParams]
   );
 
   useEffect(() => {
-    if (checkoutStatus !== "success") return;
+    if (typeof window === "undefined") return;
+
+    const checkoutCompleted =
+      window.sessionStorage.getItem(BILLING_CHECKOUT_SUCCESS_STORAGE_KEY) === "1";
+
+    if (!checkoutCompleted && checkoutStatus !== "success") return;
 
     toast.success("Payment submitted. Your wallet will update after Paddle confirms the payment.");
+    window.sessionStorage.removeItem(BILLING_CHECKOUT_SUCCESS_STORAGE_KEY);
     cleanupCheckoutParams();
   }, [checkoutStatus, cleanupCheckoutParams]);
 
@@ -443,6 +451,10 @@ export default function CreditsPage() {
           token: paddleToken,
           environment: paddleEnvironment,
           eventCallback: (event) => {
+            if (event.name === "checkout.completed") {
+              window.sessionStorage.setItem(BILLING_CHECKOUT_SUCCESS_STORAGE_KEY, "1");
+            }
+
             if (event.name === "checkout.closed") {
               cleanupCheckoutParams();
             }
@@ -459,7 +471,7 @@ export default function CreditsPage() {
             displayMode: "overlay",
             theme: "light",
             locale: "en",
-            successUrl: `${window.location.origin}/dashboard/credits?checkout=success`,
+            successUrl: `${window.location.origin}/dashboard/credits`,
           },
         });
       } catch (error) {

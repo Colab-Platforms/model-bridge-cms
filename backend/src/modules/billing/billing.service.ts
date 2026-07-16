@@ -117,10 +117,10 @@ export class BillingService {
       ...(query.status ? { status: query.status } : {}),
       ...(query.provider
         ? {
-            payment: {
-              provider: query.provider,
-            },
-          }
+          payment: {
+            provider: query.provider,
+          },
+        }
         : {}),
     };
 
@@ -523,7 +523,7 @@ export class BillingService {
               providerName: result.payment.provider,
               currency: result.invoice.currency,
               formattedAmount,
-              itemDescription: "Model Bridge wallet top-up credits",
+              itemDescription: "Colab One wallet top-up credits",
             });
 
             if (customInvoiceUrl) {

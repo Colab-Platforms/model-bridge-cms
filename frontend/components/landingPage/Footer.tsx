@@ -35,6 +35,7 @@ const LINKS = {
   ],
   Resources: [
     { label: "Documentation", href: "/docs"      },
+    { label: "Support",       href: "/support"   },
     { label: "API Reference",  href: "/docs/api"  },
     { label: "SDKs",           href: "/docs/sdks" },
     { label: "Examples",       href: "/examples"  },
@@ -91,20 +92,14 @@ export default function Footer() {
 
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center gap-3 mb-6 group">
-               <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/20 group-hover:scale-110 transition-transform">
-                <svg width="16" height="16" viewBox="0 0 15 15" fill="none">
-                  <path
-                    d="M7.5 2L12.5 5V10L7.5 13L2.5 10V5L7.5 2Z"
-                    fill="white"
-                    fillOpacity="0.25"
-                    stroke="white"
-                    strokeWidth="1.2"
-                    strokeLinejoin="round"
-                  />
-                  <path d="M7.5 4.5L10 6V9L7.5 10.5L5 9V6L7.5 4.5Z" fill="white" />
-                </svg>
-              </div>
+            <Link href="/" className="flex items-center gap-2 mb-6 group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/colab_one_logo.png"
+                alt="ColabOne Logo"
+                style={{ height: "48px", width: "auto" }}
+                className="group-hover:scale-110 transition-transform duration-300 drop-shadow-md"
+              />
               <span className="font-black text-[#0F172A] text-xl tracking-tighter uppercase opacity-80">
                 ColabOne
               </span>

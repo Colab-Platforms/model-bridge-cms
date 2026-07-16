@@ -31,28 +31,21 @@ export default function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 px-6 pt-6">
       <nav
-        className={`max-w-[1200px] mx-auto flex items-center justify-between h-[58px] px-5 rounded-3xl border bg-white/70 backdrop-blur-md transition-all duration-500 ease-in-out ${
-          scrolled
-            ? "border-slate-200 shadow-[0_8px_32px_-4px_rgba(15,23,42,0.08)] scale-[0.98] py-1"
-            : "border-slate-200/50 shadow-[0_2px_10px_rgba(15,23,42,0.02)]"
-        }`}
+        className={`max-w-[1200px] mx-auto flex items-center justify-between h-[58px] px-5 rounded-3xl border bg-white backdrop-blur-md transition-all duration-500 ease-in-out ${scrolled
+          ? "border-slate-200 shadow-[0_8px_32px_-4px_rgba(15,23,42,0.08)] scale-[0.98] py-1"
+          : "border-slate-200/50 shadow-[0_2px_10px_rgba(15,23,42,0.02)]"
+          }`}
       >
         {/* ── Logo ─────────────────────────────────────────── */}
-        <Link href="/" className="flex items-center gap-3 shrink-0 group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#5B4DFF] to-[#818CF8] flex items-center justify-center shadow-lg shadow-[#5B4DFF]/20 group-hover:scale-110 transition-transform duration-300">
-            <svg width="16" height="16" viewBox="0 0 15 15" fill="none">
-              <path
-                d="M7.5 2L12.5 5V10L7.5 13L2.5 10V5L7.5 2Z"
-                fill="white"
-                fillOpacity="0.25"
-                stroke="white"
-                strokeWidth="1.2"
-                strokeLinejoin="round"
-              />
-              <path d="M7.5 4.5L10 6V9L7.5 10.5L5 9V6L7.5 4.5Z" fill="white" />
-            </svg>
-          </div>
-          <span className="font-bold text-[#0F172A] text-[16px] tracking-[-0.03em]">
+        <Link href="/" className="flex items-center gap-2 shrink-0 group">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/colab_one_logo_2.png"
+            alt="ColabOne Logo"
+            style={{ height: "40px", width: "auto" }}
+            className="group-hover:scale-110 transition-transform duration-300 rounded-md"
+          />
+          <span className="font-bold text-[#0F172A] text-[20px] tracking-[-0.03em]">
             ColabOne
           </span>
         </Link>
