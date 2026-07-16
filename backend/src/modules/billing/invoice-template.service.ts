@@ -13,6 +13,7 @@ interface InvoiceTemplateInput {
   paymentReference: string;
   customerName: string;
   customerEmail: string;
+  customerAddress?: string;
   userId: string;
   providerName: string;
   currency: string;

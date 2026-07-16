@@ -11,6 +11,8 @@ import {
   CircleUserRound,
   ShieldCheck,
   SlidersHorizontal,
+  CreditCard,
+  Receipt,
 } from "lucide-react";
 
 import { NavMain } from "@/components/layout/nav-main";
@@ -51,9 +53,19 @@ const navMain = [
     icon: <History />,
   },
   {
-    title: "Credits & Wallet",
-    url: "/dashboard/credits",
-    icon: <Wallet />,
+    title: "Billing",
+    url: "/dashboard/billing",
+    icon: <CreditCard />,
+    items: [
+      {
+        title: "Credits & Wallet",
+        url: "/dashboard/credits",
+      },
+      {
+        title: "Invoices",
+        url: "/dashboard/billing/invoices",
+      },
+    ],
   },
 ];
 

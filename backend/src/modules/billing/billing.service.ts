@@ -499,11 +499,17 @@ export class BillingService {
               email: true,
               firstName: true,
               lastName: true,
+              city: true,
+              state: true,
+              country: true,
             },
           });
 
           if (paymentUser) {
             const formattedAmount = formatDecimalValue(result.amount) ?? "0";
+            const customerAddress = [paymentUser.city, paymentUser.state, paymentUser.country]
+              .filter(Boolean)
+              .join(", ");
             const customInvoiceUrl = await generateAndUploadInvoice({
               paymentId: result.payment.id,
               invoiceNumber: result.invoice.invoiceNumber ?? result.invoice.id,
@@ -512,6 +518,7 @@ export class BillingService {
               paymentReference: result.payment.providerTransactionId,
               customerName: buildDisplayName(paymentUser),
               customerEmail: paymentUser.email,
+              customerAddress: customerAddress || undefined,
               userId: paymentUser.id,
               providerName: result.payment.provider,
               currency: result.invoice.currency,
