@@ -170,3 +170,50 @@ export interface ModelUsageStats {
   totalCostUsd: string;
   lastUsedAt: string | null;
 }
+
+// ── Billing ────────────────────────────────────────────────────────────────────
+
+export type PaymentStatus = "PENDING" | "COMPLETED" | "FAILED" | "CANCELED";
+export type InvoiceStatus = "PENDING" | "ISSUED" | "PAID" | "VOID";
+export type BillingProvider = "PADDLE" | "DODO" | "STRIPE" | "RAZORPAY" | "LEMON_SQUEEZY";
+
+export interface Payment {
+  id: string;
+  userId: string;
+  walletId: string;
+  provider: BillingProvider;
+  providerTransactionId: string;
+  providerCustomerId: string | null;
+  invoiceId: string | null;
+  amount: string;
+  currency: string;
+  status: PaymentStatus;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Invoice {
+  id: string;
+  paymentId: string;
+  userId: string;
+  providerInvoiceId: string | null;
+  invoiceNumber: string | null;
+  invoiceUrl: string | null;
+  amount: string;
+  currency: string;
+  status: InvoiceStatus;
+  createdAt: string;
+  updatedAt: string;
+  payment: Payment;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  totalRecords: number;
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}

@@ -164,55 +164,55 @@ model Role {
 }
 
 model User {
-  id                           String         @id @default(cuid(2))
-  email                        String         @unique
-  passwordHash                 String?        @map("password_hash")
-  firstName                    String?        @map("first_name")
-  lastName                     String?        @map("last_name")
-  phoneNo                      String?        @map("phone_no")
-  countryCode                  String?        @map("country_code")
-  city                         String?
-  state                        String?
-  country                      String?
-  profileImage                 String?
-  paddleCustomerId             String?        @unique @map("paddle_customer_id")
-  status                       UserStatus     @default(ACTIVE)
-  googleId                     String?        @unique @map("google_id")
-  authProvider                 AuthProvider   @default(LOCAL) @map("auth_provider")
-  isVerified                   Boolean        @default(false) @map("is_verified")
-  emailVerificationOtpHash      String?        @map("emailVerificationOtpHash")
-  emailVerificationOtpExpiresAt DateTime?      @map("emailVerificationOtpExpiresAt")
-  passwordResetOtpHash          String?        @map("passwordResetOtpHash")
-  passwordResetOtpExpiresAt     DateTime?      @map("passwordResetOtpExpiresAt")
-  isGuideTaken                  Boolean?       @map("isGuideTaken")
+  id                            String       @id @default(cuid(2))
+  email                         String       @unique
+  passwordHash                  String?      @map("password_hash")
+  firstName                     String?      @map("first_name")
+  lastName                      String?      @map("last_name")
+  phoneNo                       String?      @map("phone_no")
+  countryCode                   String?      @map("country_code")
+  city                          String?
+  state                         String?
+  country                       String?
+  profileImage                  String?
+  paddleCustomerId              String?      @unique @map("paddle_customer_id")
+  status                        UserStatus   @default(ACTIVE)
+  googleId                      String?      @unique @map("google_id")
+  authProvider                  AuthProvider @default(LOCAL) @map("auth_provider")
+  isVerified                    Boolean      @default(false) @map("is_verified")
+  emailVerificationOtpHash      String?      @map("emailVerificationOtpHash")
+  emailVerificationOtpExpiresAt DateTime?    @map("emailVerificationOtpExpiresAt")
+  passwordResetOtpHash          String?      @map("passwordResetOtpHash")
+  passwordResetOtpExpiresAt     DateTime?    @map("passwordResetOtpExpiresAt")
+  isGuideTaken                  Boolean?     @map("isGuideTaken")
   timezone                      String?
-  createdAt                     DateTime       @default(now()) @map("created_at")
-  updatedAt                     DateTime       @updatedAt @map("updated_at")
-  createdBy                     String?        @map("created_by")
-  updatedBy                     String?        @map("updated_by")
-  isDeleted                     Boolean        @default(false) @map("is_deleted")
-  deletedBy                     String?        @map("deleted_by")
+  createdAt                     DateTime     @default(now()) @map("created_at")
+  updatedAt                     DateTime     @updatedAt @map("updated_at")
+  createdBy                     String?      @map("created_by")
+  updatedBy                     String?      @map("updated_by")
+  isDeleted                     Boolean      @default(false) @map("is_deleted")
+  deletedBy                     String?      @map("deleted_by")
 
-  sessions          Session[]
-  wallet            Wallet?
-  userRoles         UserRole[]
-  projects          Project[]
-  apiKeys           ApiKey[]
-  payments          Payment[]
-  invoices          Invoice[]
+  sessions             Session[]
+  wallet               Wallet?
+  userRoles            UserRole[]
+  projects             Project[]
+  apiKeys              ApiKey[]
+  payments             Payment[]
+  invoices             Invoice[]
   billingWebhookEvents BillingWebhookEvent[]
-  inferenceRequests  InferenceRequest[]
-  activityLogs      ActivityLog[]
+  inferenceRequests    InferenceRequest[]
+  activityLogs         ActivityLog[]
 
   @@map("users")
 }
 
 model UserRole {
-  id        String   @id @default(cuid(2))
+  id        String    @id @default(cuid(2))
   userId    String
   roleId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime? @map("deleted_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -224,12 +224,12 @@ model UserRole {
 }
 
 model Session {
-  id                String   @id @default(cuid(2))
-  userId            String   @map("user_id")
-  refreshTokenHash  String   @map("refresh_token_hash")
-  deviceName        String?  @map("device_name")
-  userAgent         String?  @map("user_agent")
-  ipAddress         String?  @map("ip_address")
+  id                String    @id @default(cuid(2))
+  userId            String    @map("user_id")
+  refreshTokenHash  String    @map("refresh_token_hash")
+  deviceName        String?   @map("device_name")
+  userAgent         String?   @map("user_agent")
+  ipAddress         String?   @map("ip_address")
   expiresAt         DateTime? @map("expires_at")
   absoluteExpiresAt DateTime? @map("absoluteExpiresAt")
   revokedAt         DateTime? @map("revoked_at")
@@ -242,20 +242,20 @@ model Session {
 }
 
 model Wallet {
-  id         String       @id @default(cuid(2))
-  userId     String       @unique @map("user_id")
-  balance    Decimal      @default(0) @db.Decimal(18, 8)
-  currency   String       @default("USD")
-  status     WalletStatus @default(ACTIVE)
-  createdAt  DateTime     @default(now()) @map("created_at")
-  updatedAt  DateTime     @updatedAt @map("updated_at")
-  createdBy  String?      @map("created_by")
-  updatedBy  String?      @map("updated_by")
-  isDeleted  Boolean      @default(false) @map("is_deleted")
+  id        String       @id @default(cuid(2))
+  userId    String       @unique @map("user_id")
+  balance   Decimal      @default(0) @db.Decimal(18, 8)
+  currency  String       @default("USD")
+  status    WalletStatus @default(ACTIVE)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  createdBy String?      @map("created_by")
+  updatedBy String?      @map("updated_by")
+  isDeleted Boolean      @default(false) @map("is_deleted")
 
-  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payments      Payment[]
-  transactions  WalletTransaction[]
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments     Payment[]
+  transactions WalletTransaction[]
 
   @@map("wallets")
 }
@@ -263,7 +263,7 @@ model Wallet {
 model WalletTransaction {
   id                 String                @id @default(cuid(2))
   walletId           String                @map("wallet_id")
-  inferenceRequestId  String?               @map("inference_request_id")
+  inferenceRequestId String?               @map("inference_request_id")
   referenceId        String?               @map("reference_id")
   type               WalletTransactionType
   amount             Decimal               @db.Decimal(18, 8)
@@ -274,8 +274,8 @@ model WalletTransaction {
   createdAt          DateTime              @default(now()) @map("created_at")
   isDeleted          Boolean               @default(false) @map("is_deleted")
 
-  wallet             Wallet                @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  inferenceRequest    InferenceRequest?     @relation(fields: [inferenceRequestId], references: [id], onDelete: SetNull)
+  wallet           Wallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  inferenceRequest InferenceRequest? @relation(fields: [inferenceRequestId], references: [id], onDelete: SetNull)
 
   @@index([walletId])
   @@index([inferenceRequestId])
@@ -283,69 +283,69 @@ model WalletTransaction {
 }
 
 model Project {
-  id                 String   @id @default(cuid(2))
-  userId             String   @map("user_id")
-  slug               String?
-  name               String
-  description        String?  @db.Text
-  isActive           Boolean  @default(true) @map("is_active")
-  planTier           PlanTier @default(FREE) @map("plan_tier")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-  createdBy          String?  @map("created_by")
-  updatedBy          String?  @map("updated_by")
-  deletedBy          String?  @map("deleted_by")
-  isDeleted          Boolean  @default(false) @map("is_deleted")
+  id          String   @id @default(cuid(2))
+  userId      String   @map("user_id")
+  slug        String?
+  name        String
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  planTier    PlanTier @default(FREE) @map("plan_tier")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String?  @map("created_by")
+  updatedBy   String?  @map("updated_by")
+  deletedBy   String?  @map("deleted_by")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
 
-  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apiKeys            ApiKey[]
-  inferenceRequests   InferenceRequest[]
-  activityLogs        ActivityLog[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKeys           ApiKey[]
+  inferenceRequests InferenceRequest[]
+  activityLogs      ActivityLog[]
 
   @@index([userId])
   @@map("projects")
 }
 
-  model ApiKey {
-    id               String        @id @default(cuid(2))
-    userId           String        @map("user_id")
-    projectId        String        @map("project_id")
-    name             String?
-    keyPrefix        String       @map("key_prefix")
-    keyHash          String       @unique @map("key_hash")
-    creditLimit      Decimal?       @map("credit_limit") @db.Decimal(18, 8)
-    limitType        LimitType?
-    status           ApiKeyStatus  @default(ACTIVE)
-    lastUsedAt       DateTime?     @map("last_used_at")
-    expiresAt        DateTime?     @map("expires_at")
-    createdAt        DateTime      @default(now()) @map("created_at")
-    updatedAt        DateTime      @updatedAt @map("updated_at")
-    isDeleted        Boolean       @default(false) @map("is_deleted")
+model ApiKey {
+  id          String       @id @default(cuid(2))
+  userId      String       @map("user_id")
+  projectId   String       @map("project_id")
+  name        String?
+  keyPrefix   String       @map("key_prefix")
+  keyHash     String       @unique @map("key_hash")
+  creditLimit Decimal?     @map("credit_limit") @db.Decimal(18, 8)
+  limitType   LimitType?
+  status      ApiKeyStatus @default(ACTIVE)
+  lastUsedAt  DateTime?    @map("last_used_at")
+  expiresAt   DateTime?    @map("expires_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  isDeleted   Boolean      @default(false) @map("is_deleted")
 
-    user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-    project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-    inferenceRequests InferenceRequest[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  inferenceRequests InferenceRequest[]
 
-    @@index([userId])
-    @@index([projectId])
-    @@map("api_keys")
-  }
+  @@index([userId])
+  @@index([projectId])
+  @@map("api_keys")
+}
 
 model Provider {
-  id          String   @id @default(cuid(2))
-  slug        String?  @unique
-  displayName String?  @map("display_name")
-  description String?  @db.Text
-  baseUrl     String?  @map("base_url")
-  providerLogo  String?  @map("provider_logo")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  isDeleted   Boolean  @default(false) @map("is_deleted")
-  deletedAt   DateTime? @map("deleted_at")
+  id           String    @id @default(cuid(2))
+  slug         String?   @unique
+  displayName  String?   @map("display_name")
+  description  String?   @db.Text
+  baseUrl      String?   @map("base_url")
+  providerLogo String?   @map("provider_logo")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at")
 
-  models           Model[]
-  providerBalance  ProviderBalance?
+  models          Model[]
+  providerBalance ProviderBalance?
 
   @@map("providers")
 }
@@ -365,8 +365,8 @@ model ProviderBalance {
   createdBy             String?   @map("created_by")
   updatedBy             String?   @map("updated_by")
 
-  provider      Provider                      @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  transactions  ProviderBalanceTransaction[]
+  provider     Provider                     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  transactions ProviderBalanceTransaction[]
 
   @@index([alertsEnabled])
   @@index([lowBalanceAlertActive])
@@ -388,8 +388,8 @@ model ProviderBalanceTransaction {
   createdAt          DateTime                       @default(now()) @map("created_at")
   isDeleted          Boolean                        @default(false) @map("is_deleted")
 
-  providerBalance    ProviderBalance                @relation(fields: [providerBalanceId], references: [id], onDelete: Cascade)
-  inferenceRequest   InferenceRequest?              @relation(fields: [inferenceRequestId], references: [id], onDelete: SetNull)
+  providerBalance  ProviderBalance   @relation(fields: [providerBalanceId], references: [id], onDelete: Cascade)
+  inferenceRequest InferenceRequest? @relation(fields: [inferenceRequestId], references: [id], onDelete: SetNull)
 
   @@index([providerBalanceId])
   @@index([inferenceRequestId])
@@ -398,81 +398,82 @@ model ProviderBalanceTransaction {
 }
 
 model Model {
-  id                     String   @id @default(cuid(2))
-  providerId             String   @map("provider_id")
-  providerModelId        String?  @map("provider_model_id")
-  slug                   String   @unique
-  displayName            String?  @map("display_name")
-  description            String?  @db.Text
+  id              String  @id @default(cuid(2))
+  providerId      String  @map("provider_id")
+  providerModelId String? @map("provider_model_id")
+  slug            String  @unique
+  displayName     String? @map("display_name")
+  description     String? @db.Text
 
-  contextLength          Int?     @map("context_length")
-  maxOutputTokens        Int?      @map("max_output_tokens")
-  tokenizer              String?
+  contextLength   Int?    @map("context_length")
+  maxOutputTokens Int?    @map("max_output_tokens")
+  tokenizer       String?
 
+  inputPricePerToken  Decimal?               @map("input_price_per_token") @db.Decimal(18, 8)
+  outputPricePerToken Decimal?               @map("output_price_per_token") @db.Decimal(18, 8)
+  outputPricingUnit   ModelOutputPricingUnit @default(TOKEN) @map("output_pricing_unit")
+  imageOutputPrice    Decimal?               @map("image_output_price") @db.Decimal(18, 8)
 
-  inputPricePerToken        Decimal?                @map("input_price_per_token") @db.Decimal(18, 8)
-  outputPricePerToken       Decimal?                @map("output_price_per_token") @db.Decimal(18, 8)
-  outputPricingUnit         ModelOutputPricingUnit  @default(TOKEN) @map("output_pricing_unit")
-  imageOutputPrice          Decimal?                @map("image_output_price") @db.Decimal(18, 8)
+  cacheWritePricePerToken Decimal? @map("cache_write_price_per_token") @db.Decimal(18, 8)
+  cacheReadPricePerToken  Decimal? @map("cache_read_price_per_token") @db.Decimal(18, 8)
 
-  cacheWritePricePerToken   Decimal?  @map("cache_write_price_per_token") @db.Decimal(18, 8)
-  cacheReadPricePerToken    Decimal?  @map("cache_read_price_per_token") @db.Decimal(18, 8)
-  
-  inputModalities        String[]  @map("input_modalities")
-  outputModalities       String[]  @map("output_modalities")
-  supportedParameters    String[]  @map("supported_parameters")
-  defaultForCapabilities String[]  @map("default_for_capabilities")
-  isFreeModel            Boolean   @default(false) @map("is_free_model")
+  inputModalities        String[] @map("input_modalities")
+  outputModalities       String[] @map("output_modalities")
+  supportedParameters    String[] @map("supported_parameters")
+  defaultForCapabilities String[] @map("default_for_capabilities")
+  isFreeModel            Boolean  @default(false) @map("is_free_model")
 
-  isActive               Boolean  @default(true) @map("is_active")
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
-  isDeleted              Boolean  @default(false) @map("is_deleted")
-  deletedAt              DateTime? @map("deleted_at")
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
 
-  provider           Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  inferenceRequests  InferenceRequest[]
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  tierRoutingModels TierRoutingModel[]
+  inferenceRequests InferenceRequest[]
 
   @@index([providerId])
   @@map("models")
 }
 
 model InferenceRequest {
-  id                    String           @id @default(cuid(2))
-  userId                String           @map("user_id")
-  projectId             String           @map("project_id")
-  apiKeyId              String           @map("api_key_id")
-  modelId               String           @map("model_id") 
-  requestType           RequestType?
-  requestedModelSlug    String[]          @map("requested_model_slug")
-  resolvedModelSlug     String?          @map("resolved_model_slug")
-  routedTier            PlanTier?        @map("routed_tier")
-  routingReason         String?          @map("routing_reason")
-  downgradedFromModelSlug String?        @map("downgraded_from_model_slug")
-  complexityTier        ComplexityTier?  @map("complexity_tier")
-  complexityScore       Float?           @map("complexity_score")
-  stream                Boolean?
-  status                RequestStatus?
-  responseCompletionTimeMs Int?             @map("response_completion_time_ms")
-  promptTokens          Int?             @map("prompt_tokens")
-  completionTokens      Int?             @map("completion_tokens")
-  totalTokens           Int?             @map("total_tokens")
-  inputPriceSnapshot    Decimal?         @map("input_price_snapshot") @db.Decimal(18, 8)
-  outputPriceSnapshot   Decimal?         @map("output_price_snapshot") @db.Decimal(18, 8)
-  providerCost          Decimal?         @map("provider_cost") @db.Decimal(18, 8)
-  platformMarkupPercent Decimal?         @map("platform_markup_percent") @db.Decimal(5, 2)
-  platformMarkup        Decimal?         @map("platform_markup") @db.Decimal(18, 8)
-  totalCost             Decimal?         @map("total_cost") @db.Decimal(18, 8)
-  latencyMs             Int?             @map("latency_ms")
-  createdAt             DateTime         @default(now()) @map("created_at")
+  id                       String          @id @default(cuid(2))
+  userId                   String          @map("user_id")
+  projectId                String          @map("project_id")
+  apiKeyId                 String          @map("api_key_id")
+  modelId                  String          @map("model_id")
+  requestType              RequestType?
+  requestedModelSlug       String[]        @map("requested_model_slug")
+  resolvedModelSlug        String?         @map("resolved_model_slug")
+  routedTier               PlanTier?       @map("routed_tier")
+  routingReason            String?         @map("routing_reason")
+  downgradedFromModelSlug  String?         @map("downgraded_from_model_slug")
+  complexityTier           ComplexityTier? @map("complexity_tier")
+  complexityScore          Float?          @map("complexity_score")
+  stream                   Boolean?
+  status                   RequestStatus?
+  responseCompletionTimeMs Int?            @map("response_completion_time_ms")
+  promptTokens             Int?            @map("prompt_tokens")
+  completionTokens         Int?            @map("completion_tokens")
+  totalTokens              Int?            @map("total_tokens")
+  inputPriceSnapshot       Decimal?        @map("input_price_snapshot") @db.Decimal(18, 8)
+  outputPriceSnapshot      Decimal?        @map("output_price_snapshot") @db.Decimal(18, 8)
+  providerCost             Decimal?        @map("provider_cost") @db.Decimal(18, 8)
+  platformMarkupPercent    Decimal?        @map("platform_markup_percent") @db.Decimal(5, 2)
+  platformMarkup           Decimal?        @map("platform_markup") @db.Decimal(18, 8)
+  totalCost                Decimal?        @map("total_cost") @db.Decimal(18, 8)
+  latencyMs                Int?            @map("latency_ms")
+  createdAt                DateTime        @default(now()) @map("created_at")
 
-  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project               Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  apiKey                ApiKey            @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
-  model                 Model     @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  walletTransactions    WalletTransaction[]
+  user                        User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project                     Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apiKey                      ApiKey                       @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  model                       Model                        @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  walletTransactions          WalletTransaction[]
   providerBalanceTransactions ProviderBalanceTransaction[]
-  requestMetadata       RequestMetadata[]
+  requestMetadata             RequestMetadata[]
 
   // @@index([userId])
   // @@index([projectId])
@@ -490,33 +491,33 @@ model InferenceRequest {
 
 model RequestMetadata {
   id                 String   @id @default(cuid(2))
-  inferenceRequestId  String   @map("inference_request_id")
-  requestPayload      Json?    @map("request_payload")
-  responseMetadata    Json?    @map("response_metadata")
-  createdAt           DateTime @default(now()) @map("created_at")
-  isDeleted           Boolean  @default(false) @map("is_deleted")
+  inferenceRequestId String   @map("inference_request_id")
+  requestPayload     Json?    @map("request_payload")
+  responseMetadata   Json?    @map("response_metadata")
+  createdAt          DateTime @default(now()) @map("created_at")
+  isDeleted          Boolean  @default(false) @map("is_deleted")
 
-  inferenceRequest    InferenceRequest @relation(fields: [inferenceRequestId], references: [id], onDelete: Cascade)
+  inferenceRequest InferenceRequest @relation(fields: [inferenceRequestId], references: [id], onDelete: Cascade)
 
   @@index([inferenceRequestId])
   @@map("request_metadata")
 }
 
 model ActivityLog {
-  id           String        @id @default(cuid(2))
-  userId       String?       @map("user_id")
-  projectId    String?       @map("project_id")
-  activityType ActivityType  @map("activity_type")
-  entityType   String?       @map("entity_type")
-  entityId     String?       @map("entity_id")
+  id           String       @id @default(cuid(2))
+  userId       String?      @map("user_id")
+  projectId    String?      @map("project_id")
+  activityType ActivityType @map("activity_type")
+  entityType   String?      @map("entity_type")
+  entityId     String?      @map("entity_id")
   metadata     Json?
-  ipAddress    String?       @map("ip_address")
-  userAgent    String?       @map("user_agent") @db.Text
-  createdAt    DateTime      @default(now()) @map("created_at")
-  createdBy    String?       @map("created_by")
+  ipAddress    String?      @map("ip_address")
+  userAgent    String?      @map("user_agent") @db.Text
+  createdAt    DateTime     @default(now()) @map("created_at")
+  createdBy    String?      @map("created_by")
 
-  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([projectId])
@@ -540,9 +541,9 @@ model Payment {
   createdAt             DateTime        @default(now()) @map("created_at")
   updatedAt             DateTime        @updatedAt @map("updated_at")
 
-  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  wallet                Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  invoice               Invoice?
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet  Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  invoice Invoice?
 
   @@index([userId, createdAt])
   @@index([walletId, createdAt])
@@ -563,8 +564,8 @@ model Invoice {
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
-  payment           Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -572,24 +573,40 @@ model Invoice {
 }
 
 model BillingWebhookEvent {
-  id                   String               @id @default(cuid(2))
-  userId               String?              @map("user_id")
-  provider             BillingProvider
-  providerEventId      String               @unique @map("provider_event_id")
-  providerNotificationId String?            @unique @map("provider_notification_id")
-  eventType            String               @map("event_type")
-  signature            String?              @db.Text
-  payloadHash          String               @map("payload_hash")
-  rawBody              String               @map("raw_body") @db.Text
-  status               BillingWebhookStatus @default(RECEIVED)
-  errorMessage         String?              @map("error_message") @db.Text
-  processedAt          DateTime?            @map("processed_at")
-  createdAt            DateTime             @default(now()) @map("created_at")
-  updatedAt            DateTime             @updatedAt @map("updated_at")
+  id                     String               @id @default(cuid(2))
+  userId                 String?              @map("user_id")
+  provider               BillingProvider
+  providerEventId        String               @unique @map("provider_event_id")
+  providerNotificationId String?              @unique @map("provider_notification_id")
+  eventType              String               @map("event_type")
+  signature              String?              @db.Text
+  payloadHash            String               @map("payload_hash")
+  rawBody                String               @map("raw_body") @db.Text
+  status                 BillingWebhookStatus @default(RECEIVED)
+  errorMessage           String?              @map("error_message") @db.Text
+  processedAt            DateTime?            @map("processed_at")
+  createdAt              DateTime             @default(now()) @map("created_at")
+  updatedAt              DateTime             @updatedAt @map("updated_at")
 
-  user                 User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([provider, eventType, createdAt])
   @@index([status, createdAt])
   @@map("billing_webhook_events")
+}
+
+model TierRoutingModel {
+  id        String         @id @default(cuid(2))
+  tier      ComplexityTier
+  modelId   String         @map("model_id")
+  priority  Int            @default(1)
+  isActive  Boolean        @default(true) @map("is_active")
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  model Model @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@unique([tier, modelId])
+  @@index([tier, priority])
+  @@map("tier_routing_models")
 }

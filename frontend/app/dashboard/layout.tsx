@@ -37,7 +37,10 @@ const ROUTE_LABELS: Record<string, string> = {
   profile: "Profile",
   privacy: "Privacy",
   preferences: "Preferences",
+  billing: "Billing",
+  invoices: "Invoices",
 };
+
 
 function useBreadcrumbs() {
   const pathname = usePathname();
