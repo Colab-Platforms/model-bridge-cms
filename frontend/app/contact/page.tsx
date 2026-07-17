@@ -41,7 +41,7 @@ const CONTACT_CARDS = [
     iconBg: "#FFF7ED",
     iconColor: "#EA580C",
     title: "Registered office",
-    body: "Colab Intelligence Ltd\nB202, Takshashila, Samant Estate,\nGoregaon East, Mumbai – 400063",
+    body: "Colab Intelligence Pvt Ltd\nB202, Takshashila, Samant Estate,\nGoregaon East, Mumbai – 400063",
     link: null,
   },
 ];
