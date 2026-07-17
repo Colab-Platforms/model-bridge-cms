@@ -7,14 +7,13 @@ import type { ComplexityTier } from "@prisma/client";
  */
 export type RoutingReason =
   | "EXPLICIT_MODEL"
-  | "EXPLICIT_MODEL_FREE_TIER"
   | "AUTO_COMPLEXITY_ROUTE"
   | "FREE_TIER_FALLBACK";
 
 export interface RoutingMeta {
   requestedModelSlug: string;
   routingReason: string;
-  /** Set only on the "auto" path — the complexity tier the classifier resolved to (post FREE_TIER_CAP). */
+  /** Set only on the "auto" path — the complexity tier the classifier resolved to. */
   complexityTier?: ComplexityTier;
   /** Set only on the "auto" path — the classifier's raw weighted score (not clamped, can be negative). */
   complexityScore?: number;

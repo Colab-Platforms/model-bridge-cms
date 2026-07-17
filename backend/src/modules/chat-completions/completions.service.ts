@@ -434,11 +434,17 @@ export class CompletionsService {
         : {}),
     });
 
+    console.log(
+      `[completions] response served by model "${usedModelRecord.slug}"${
+        downgradedFromModelSlug ? ` (fallback from "${downgradedFromModelSlug}")` : ""
+      }`
+    );
+
     return {
       inferenceRequestId: inferenceRequest.id,
       billing: completionResult.billing,
       providerResponse,
-      response: mapToOpenAICompatibleResponse(input.body.model, providerResponse),
+      response: mapToOpenAICompatibleResponse(usedModelRecord.slug, providerResponse),
     };
   }
 
@@ -535,6 +541,12 @@ export class CompletionsService {
                 }
               : {}),
           });
+
+          console.log(
+            `[completions] response served by model "${effectiveModelSlug}"${
+              downgradedFromModelSlug ? ` (fallback from "${downgradedFromModelSlug}")` : ""
+            }`
+          );
 
           yield toSseMessage(buildOpenAIStartChunk(providerResponse.requestId, effectiveModelSlug));
 
@@ -651,7 +663,7 @@ export class CompletionsService {
             if (!streamStarted) {
               streamStarted = true;
               firstChunkAt = firstChunkAt ?? Date.now();
-              yield toSseMessage(buildOpenAIStartChunk(accumulator.requestId, input.body.model));
+              yield toSseMessage(buildOpenAIStartChunk(accumulator.requestId, effectiveModelSlug));
             }
 
             applyToolCallDeltas(accumulator, event.toolCallDeltas);
@@ -659,7 +671,7 @@ export class CompletionsService {
               id: accumulator.requestId,
               object: "chat.completion.chunk",
               created: Math.floor(Date.now() / 1000),
-              model: input.body.model,
+              model: effectiveModelSlug,
               choices: [
                 {
                   index: 0,
@@ -734,10 +746,16 @@ export class CompletionsService {
         });
         settled = true;
 
+        console.log(
+          `[completions] response served by model "${effectiveModelSlug}"${
+            downgradedFromModelSlug ? ` (fallback from "${downgradedFromModelSlug}")` : ""
+          }`
+        );
+
         yield toSseMessage(
           buildOpenAIFinalChunk(
             accumulator.requestId,
-            input.body.model,
+            effectiveModelSlug,
             normalizeFinishReason(accumulator.finishReason) ?? undefined,
             accumulator
           )

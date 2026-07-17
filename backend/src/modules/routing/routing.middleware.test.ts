@@ -1,25 +1,30 @@
-import { PlanTier } from "@prisma/client";
+import { PlanTier, ComplexityTier } from "@prisma/client";
 import type { NextFunction, Request, Response } from "express";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findFirstMock } = vi.hoisted(() => {
-  // TIER_RESTRICTIONS_ENABLED is read once at module-import time — this file tests
-  // the enforcement logic itself, so it needs the flag on. The default-off behavior
-  // (no payment gateway yet) is covered separately in
-  // routing.middleware.tier-restrictions-disabled.test.ts, in its own module load.
-  process.env.ENABLE_TIER_RESTRICTIONS = "true";
-  return { findFirstMock: vi.fn() };
-});
+const { findManyMock, tierRoutingModelFindFirstMock, classifyComplexityMock } = vi.hoisted(() => ({
+  findManyMock: vi.fn(),
+  tierRoutingModelFindFirstMock: vi.fn(),
+  classifyComplexityMock: vi.fn(),
+}));
 
 vi.mock("../../../prisma.js", () => ({
   default: {
     model: {
-      findFirst: findFirstMock,
+      findMany: findManyMock,
+    },
+    tierRoutingModel: {
+      findFirst: tierRoutingModelFindFirstMock,
     },
   },
 }));
 
+vi.mock("./complexity-router.js", () => ({
+  classifyComplexity: classifyComplexityMock,
+}));
+
 import { resolveRoutingModel } from "./routing.middleware.js";
+import { AUTO_ROUTE_SENTINEL, FREE_ROUTE_SENTINEL } from "./routing.constants.js";
 
 const buildReq = (planTier: PlanTier, model: string) =>
   ({
@@ -34,61 +39,143 @@ const buildRes = () => {
   return res;
 };
 
-describe("resolveRoutingModel — FreeRouting", () => {
+describe("resolveRoutingModel — explicit model requests", () => {
   beforeEach(() => {
-    findFirstMock.mockReset();
+    tierRoutingModelFindFirstMock.mockReset();
+    findManyMock.mockReset();
+    classifyComplexityMock.mockReset();
   });
 
-  it("allows a FREE-tier project to request a free-tier-eligible model", async () => {
-    findFirstMock.mockResolvedValue({ isFreeModel: true });
+  it.each([PlanTier.FREE, PlanTier.PAYG, PlanTier.SCALE])(
+    "passes an explicit model request straight through regardless of planTier (%s)",
+    async (planTier) => {
+      const req = buildReq(planTier, "gpt-5");
+      const res = buildRes();
+      const next = vi.fn() as unknown as NextFunction;
 
-    const req = buildReq(PlanTier.FREE, "free-model");
+      await resolveRoutingModel(req, res, next);
+
+      // No 403, no plan-tier gate — access control here is gone. Whether this
+      // request actually proceeds is checkApiCredits.ts's call (wallet vs. cost),
+      // not this middleware's.
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(res.status).not.toHaveBeenCalled();
+      expect((req as any).routingMeta).toMatchObject({
+        requestedModelSlug: "gpt-5",
+        routingReason: "EXPLICIT_MODEL",
+      });
+      expect(tierRoutingModelFindFirstMock).not.toHaveBeenCalled();
+      expect(findManyMock).not.toHaveBeenCalled();
+    }
+  );
+});
+
+describe("resolveRoutingModel — free model routing (model: 'free')", () => {
+  beforeEach(() => {
+    tierRoutingModelFindFirstMock.mockReset();
+    findManyMock.mockReset();
+    classifyComplexityMock.mockReset();
+  });
+
+  it("resolves to the cheapest active free model", async () => {
+    findManyMock.mockResolvedValue([
+      { id: "free-1", slug: "nemotron-nano-9b-v2:free", inputPricePerToken: 0.0001, outputPricePerToken: 0.0002 },
+      { id: "free-2", slug: "higher-free-cost", inputPricePerToken: 0.0005, outputPricePerToken: 0.0005 }
+    ]);
+
+    const req = buildReq(PlanTier.FREE, FREE_ROUTE_SENTINEL);
     const res = buildRes();
     const next = vi.fn() as unknown as NextFunction;
 
     await resolveRoutingModel(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
+    expect(req.body.model).toBe("nemotron-nano-9b-v2:free");
     expect((req as any).routingMeta).toMatchObject({
-      requestedModelSlug: "free-model",
-      routingReason: "EXPLICIT_MODEL_FREE_TIER",
+      requestedModelSlug: FREE_ROUTE_SENTINEL,
+      routingReason: "explicit free-route: cheapest active free model (cost=$0.0001)",
     });
+
+    // Complexity classifier must NOT be called
+    expect(classifyComplexityMock).not.toHaveBeenCalled();
+
+    // Verify correct sorting query parameters were passed to Prisma
+    expect(findManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          isFreeModel: true,
+          isActive: true,
+          isDeleted: false,
+        }),
+        orderBy: [
+          { inputPricePerToken: "asc" },
+          { outputPricePerToken: "asc" },
+        ],
+      })
+    );
   });
 
-  it("rejects a FREE-tier project requesting a paid model with 403", async () => {
-    findFirstMock.mockResolvedValue({ isFreeModel: false });
+  it("throws a clear 500 error when no free models are active", async () => {
+    findManyMock.mockResolvedValue([]);
 
-    const req = buildReq(PlanTier.FREE, "gpt-5");
+    const req = buildReq(PlanTier.FREE, FREE_ROUTE_SENTINEL);
     const res = buildRes();
     const next = vi.fn() as unknown as NextFunction;
 
     await resolveRoutingModel(req, res, next);
 
     expect(next).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         status: false,
-        message: expect.stringContaining("Free plan"),
+        message: "No free models are currently available",
       })
     );
   });
+});
 
-  it("does not restrict a PAYG-tier project requesting any model", async () => {
-    findFirstMock.mockResolvedValue({ isFreeModel: false });
+describe("resolveRoutingModel — auto model routing (model: 'auto')", () => {
+  beforeEach(() => {
+    tierRoutingModelFindFirstMock.mockReset();
+    findManyMock.mockReset();
+    classifyComplexityMock.mockReset();
+  });
 
-    const req = buildReq(PlanTier.PAYG, "gpt-5");
+  it("still classifies and routes via the TierRoutingModel table exactly as before, now unaffected by planTier", async () => {
+    classifyComplexityMock.mockReturnValue({
+      tier: ComplexityTier.REASONING,
+      score: 0.85,
+      signals: ["reasoning keyword"],
+    });
+
+    const mappedSlug = "o4-mini";
+    tierRoutingModelFindFirstMock.mockResolvedValue({ model: { slug: mappedSlug, isFreeModel: false } });
+
+    // Test on FREE plan (which under old logic would be capped or rejected, but now goes straight through)
+    const req = buildReq(PlanTier.FREE, AUTO_ROUTE_SENTINEL);
     const res = buildRes();
     const next = vi.fn() as unknown as NextFunction;
 
     await resolveRoutingModel(req, res, next);
 
+    expect(classifyComplexityMock).toHaveBeenCalledTimes(1);
+    expect(tierRoutingModelFindFirstMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tier: ComplexityTier.REASONING,
+          isActive: true,
+        }),
+        orderBy: { priority: "asc" },
+      })
+    );
     expect(next).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
+    expect(req.body.model).toBe(mappedSlug);
     expect((req as any).routingMeta).toMatchObject({
-      requestedModelSlug: "gpt-5",
-      routingReason: "EXPLICIT_MODEL",
+      requestedModelSlug: AUTO_ROUTE_SENTINEL,
+      complexityTier: ComplexityTier.REASONING,
+      complexityScore: 0.85,
+      routingReason: `AUTO_COMPLEXITY_ROUTE tier=REASONING score=0.850 | reasoning keyword`,
     });
   });
 });
