@@ -303,19 +303,6 @@ model Project {
   updatedBy          String?  @map("updated_by")
   deletedBy          String?  @map("deleted_by")
   isDeleted          Boolean  @default(false) @map("is_deleted")
-  id          String   @id @default(cuid(2))
-  userId      String   @map("user_id")
-  slug        String?
-  name        String
-  description String?  @db.Text
-  isActive    Boolean  @default(true) @map("is_active")
-  planTier    PlanTier @default(FREE) @map("plan_tier")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  createdBy   String?  @map("created_by")
-  updatedBy   String?  @map("updated_by")
-  deletedBy   String?  @map("deleted_by")
-  isDeleted   Boolean  @default(false) @map("is_deleted")
 
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   apiKeys           ApiKey[]
@@ -442,19 +429,6 @@ model Model {
   supportedParameters    String[]  @map("supported_parameters")
   defaultForCapabilities String[]  @map("default_for_capabilities")
   isFreeModel            Boolean   @default(false) @map("is_free_model")
-  /// Prep for future quality-based auto-routing — unpopulated (null) on all rows for
-  /// now. Not read anywhere in routing logic yet; TierRoutingModel.priority is the
-  /// selection signal until the catalog has real quality scores (Phase 2, deferred).
-  qualityScore           Float?    @map("quality_score")
-  cacheWritePricePerToken Decimal? @map("cache_write_price_per_token") @db.Decimal(18, 8)
-  cacheReadPricePerToken  Decimal? @map("cache_read_price_per_token") @db.Decimal(18, 8)
-
-  inputModalities        String[] @map("input_modalities")
-  outputModalities       String[] @map("output_modalities")
-  supportedParameters    String[] @map("supported_parameters")
-  defaultForCapabilities String[] @map("default_for_capabilities")
-  isFreeModel            Boolean  @default(false) @map("is_free_model")
-
   isActive  Boolean   @default(true) @map("is_active")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -463,37 +437,10 @@ model Model {
 
   provider           Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
   inferenceRequests  InferenceRequest[]
-  tierRoutings       TierRoutingModel[]
-  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-
   tierRoutingModels TierRoutingModel[]
-  inferenceRequests InferenceRequest[]
-
   @@index([providerId])
   @@map("models")
 }
-
-/// DB-driven replacement for the old hardcoded TIER_MODEL_MAP in routing.service.ts.
-/// Each row assigns one model to one complexity tier at a given priority. When "auto"
-/// routing resolves a tier, it picks the lowest-priority active row whose model is
-/// also active — so adding a fallback model for a tier is just a new row (higher
-/// priority number), and swapping a tier's model is a DB edit, not a deploy.
-model TierRoutingModel {
-  id        String         @id @default(cuid(2))
-  tier      ComplexityTier
-  modelId   String         @map("model_id")
-  priority  Int            @default(1)
-  isActive  Boolean        @default(true) @map("is_active")
-  createdAt DateTime       @default(now()) @map("created_at")
-  updatedAt DateTime       @updatedAt @map("updated_at")
-
-  model Model @relation(fields: [modelId], references: [id], onDelete: Cascade)
-
-  @@unique([tier, modelId])
-  @@index([tier, priority])
-  @@map("tier_routing_models")
-}
-
 model InferenceRequest {
   id                    String           @id @default(cuid(2))
   userId                String           @map("user_id")
@@ -501,10 +448,8 @@ model InferenceRequest {
   apiKeyId              String           @map("api_key_id")
   modelId               String           @map("model_id") 
   requestType           RequestType?
-  requestedModelSlug    String?          @map("requested_model_slug")
+  requestedModelSlug    String[]          @map("requested_model_slug")
   resolvedModelSlug     String?          @map("resolved_model_slug")
-  /// Observability only — the project's plan tier at request time. No longer used to
-  /// gate or cap routing decisions (see PlanTier enum doc comment).
   routedTier            PlanTier?        @map("routed_tier")
   routingReason         String?          @map("routing_reason")
   downgradedFromModelSlug String?        @map("downgraded_from_model_slug")
@@ -524,33 +469,6 @@ model InferenceRequest {
   totalCost             Decimal?         @map("total_cost") @db.Decimal(18, 8)
   latencyMs             Int?             @map("latency_ms")
   createdAt             DateTime         @default(now()) @map("created_at")
-  id                       String          @id @default(cuid(2))
-  userId                   String          @map("user_id")
-  projectId                String          @map("project_id")
-  apiKeyId                 String          @map("api_key_id")
-  modelId                  String          @map("model_id")
-  requestType              RequestType?
-  requestedModelSlug       String[]        @map("requested_model_slug")
-  resolvedModelSlug        String?         @map("resolved_model_slug")
-  routedTier               PlanTier?       @map("routed_tier")
-  routingReason            String?         @map("routing_reason")
-  downgradedFromModelSlug  String?         @map("downgraded_from_model_slug")
-  complexityTier           ComplexityTier? @map("complexity_tier")
-  complexityScore          Float?          @map("complexity_score")
-  stream                   Boolean?
-  status                   RequestStatus?
-  responseCompletionTimeMs Int?            @map("response_completion_time_ms")
-  promptTokens             Int?            @map("prompt_tokens")
-  completionTokens         Int?            @map("completion_tokens")
-  totalTokens              Int?            @map("total_tokens")
-  inputPriceSnapshot       Decimal?        @map("input_price_snapshot") @db.Decimal(18, 8)
-  outputPriceSnapshot      Decimal?        @map("output_price_snapshot") @db.Decimal(18, 8)
-  providerCost             Decimal?        @map("provider_cost") @db.Decimal(18, 8)
-  platformMarkupPercent    Decimal?        @map("platform_markup_percent") @db.Decimal(5, 2)
-  platformMarkup           Decimal?        @map("platform_markup") @db.Decimal(18, 8)
-  totalCost                Decimal?        @map("total_cost") @db.Decimal(18, 8)
-  latencyMs                Int?            @map("latency_ms")
-  createdAt                DateTime        @default(now()) @map("created_at")
 
   user                        User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
   project                     Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
