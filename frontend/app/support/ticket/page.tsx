@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,16 +18,17 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/shared/Navbar";
 import Footer from "@/components/landingPage/Footer";
+import api from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 
 const CATEGORIES = [
-  { value: "billing", label: "Billing & credits" },
-  { value: "technical", label: "Technical / API issue" },
-  { value: "account", label: "Account & security" },
-  { value: "other", label: "Something else" },
+  { value: "BILLING", label: "Billing & credits" },
+  { value: "TECHNICAL", label: "Technical / API issue" },
+  { value: "ACCOUNT", label: "Account & security" },
+  { value: "OTHER", label: "Something else" },
 ];
 
 const ticketSchema = z.object({
-  email: z.email({ error: "Enter a valid email address" }),
   category: z.string().min(1, "Choose a category"),
   subject: z.string().min(5, "Subject must be at least 5 characters").max(120),
   description: z
@@ -37,14 +39,18 @@ const ticketSchema = z.object({
 
 type TicketFormValues = z.infer<typeof ticketSchema>;
 
-function generateReference() {
-  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `TCK-${rand}`;
-}
-
 export default function SupportTicketPage() {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [reference, setReference] = useState<string | null>(null);
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
+
+  useEffect(() => {
+    if (hasHydrated && !user) {
+      router.replace("/auth/login?redirect=/support/ticket");
+    }
+  }, [hasHydrated, user, router]);
 
   const {
     register,
@@ -53,19 +59,34 @@ export default function SupportTicketPage() {
   } = useForm<TicketFormValues>({ resolver: zodResolver(ticketSchema) });
 
   const onSubmit = async (values: TicketFormValues) => {
-    void values;
-    // No ticketing backend is wired up yet — this simulates submission so the
-    // flow can be reviewed end-to-end before the API lands.
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    const ref = generateReference();
-    setReference(ref);
-    toast.success("Your request has been submitted.");
+    const formData = new FormData();
+    formData.append("category", values.category);
+    formData.append("subject", values.subject);
+    formData.append("description", values.description);
+    if (attachment) {
+      formData.append("attachment", attachment);
+    }
+
+    try {
+      const result = await api.post("/support/tickets", formData);
+      setReference(result.data.referenceNumber);
+      toast.success("Your request has been submitted.");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Failed to submit your request. Please try again.");
+    }
   };
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
+    if (file && file.size > 10 * 1024 * 1024) {
+      toast.error("Attachment must be 10MB or smaller.");
+      e.target.value = "";
+      return;
+    }
     setAttachment(file);
   };
+
+  if (!hasHydrated || !user) return null;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -118,22 +139,6 @@ export default function SupportTicketPage() {
               </p>
 
               <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-                <div>
-                  <label htmlFor="email" className="block text-[13px] font-bold text-[#0F172A] mb-2">
-                    Your email address<span className="text-indigo-600">*</span>
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-white text-[14px] text-[#0F172A] placeholder:text-slate-400 outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                    {...register("email")}
-                  />
-                  {errors.email && (
-                    <p className="mt-1.5 text-[12.5px] text-rose-600">{errors.email.message}</p>
-                  )}
-                </div>
-
                 <div>
                   <label htmlFor="category" className="block text-[13px] font-bold text-[#0F172A] mb-2">
                     Category<span className="text-indigo-600">*</span>

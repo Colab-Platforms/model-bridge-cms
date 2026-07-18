@@ -38,6 +38,7 @@ import {
   CreditCard,
   LayoutDashboard,
   Wallet,
+  LifeBuoy,
 } from "lucide-react";
 
 const adminNav = [
@@ -47,6 +48,7 @@ const adminNav = [
   { title: "Providers",  url: "/admin/providers",  icon: Server },
   { title: "Provider Balances", url: "/admin/provider-balances", icon: Wallet },
   { title: "Revenue",    url: "/admin/credits",    icon: CreditCard },
+  { title: "Support",    url: "/admin/support",    icon: LifeBuoy },
 ];
 
 const ROUTE_LABELS: Record<string, string> = {
@@ -57,6 +59,7 @@ const ROUTE_LABELS: Record<string, string> = {
   providers: "Providers",
   "provider-balances": "Provider Balances",
   credits: "Credits",
+  support: "Support",
 };
 
 function useBreadcrumbs() {

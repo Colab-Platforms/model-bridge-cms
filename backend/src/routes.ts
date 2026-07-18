@@ -28,6 +28,7 @@ import adminRoutes from "./modules/admin/admin.route.js";
 import auditLogsRoutes from "./modules/audit-logs/audit-logs.route.js";
 import settingsRoutes from "./modules/settings/settings.route.js";
 import healthRoutes from "./modules/health/health.route.js";
+import supportRoutes from "./modules/support/support.route.js";
 
 const router = Router();
 
@@ -60,5 +61,6 @@ router.use("/admin", adminRoutes);
 router.use("/audit-logs", auditLogsRoutes);
 router.use("/settings", settingsRoutes);
 router.use("/health", healthRoutes);
+router.use("/support", supportRoutes);
 
 export default router;
