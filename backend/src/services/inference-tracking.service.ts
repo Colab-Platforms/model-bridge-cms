@@ -16,7 +16,7 @@ export interface CreatePendingInferenceInput {
   projectId: string;
   apiKeyId: string;
   modelId: string;
-  requestedModelSlug: string;
+  requestedModelSlug: string[];
   resolvedModelSlug: string;
   stream: boolean;
   requestType?: RequestType;

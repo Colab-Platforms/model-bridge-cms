@@ -636,3 +636,19 @@ model SupportTicket {
   @@index([category, createdAt])
   @@map("support_tickets")
 }
+
+model TierRoutingModel {
+  id        String         @id @default(cuid(2))
+  tier      ComplexityTier
+  modelId   String         @map("model_id")
+  priority  Int            @default(1)
+  isActive  Boolean        @default(true) @map("is_active")
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  model Model @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@unique([tier, modelId])
+  @@index([tier, priority])
+  @@map("tier_routing_models")
+}
