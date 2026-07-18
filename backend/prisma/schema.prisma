@@ -147,6 +147,20 @@ enum BillingWebhookStatus {
   IGNORED
 }
 
+enum SupportTicketCategory {
+  BILLING
+  TECHNICAL
+  ACCOUNT
+  OTHER
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
 enum ComplexityTier {
   SIMPLE
   MEDIUM
@@ -207,6 +221,7 @@ model User {
   billingWebhookEvents BillingWebhookEvent[]
   inferenceRequests    InferenceRequest[]
   activityLogs         ActivityLog[]
+  supportTickets       SupportTicket[]
 
   @@map("users")
 }
@@ -599,18 +614,25 @@ model BillingWebhookEvent {
   @@map("billing_webhook_events")
 }
 
-model TierRoutingModel {
-  id        String         @id @default(cuid(2))
-  tier      ComplexityTier
-  modelId   String         @map("model_id")
-  priority  Int            @default(1)
-  isActive  Boolean        @default(true) @map("is_active")
-  createdAt DateTime       @default(now()) @map("created_at")
-  updatedAt DateTime       @updatedAt @map("updated_at")
+model SupportTicket {
+  id                  String                @id @default(cuid(2))
+  userId              String                @map("user_id")
+  referenceNumber     String                @unique @map("reference_number")
+  category            SupportTicketCategory
+  subject             String
+  description         String                @db.Text
+  status              SupportTicketStatus   @default(OPEN)
+  attachmentUrl       String?               @map("attachment_url")
+  attachmentName      String?               @map("attachment_name")
+  attachmentSizeBytes Int?                  @map("attachment_size_bytes")
+  resolvedAt          DateTime?             @map("resolved_at")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
 
-  model Model @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([tier, modelId])
-  @@index([tier, priority])
-  @@map("tier_routing_models")
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([category, createdAt])
+  @@map("support_tickets")
 }

@@ -16,7 +16,7 @@ export interface CreatePendingInferenceInput {
   projectId: string;
   apiKeyId: string;
   modelId: string;
-  requestedModelSlug: string | string[];
+  requestedModelSlug: string;
   resolvedModelSlug: string;
   stream: boolean;
   requestType?: RequestType;
@@ -66,9 +66,7 @@ export class InferenceTrackingService {
         projectId: input.projectId,
         apiKeyId: input.apiKeyId,
         modelId: input.modelId,
-        requestedModelSlug: Array.isArray(input.requestedModelSlug)
-          ? input.requestedModelSlug
-          : [input.requestedModelSlug],
+        requestedModelSlug: input.requestedModelSlug,
         resolvedModelSlug: input.resolvedModelSlug,
         stream: input.stream,
         requestType: input.requestType ?? RequestType.CHAT,
