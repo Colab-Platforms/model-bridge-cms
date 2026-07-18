@@ -68,7 +68,9 @@ export default function SupportTicketPage() {
     }
 
     try {
-      const result = await api.post("/support/tickets", formData);
+      const result = await api.post("/support/tickets", formData, {
+        headers: { "Content-Type": undefined },
+      });
       setReference(result.data.referenceNumber);
       toast.success("Your request has been submitted.");
     } catch (error: any) {
