@@ -52,16 +52,43 @@ export const getFreeTierModelPool = async (): Promise<FreeTierModel[]> => {
 };
 
 /**
- * The model to use as the default for FREE-tier "auto" requests. Free models are
- * priced at $0, so "best" here just means the pool's first entry — kept as its own
- * function so the selection heuristic (currently: none, arbitrary stable order) can
- * be swapped for a quality ranking later without touching call sites.
+ * Cheapest active free model in the pool. Not currently called anywhere — it backed
+ * FreeRouting's misconfiguration fallback in resolveAutoRoutedModel, which was
+ * removed when plan-tier-based access control was replaced with pure credit/wallet
+ * gating. Left in place since it's a reasonable building block (e.g. a future
+ * "suggest a free model" endpoint) — safe to delete if it stays unused.
  */
 export const getBestFreeTierModel = async (): Promise<FreeTierModel | null> => {
   const pool = await getFreeTierModelPool();
 
   return pool[0] ?? null;
 };
+
+/**
+ * Resolves the cheapest active free model.
+ * Ordered by inputPricePerToken ascending, then outputPricePerToken ascending.
+ */
+export const getCheapestFreeModel = async (): Promise<FreeTierModel | null> => {
+  const models = await prisma.model.findMany({
+    where: {
+      isFreeModel: true,
+      isActive: true,
+      isDeleted: false,
+      provider: {
+        isActive: true,
+        isDeleted: false,
+      },
+    },
+    select: FREE_TIER_MODEL_SELECT,
+    orderBy: [
+      { inputPricePerToken: "asc" },
+      { outputPricePerToken: "asc" },
+    ],
+  });
+
+  return models[0] ? toFreeTierModel(models[0]) : null;
+};
+
 
 /**
  * Picks another free-tier model to retry against after `excludeModelId`'s provider
@@ -76,49 +103,6 @@ export const getNextFreeTierFallback = async (
   return pool.find((model) => model.id !== excludeModelId) ?? null;
 };
 
-/** FREE-tier projects never get auto-routed above this tier, no matter how the prompt classifies. */
-export const FREE_TIER_CAP: ComplexityTier = ComplexityTier.MEDIUM;
-
-const COMPLEXITY_TIER_ORDER: ComplexityTier[] = [
-  ComplexityTier.SIMPLE,
-  ComplexityTier.MEDIUM,
-  ComplexityTier.COMPLEX,
-  ComplexityTier.REASONING,
-];
-
-/**
- * Auto-routing target model per complexity tier. SIMPLE and MEDIUM point at
- * free-tier-eligible models on purpose: FREE_TIER_CAP means FREE-tier projects can
- * land on either of those two, and resolveAutoRoutedModel below still verifies
- * isFreeModel at resolve time rather than trusting this map blindly.
- *
- * This is a snapshot of this deployment's model catalog — review these slugs when
- * the catalog changes. If a slug here stops resolving to an active model,
- * resolveAutoRoutedModel throws for COMPLEX/REASONING rather than failing silently;
- * for SIMPLE/MEDIUM on a FREE-tier project it falls back to getBestFreeTierModel().
- */
-export const TIER_MODEL_MAP: Record<ComplexityTier, string> = {
-  [ComplexityTier.SIMPLE]: "nemotron-nano-9b-v2:free",
-  [ComplexityTier.MEDIUM]: "nemotron-3-nano-30b-a3b:free",
-  [ComplexityTier.COMPLEX]: "gpt-4o-mini",
-  [ComplexityTier.REASONING]: "o4-mini",
-};
-
-/** Clamps `tier` down to FREE_TIER_CAP for FREE-tier projects; a no-op for PAYG/SCALE. */
-export const capTierForFreeTierProject = (
-  tier: ComplexityTier,
-  isFreeTierProject: boolean
-): ComplexityTier => {
-  if (!isFreeTierProject) {
-    return tier;
-  }
-
-  const capIndex = COMPLEXITY_TIER_ORDER.indexOf(FREE_TIER_CAP);
-  const tierIndex = COMPLEXITY_TIER_ORDER.indexOf(tier);
-
-  return tierIndex > capIndex ? FREE_TIER_CAP : tier;
-};
-
 export interface AutoRoutedModel {
   slug: string;
   effectiveTier: ComplexityTier;
@@ -126,44 +110,36 @@ export interface AutoRoutedModel {
 }
 
 /**
- * Resolves a complexity tier to a concrete model. Composes with the isFreeModel gate
- * rather than bypassing it: a FREE-tier project is capped to FREE_TIER_CAP first, and
- * if TIER_MODEL_MAP's entry for the (capped) tier turns out not to be free-tier
- * -eligible — a catalog misconfiguration — this falls back to getBestFreeTierModel()
- * instead of ever handing a FREE-tier project a paid model.
+ * Resolves a complexity tier to a model via the TierRoutingModel table — the DB-driven
+ * replacement for the old hardcoded TIER_MODEL_MAP. Picks the lowest-priority active
+ * routing row for the tier whose model is also active, so swapping a tier's model (or
+ * adding a fallback at a higher priority number) is a DB edit, not a deploy.
  */
-export const resolveAutoRoutedModel = async (
-  tier: ComplexityTier,
-  isFreeTierProject: boolean
-): Promise<AutoRoutedModel> => {
-  const effectiveTier = capTierForFreeTierProject(tier, isFreeTierProject);
-  const mappedSlug = TIER_MODEL_MAP[effectiveTier];
-
-  const modelRecord = await prisma.model.findFirst({
+export const resolveAutoRoutedModel = async (tier: ComplexityTier): Promise<AutoRoutedModel> => {
+  const routingEntry = await prisma.tierRoutingModel.findFirst({
     where: {
-      slug: mappedSlug,
+      tier,
       isActive: true,
-      isDeleted: false,
+      model: {
+        isActive: true,
+        isDeleted: false,
+        provider: { isActive: true, isDeleted: false },
+      },
     },
-    select: { slug: true, isFreeModel: true },
+    orderBy: { priority: "asc" },
+    select: { model: { select: { slug: true, isFreeModel: true } } },
   });
 
-  if (isFreeTierProject && (!modelRecord || !modelRecord.isFreeModel)) {
-    const fallback = await getBestFreeTierModel();
-
-    if (!fallback) {
-      throw new AppError("No free-tier models are currently available", STATUS_CODES.SERVER_ERROR);
-    }
-
-    return { slug: fallback.slug, effectiveTier, isFreeModel: true };
-  }
-
-  if (!modelRecord) {
+  if (!routingEntry) {
     throw new AppError(
-      `Auto-routing target model "${mappedSlug}" for tier ${effectiveTier} is not available`,
+      `No active routing model configured for tier ${tier}`,
       STATUS_CODES.SERVER_ERROR
     );
   }
 
-  return { slug: modelRecord.slug, effectiveTier, isFreeModel: modelRecord.isFreeModel };
+  return {
+    slug: routingEntry.model.slug,
+    effectiveTier: tier,
+    isFreeModel: routingEntry.model.isFreeModel,
+  };
 };

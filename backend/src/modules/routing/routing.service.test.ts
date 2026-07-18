@@ -1,85 +1,104 @@
 import { ComplexityTier } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findFirstMock, findManyMock } = vi.hoisted(() => ({
-  findFirstMock: vi.fn(),
+const { tierRoutingModelFindFirstMock, findManyMock } = vi.hoisted(() => ({
+  tierRoutingModelFindFirstMock: vi.fn(),
   findManyMock: vi.fn(),
 }));
 
 vi.mock("../../../prisma.js", () => ({
   default: {
+    tierRoutingModel: {
+      findFirst: tierRoutingModelFindFirstMock,
+    },
     model: {
-      findFirst: findFirstMock,
       findMany: findManyMock,
     },
   },
 }));
 
-import {
-  capTierForFreeTierProject,
-  FREE_TIER_CAP,
-  resolveAutoRoutedModel,
-  TIER_MODEL_MAP,
-} from "./routing.service.js";
+import { resolveAutoRoutedModel, getCheapestFreeModel } from "./routing.service.js";
 
-describe("capTierForFreeTierProject", () => {
-  it("never lets a FREE-tier project exceed FREE_TIER_CAP", () => {
-    expect(capTierForFreeTierProject(ComplexityTier.COMPLEX, true)).toBe(FREE_TIER_CAP);
-    expect(capTierForFreeTierProject(ComplexityTier.REASONING, true)).toBe(FREE_TIER_CAP);
-    expect(capTierForFreeTierProject(ComplexityTier.SIMPLE, true)).toBe(ComplexityTier.SIMPLE);
+const SLUG_BY_TIER: Record<ComplexityTier, string> = {
+  [ComplexityTier.SIMPLE]: "nemotron-nano-9b-v2:free",
+  [ComplexityTier.MEDIUM]: "nemotron-3-nano-30b-a3b:free",
+  [ComplexityTier.COMPLEX]: "gpt-4o-mini",
+  [ComplexityTier.REASONING]: "o4-mini",
+};
+
+describe("resolveAutoRoutedModel — DB-driven tier-to-model lookup via TierRoutingModel", () => {
+  beforeEach(() => {
+    tierRoutingModelFindFirstMock.mockReset();
   });
 
-  it("does not cap PAYG/SCALE projects", () => {
-    expect(capTierForFreeTierProject(ComplexityTier.REASONING, false)).toBe(ComplexityTier.REASONING);
+  it.each([ComplexityTier.SIMPLE, ComplexityTier.MEDIUM, ComplexityTier.COMPLEX, ComplexityTier.REASONING])(
+    "resolves %s to the lowest-priority active routing row's model",
+    async (tier) => {
+      const mappedSlug = SLUG_BY_TIER[tier];
+      tierRoutingModelFindFirstMock.mockResolvedValue({
+        model: { slug: mappedSlug, isFreeModel: tier === ComplexityTier.SIMPLE || tier === ComplexityTier.MEDIUM },
+      });
+
+      const result = await resolveAutoRoutedModel(tier);
+
+      expect(result.slug).toBe(mappedSlug);
+      expect(result.effectiveTier).toBe(tier);
+      expect(tierRoutingModelFindFirstMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ tier, isActive: true }),
+          orderBy: { priority: "asc" },
+        })
+      );
+    }
+  );
+
+  it("throws if no active routing row is configured for the tier, instead of failing silently", async () => {
+    tierRoutingModelFindFirstMock.mockResolvedValue(null);
+
+    await expect(resolveAutoRoutedModel(ComplexityTier.REASONING)).rejects.toThrow(
+      /No active routing model configured for tier/
+    );
   });
 });
 
-describe("resolveAutoRoutedModel — FREE_TIER_CAP composes with the isFreeModel gate", () => {
+describe("getCheapestFreeModel", () => {
   beforeEach(() => {
-    findFirstMock.mockReset();
     findManyMock.mockReset();
   });
 
-  it("a FREE-tier project classified COMPLEX never resolves above the MEDIUM-tier model", async () => {
-    findFirstMock.mockResolvedValue({ slug: TIER_MODEL_MAP[ComplexityTier.MEDIUM], isFreeModel: true });
-
-    const result = await resolveAutoRoutedModel(ComplexityTier.COMPLEX, true);
-
-    expect(result.effectiveTier).toBe(ComplexityTier.MEDIUM);
-    expect(result.slug).toBe(TIER_MODEL_MAP[ComplexityTier.MEDIUM]);
-    expect(result.isFreeModel).toBe(true);
-    // Never the COMPLEX-tier (paid) model.
-    expect(result.slug).not.toBe(TIER_MODEL_MAP[ComplexityTier.COMPLEX]);
-  });
-
-  it("a FREE-tier project classified REASONING never resolves above the MEDIUM-tier model", async () => {
-    findFirstMock.mockResolvedValue({ slug: TIER_MODEL_MAP[ComplexityTier.MEDIUM], isFreeModel: true });
-
-    const result = await resolveAutoRoutedModel(ComplexityTier.REASONING, true);
-
-    expect(result.effectiveTier).toBe(ComplexityTier.MEDIUM);
-    expect(result.slug).not.toBe(TIER_MODEL_MAP[ComplexityTier.REASONING]);
-  });
-
-  it("falls back to the free-tier pool instead of ever serving a paid model, if the mapped tier model isn't free-eligible", async () => {
-    // Simulates a misconfigured TIER_MODEL_MAP entry that points at a paid model.
-    findFirstMock.mockResolvedValue({ slug: TIER_MODEL_MAP[ComplexityTier.MEDIUM], isFreeModel: false });
+  it("queries models ordered by inputPricePerToken then outputPricePerToken and returns the cheapest", async () => {
     findManyMock.mockResolvedValue([
-      { id: "free-1", slug: "some-other-free-model", inputPricePerToken: 0, outputPricePerToken: 0 },
+      { id: "model-1", slug: "nemotron-nano-9b-v2:free", inputPricePerToken: 0, outputPricePerToken: 0 },
+      { id: "model-2", slug: "nemotron-3-nano-30b-a3b:free", inputPricePerToken: 0.0001, outputPricePerToken: 0.0001 }
     ]);
 
-    const result = await resolveAutoRoutedModel(ComplexityTier.MEDIUM, true);
+    const result = await getCheapestFreeModel();
 
-    expect(result.isFreeModel).toBe(true);
-    expect(result.slug).toBe("some-other-free-model");
+    expect(result).toEqual({
+      id: "model-1",
+      slug: "nemotron-nano-9b-v2:free",
+      inputPricePerToken: 0,
+      outputPricePerToken: 0
+    });
+
+    expect(findManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          isFreeModel: true,
+          isActive: true,
+          isDeleted: false,
+        }),
+        orderBy: [
+          { inputPricePerToken: "asc" },
+          { outputPricePerToken: "asc" },
+        ],
+      })
+    );
   });
 
-  it("does not cap a PAYG project — REASONING resolves to the REASONING-tier model", async () => {
-    findFirstMock.mockResolvedValue({ slug: TIER_MODEL_MAP[ComplexityTier.REASONING], isFreeModel: false });
-
-    const result = await resolveAutoRoutedModel(ComplexityTier.REASONING, false);
-
-    expect(result.effectiveTier).toBe(ComplexityTier.REASONING);
-    expect(result.slug).toBe(TIER_MODEL_MAP[ComplexityTier.REASONING]);
+  it("returns null if no free models exist", async () => {
+    findManyMock.mockResolvedValue([]);
+    const result = await getCheapestFreeModel();
+    expect(result).toBeNull();
   });
 });

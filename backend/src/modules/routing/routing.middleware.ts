@@ -1,12 +1,11 @@
-import { PlanTier } from "@prisma/client";
 import type { NextFunction, Request, Response } from "express";
 
-import prisma from "../../../prisma.js";
+import AppError from "../../shared/errors/index.js";
 import { sendResponse } from "../../utils/responseUtils.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import { classifyComplexity } from "./complexity-router.js";
-import { AUTO_ROUTE_SENTINEL } from "./routing.constants.js";
-import { resolveAutoRoutedModel } from "./routing.service.js";
+import { AUTO_ROUTE_SENTINEL, FREE_ROUTE_SENTINEL } from "./routing.constants.js";
+import { resolveAutoRoutedModel, getCheapestFreeModel } from "./routing.service.js";
 import type { RoutingMeta } from "./routing.types.js";
 
 interface IncomingChatMessage {
@@ -43,34 +42,21 @@ const extractLastMessageText = (messages: IncomingChatMessage[], role: string): 
   return "";
 };
 
-const FREE_PLAN_REJECTION_MESSAGE =
-  "This model isn't available on the Free plan. Upgrade to Pay As You Go or Scale to use it.";
-
-/**
- * Kill switch for FREE-tier enforcement — off by default until a payment gateway
- * exists to let a FREE project actually upgrade. `Project.planTier` keeps getting
- * written/read as normal (no schema/data changes), and the complexity-router still
- * runs for "auto" requests (cost-optimized routing keeps working) — this only turns
- * off the FREE_TIER_CAP and the 403 gate below. Flip ENABLE_TIER_RESTRICTIONS=true
- * once upgrades are possible; no code change needed at that point.
- */
-const TIER_RESTRICTIONS_ENABLED = process.env.ENABLE_TIER_RESTRICTIONS === "true";
-
 /**
  * Runs right after apiKeyAuth and before any middleware that looks the model up by
- * slug (validateRequestedModalities, checkCredits). Two responsibilities:
+ * slug (validateRequestedModalities, checkCredits). Resolves `model: "auto"` to a
+ * concrete slug via the native complexity-router.ts classifier (no external call) —
+ * classifies the last user/system message and resolves the resulting tier to a model
+ * via the TierRoutingModel table (routing.service.ts). Explicit model requests pass
+ * through untouched, just tagged with routing metadata.
  *
- * 1. Resolves `model: "auto"` to a concrete slug via the native complexity-router.ts
- *    classifier (no external call) — classifies the last user/system message, maps
- *    the resulting tier to a model, and for FREE-tier projects caps the tier at
- *    FREE_TIER_CAP before that mapping happens (routing.service.ts) — only while
- *    TIER_RESTRICTIONS_ENABLED is true.
- * 2. Enforces that FREE-tier projects can only use models where Model.isFreeModel is
- *    true. This check runs on every request, including ones that name a model
- *    explicitly — not just "auto" ones — otherwise a FREE-tier project could bypass
- *    the restriction just by naming a paid model directly. Rejects with 403 rather
- *    than silently downgrading, so callers know why their request didn't go through.
- *    Only while TIER_RESTRICTIONS_ENABLED is true.
+ * NOTE: this used to also gate on Project.planTier — a FREE-tier project got a 403 on
+ * paid models, and "auto" routing was capped to a MEDIUM tier ceiling. That
+ * plan-tier-based access control has been removed; Project.planTier and the PlanTier
+ * enum are kept in the schema (dormant) pending a future decision on whether tiers
+ * come back for billing/subscription purposes, not access control. The only gate left
+ * on whether a request proceeds is checkApiCredits.ts, later in this pipeline —
+ * wallet balance vs. the resolved model's cost.
  */
 export const resolveRoutingModel = async (
   req: Request,
@@ -78,9 +64,27 @@ export const resolveRoutingModel = async (
   next: NextFunction
 ) => {
   try {
-    const project = (req as any).project as { id: string; planTier: PlanTier } | undefined;
-    const isFreeTierProject = TIER_RESTRICTIONS_ENABLED && project?.planTier === PlanTier.FREE;
     const requestedModel = req.body.model as string;
+
+    if (requestedModel === FREE_ROUTE_SENTINEL) {
+      const cheapestFreeModel = await getCheapestFreeModel();
+      if (!cheapestFreeModel) {
+        throw new AppError(
+          "No free models are currently available",
+          STATUS_CODES.SERVER_ERROR
+        );
+      }
+
+      const routingMeta: RoutingMeta = {
+        requestedModelSlug: FREE_ROUTE_SENTINEL,
+        routingReason: `explicit free-route: cheapest active free model (cost=$${cheapestFreeModel.inputPricePerToken})`,
+      };
+
+      (req as any).routingMeta = routingMeta;
+      req.body.model = cheapestFreeModel.slug;
+
+      return next();
+    }
 
     if (requestedModel === AUTO_ROUTE_SENTINEL) {
       const messages = (req.body.messages ?? []) as IncomingChatMessage[];
@@ -88,7 +92,7 @@ export const resolveRoutingModel = async (
       const systemMessage = extractLastMessageText(messages, "system");
 
       const classification = classifyComplexity({ userMessage, systemMessage });
-      const resolved = await resolveAutoRoutedModel(classification.tier, isFreeTierProject);
+      const resolved = await resolveAutoRoutedModel(classification.tier);
 
       const routingMeta: RoutingMeta = {
         requestedModelSlug: AUTO_ROUTE_SENTINEL,
@@ -105,32 +109,9 @@ export const resolveRoutingModel = async (
       return next();
     }
 
-    if (isFreeTierProject) {
-      const modelRecord = await prisma.model.findFirst({
-        where: {
-          slug: requestedModel,
-          isDeleted: false,
-          isActive: true,
-        },
-        select: { isFreeModel: true },
-      });
-
-      // An unknown/inactive slug is left for validateRequestedModalities to 404 below
-      // — this middleware only enforces the tier restriction on models that exist.
-      if (modelRecord && !modelRecord.isFreeModel) {
-        return sendResponse(
-          res,
-          false,
-          { model: requestedModel, planTier: project?.planTier },
-          FREE_PLAN_REJECTION_MESSAGE,
-          STATUS_CODES.FORBIDDEN
-        );
-      }
-    }
-
     const routingMeta: RoutingMeta = {
       requestedModelSlug: requestedModel,
-      routingReason: isFreeTierProject ? "EXPLICIT_MODEL_FREE_TIER" : "EXPLICIT_MODEL",
+      routingReason: "EXPLICIT_MODEL",
     };
 
     (req as any).routingMeta = routingMeta;
