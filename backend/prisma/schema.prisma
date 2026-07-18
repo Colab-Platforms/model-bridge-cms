@@ -449,15 +449,16 @@ model Model {
   /// selection signal until the catalog has real quality scores (Phase 2, deferred).
   qualityScore           Float?    @map("quality_score")
 
-  isActive  Boolean   @default(true) @map("is_active")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  isDeleted Boolean   @default(false) @map("is_deleted")
-  deletedAt DateTime? @map("deleted_at")
+  isActive               Boolean  @default(true) @map("is_active")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+  isDeleted              Boolean  @default(false) @map("is_deleted")
+  deletedAt              DateTime? @map("deleted_at")
 
   provider           Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
   inferenceRequests  InferenceRequest[]
-  tierRoutingModels TierRoutingModel[]
+  tierRoutings       TierRoutingModel[]
+
   @@index([providerId])
   @@map("models")
 }
@@ -482,6 +483,7 @@ model TierRoutingModel {
   @@index([tier, priority])
   @@map("tier_routing_models")
 }
+
 model InferenceRequest {
   id                    String           @id @default(cuid(2))
   userId                String           @map("user_id")
@@ -491,6 +493,8 @@ model InferenceRequest {
   requestType           RequestType?
   requestedModelSlug    String?           @map("requested_model_slug")
   resolvedModelSlug     String?          @map("resolved_model_slug")
+  /// Observability only — the project's plan tier at request time. No longer used to
+  /// gate or cap routing decisions (see PlanTier enum doc comment).
   routedTier            PlanTier?        @map("routed_tier")
   routingReason         String?          @map("routing_reason")
   downgradedFromModelSlug String?        @map("downgraded_from_model_slug")
@@ -661,20 +665,4 @@ model SupportTicket {
   @@index([status, createdAt])
   @@index([category, createdAt])
   @@map("support_tickets")
-}
-
-model TierRoutingModel {
-  id        String         @id @default(cuid(2))
-  tier      ComplexityTier
-  modelId   String         @map("model_id")
-  priority  Int            @default(1)
-  isActive  Boolean        @default(true) @map("is_active")
-  createdAt DateTime       @default(now()) @map("created_at")
-  updatedAt DateTime       @updatedAt @map("updated_at")
-
-  model Model @relation(fields: [modelId], references: [id], onDelete: Cascade)
-
-  @@unique([tier, modelId])
-  @@index([tier, priority])
-  @@map("tier_routing_models")
 }
