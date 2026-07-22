@@ -96,7 +96,7 @@ export default function Footer() {
             <Link href="/" className="flex items-center gap-2 mb-6 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/colab_one_logo.png"
+                src="/ColabOne_Logo.png"
                 alt="ColabOne Logo"
                 style={{ height: "48px", width: "auto" }}
                 className="group-hover:scale-110 transition-transform duration-300 drop-shadow-md"

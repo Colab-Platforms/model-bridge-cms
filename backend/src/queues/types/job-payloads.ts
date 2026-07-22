@@ -167,7 +167,9 @@ export type ScheduledJobName =
   | "provider-sync-gemini"
   | "provider-sync-groq"
   | "api-key-expiry-check"
-  | "low-balance-check";
+  | "api-key-limit-check"
+  | "low-balance-check"
+  | "wallet-low-balance-check";
 
 export interface ScheduledJobPayload {
   jobName: ScheduledJobName;

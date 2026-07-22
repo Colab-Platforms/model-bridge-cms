@@ -10,6 +10,7 @@ import AppError from "../../shared/errors/index.js";
 import { cacheInvalidatePattern } from "../../shared/utils/cache.js";
 import { activityLogService, type TransactionClient } from "../../services/activity-log.service.js";
 import { enqueueEmail } from "../../services/email.service.js";
+import { decideThresholdAlert } from "../../services/threshold-alert.service.js";
 import { formatPaginationResponse, getPaginationOptions } from "../../utils/paginationUtils.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import { assertPositiveAmount, toDecimal } from "../wallets/wallet.utils.js";
@@ -655,6 +656,10 @@ const formatCurrencyForEmail = (value: Prisma.Decimal | string) => {
   return amount.toFixed(4);
 };
 
+const getProviderDisplayName = (balance: {
+  provider: { displayName: string | null; slug: string | null; id: string };
+}) => balance.provider.displayName ?? balance.provider.slug ?? balance.provider.id;
+
 export const runProviderLowBalanceCheck = async () => {
   const [adminRecipients, candidates, recoveredBalances] = await Promise.all([
     getProviderLowBalanceAlertRecipients(),
@@ -663,13 +668,45 @@ export const runProviderLowBalanceCheck = async () => {
   ]);
 
   for (const recoveredBalance of recoveredBalances) {
-    if (recoveredBalance.currentBalance.gt(recoveredBalance.lowBalanceThreshold)) {
+    const { shouldResolve } = decideThresholdAlert({
+      isTriggered: recoveredBalance.currentBalance.lte(recoveredBalance.lowBalanceThreshold),
+      alertActive: recoveredBalance.lowBalanceAlertActive,
+    });
+    if (shouldResolve) {
       await resolveProviderLowBalanceAlert(recoveredBalance.id);
+
+      const providerName = getProviderDisplayName(recoveredBalance);
+      const subject = `Provider balance restored: ${providerName}`;
+      const text = [
+        `Provider ${providerName} has recovered above its low balance threshold.`,
+        `Current balance: $${formatCurrencyForEmail(recoveredBalance.currentBalance)}`,
+        `Threshold: $${formatCurrencyForEmail(recoveredBalance.lowBalanceThreshold)}`,
+      ].join("\n");
+      const html = `
+        <p>Provider <strong>${providerName}</strong> has recovered above its low balance threshold.</p>
+        <p>Current balance: <strong>$${formatCurrencyForEmail(recoveredBalance.currentBalance)}</strong></p>
+        <p>Threshold: <strong>$${formatCurrencyForEmail(recoveredBalance.lowBalanceThreshold)}</strong></p>
+      `;
+
+      await Promise.all(
+        adminRecipients.map((recipient) =>
+          enqueueEmail({
+            to: recipient.email,
+            subject,
+            text,
+            html,
+          })
+        )
+      );
     }
   }
 
-  const lowBalances = candidates.filter((balance) =>
-    balance.currentBalance.lte(balance.lowBalanceThreshold)
+  const lowBalances = candidates.filter(
+    (balance) =>
+      decideThresholdAlert({
+        isTriggered: balance.currentBalance.lte(balance.lowBalanceThreshold),
+        alertActive: balance.lowBalanceAlertActive,
+      }).shouldSend
   );
 
   if (lowBalances.length === 0 || adminRecipients.length === 0) {
@@ -682,7 +719,7 @@ export const runProviderLowBalanceCheck = async () => {
   }
 
   for (const balance of lowBalances) {
-    const providerName = balance.provider.displayName ?? balance.provider.slug ?? balance.provider.id;
+    const providerName = getProviderDisplayName(balance);
     const subject = `Provider low balance alert: ${providerName}`;
     const text = [
       `Provider ${providerName} is below its low balance threshold.`,

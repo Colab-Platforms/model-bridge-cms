@@ -94,6 +94,12 @@ enum ActivityType {
   PROVIDER_BALANCE_ADJUSTED
   PROVIDER_LOW_BALANCE_ALERT_SENT
   PROVIDER_LOW_BALANCE_ALERT_RESOLVED
+
+  API_KEY_EXPIRY_WARNING_SENT
+  API_KEY_LIMIT_WARNING_SENT
+
+  WALLET_LOW_BALANCE_ALERT_SENT
+  WALLET_LOW_BALANCE_ALERT_RESOLVED
 }
 
 enum ProviderBalanceTransactionType {
@@ -266,6 +272,14 @@ model Wallet {
   balance   Decimal      @default(0) @db.Decimal(18, 8)
   currency  String       @default("USD")
   status    WalletStatus @default(ACTIVE)
+  /// Mirrors ProviderBalance's convention: always has a concrete value (platform
+  /// default applied at row-creation time, see DEFAULT_WALLET_LOW_BALANCE_THRESHOLD),
+  /// never null. alertsEnabled is the separate on/off switch.
+  lowBalanceThreshold   Decimal   @default(2) @map("low_balance_threshold") @db.Decimal(18, 8)
+  alertsEnabled         Boolean   @default(true) @map("alerts_enabled")
+  lowBalanceAlertActive Boolean   @default(false) @map("low_balance_alert_active")
+  lastAlertSentAt       DateTime? @map("last_alert_sent_at")
+  lastAlertResolvedAt   DateTime? @map("last_alert_resolved_at")
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
   createdBy String?      @map("created_by")
@@ -340,6 +354,15 @@ model ApiKey {
   status      ApiKeyStatus @default(ACTIVE)
   lastUsedAt  DateTime?    @map("last_used_at")
   expiresAt   DateTime?    @map("expires_at")
+  /// Set once the expiry warning email has been sent, so the daily check never
+  /// re-sends. Never reset — a renewed/rotated key is a new key anyway.
+  expiryAlertSentAt      DateTime? @map("expiry_alert_sent_at")
+  /// Set alongside limitAlertPeriodStart when the 80%-of-limit warning fires.
+  limitAlertSentAt       DateTime? @map("limit_alert_sent_at")
+  /// The start of the billing period (per limitType) the limit alert was last sent
+  /// for. Compared against the current period's computed start on each check — a
+  /// mismatch means a new period has begun and the key is eligible to alert again.
+  limitAlertPeriodStart  DateTime? @map("limit_alert_period_start")
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
   isDeleted   Boolean      @default(false) @map("is_deleted")

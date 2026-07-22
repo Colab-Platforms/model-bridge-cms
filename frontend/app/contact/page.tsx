@@ -7,7 +7,6 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { Mail, MapPin, Clock, Send, CheckCircle2, LifeBuoy, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import Navbar from "@/components/shared/Navbar";
 import Footer from "@/components/landingPage/Footer";
 
 const contactSchema = z.object({
@@ -66,9 +65,6 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <Navbar />
-
-      <div className="pt-[86px]">
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section
           className="relative pt-20 pb-14 px-6 overflow-hidden"
@@ -234,7 +230,6 @@ export default function ContactPage() {
             </div>
           </div>
         </section>
-      </div>
 
       <Footer />
     </div>

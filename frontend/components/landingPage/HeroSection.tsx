@@ -31,7 +31,7 @@ function DashboardMockup() {
           <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
           <span className="ml-3 flex items-center gap-1.5 text-[11px] font-medium text-[#94A3B8] select-none">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/colab_one_logo.png" alt="ColabOne" style={{ height: "14px", width: "auto" }} className="rounded-sm opacity-70" />
+            <img src="/ColabOne_Logo.png" alt="ColabOne" style={{ height: "14px", width: "auto" }} className="rounded-sm opacity-70" />
             ColabOne Analytics
           </span>
         </div>
@@ -128,7 +128,7 @@ const TRUST_AVATARS = ["#5B4DFF", "#10B981", "#F59E0B", "#EC4899", "#3B82F6"];
 export default function HeroSection() {
   return (
     <section
-      className="relative min-h-[90vh] flex flex-col items-center justify-start pt-32 pb-20 overflow-hidden"
+      className="relative min-h-[90vh] flex flex-col items-center justify-start pt-12 pb-20 overflow-hidden"
       style={{
         background: `
           radial-gradient(circle at 50% -20%, rgba(91,77,255,0.1) 0%, transparent 50%),

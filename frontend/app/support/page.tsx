@@ -11,7 +11,6 @@ import {
   ChevronDown,
   Mail,
 } from "lucide-react";
-import Navbar from "@/components/shared/Navbar";
 import Footer from "@/components/landingPage/Footer";
 
 interface FaqItem {
@@ -142,9 +141,6 @@ export default function SupportPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <Navbar />
-
-      <div className="pt-[86px]">
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section
           className="relative pt-20 pb-16 px-6 overflow-hidden"
@@ -286,7 +282,6 @@ export default function SupportPage() {
             </div>
           </div>
         </section>
-      </div>
 
       <Footer />
     </div>

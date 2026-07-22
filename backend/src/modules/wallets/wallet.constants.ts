@@ -2,6 +2,14 @@ import { WalletStatus, WalletTransactionType } from "@prisma/client";
 
 export const DEFAULT_WALLET_CURRENCY = "USD";
 
+/**
+ * Platform-wide default for Wallet.lowBalanceThreshold — applied via the schema's
+ * @default(2) so every wallet always has a concrete threshold (mirrors
+ * ProviderBalance's non-nullable lowBalanceThreshold convention). No per-user
+ * settings UI exists yet; alertsEnabled is the on/off switch, not threshold nullability.
+ */
+export const DEFAULT_WALLET_LOW_BALANCE_THRESHOLD = 2;
+
 export const WALLET_ERRORS = {
   NOT_FOUND: "Wallet not found",
   INACTIVE: "Wallet is inactive",

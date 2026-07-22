@@ -2,19 +2,31 @@
 
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { ArrowRight, Menu, X } from "lucide-react";
 
 const NAV_LINKS = [
   { label: "Models", href: "/models" },
   { label: "Docs", href: "/docs" },
   { label: "Pricing", href: "/#pricing" },
+  { label: "Blog", href: "/blog" },
 ];
 
+// Routes that render their own full-screen layout and never had a Navbar —
+// keep them opted out rather than forcing a global header into their design.
+const NAVBAR_EXCLUDED_PREFIXES = ["/admin", "/auth"];
+
 export default function Navbar() {
+  const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  const hidden = NAVBAR_EXCLUDED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -28,8 +40,31 @@ export default function Navbar() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // Publishes the Navbar's rendered height as a CSS var so fixed-position
+  // descendants elsewhere in the tree (e.g. the dashboard sidebar) can offset
+  // below it instead of being covered by it.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (hidden || !el) {
+      document.documentElement.style.setProperty("--navbar-h", "0px");
+      return;
+    }
+    const update = () => {
+      document.documentElement.style.setProperty("--navbar-h", `${el.offsetHeight}px`);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.setProperty("--navbar-h", "0px");
+    };
+  }, [hidden, mobileOpen, scrolled]);
+
+  if (hidden) return null;
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 px-6 pt-6">
+    <header ref={headerRef} className="sticky top-0 z-50 w-full px-6 pt-6">
       <nav
         className={`max-w-[1200px] mx-auto flex items-center justify-between h-[58px] px-5 rounded-3xl border bg-white backdrop-blur-md transition-all duration-500 ease-in-out ${scrolled
           ? "border-slate-200 shadow-[0_8px_32px_-4px_rgba(15,23,42,0.08)] scale-[0.98] py-1"
@@ -40,9 +75,9 @@ export default function Navbar() {
         <Link href="/" className="flex items-center gap-2 shrink-0 group">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/colab_one_logo_2.png"
+            src="/ColabOne_Logo.png"
             alt="ColabOne Logo"
-            style={{ height: "40px", width: "auto" }}
+            style={{ height: "30px", width: "auto" }}
             className="group-hover:scale-110 transition-transform duration-300 rounded-md"
           />
           <span className="font-bold text-[#0F172A] text-[20px] tracking-[-0.03em]">

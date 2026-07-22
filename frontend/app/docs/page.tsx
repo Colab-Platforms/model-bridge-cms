@@ -8,7 +8,6 @@ import {
   Terminal, Puzzle, MousePointer2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import Navbar from "@/components/shared/Navbar";
 import Footer from "@/components/landingPage/Footer";
 
 // ── Syntax colours for dark code blocks ───────────────────────────────────────
@@ -1278,8 +1277,6 @@ export default function DocsPage() {
 
   return (
     <div className="min-h-screen  bg-[#F8FAFC]">
-      <Navbar />
-
       {/* Search overlay */}
       {searchOpen && (
         <div
@@ -1331,8 +1328,7 @@ export default function DocsPage() {
       )}
 
       {/* Three-column layout */}
-      <div className="pt-[86px]">
-        <div className="max-w-[1500px] mx-auto grid grid-cols-1 md:grid-cols-[260px_1fr] xl:grid-cols-[260px_1fr_218px]">
+      <div className="max-w-[1500px] mx-auto grid grid-cols-1 md:grid-cols-[260px_1fr] xl:grid-cols-[260px_1fr_218px]">
 
           {/* ── Left sidebar ── */}
           <aside
@@ -1878,7 +1874,6 @@ export default function DocsPage() {
             </div>
           </aside>
         </div>
-      </div>
 
       <Footer />
     </div>

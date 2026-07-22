@@ -3,6 +3,8 @@ import { ActivityType, Prisma } from "@prisma/client";
 import prisma from "../../../prisma.js";
 import AppError from "../../shared/errors/index.js";
 import { activityLogService } from "../../services/activity-log.service.js";
+import { enqueueEmail } from "../../services/email.service.js";
+import { decideThresholdAlert } from "../../services/threshold-alert.service.js";
 import {
   formatPaginationResponse,
   getPaginationOptions,
@@ -37,6 +39,11 @@ const walletSelect = {
   balance: true,
   currency: true,
   status: true,
+  lowBalanceThreshold: true,
+  alertsEnabled: true,
+  lowBalanceAlertActive: true,
+  lastAlertSentAt: true,
+  lastAlertResolvedAt: true,
   createdAt: true,
   updatedAt: true,
   createdBy: true,
@@ -122,6 +129,105 @@ const getWalletOrThrow = async (userId: string, tx?: TransactionClient) => {
   return wallet;
 };
 
+const formatCurrencyForEmail = (value: Prisma.Decimal) => Number(value).toFixed(4);
+
+/**
+ * Real-time low-balance alert hook — mirrors updateProviderBalanceWithTransaction,
+ * but goes further: provider balance only auto-resolves in real time (its send path
+ * is sweep-only), whereas here both send and resolve fire immediately on the balance
+ * change that crosses the threshold, per explicit request. enqueueEmail is a cheap
+ * Redis add (not a blocking send), so doing this inside the debit/credit/refund
+ * transaction is low-cost — same tradeoff already accepted for activityLogService.log
+ * inside these transactions elsewhere in this file.
+ */
+const applyWalletLowBalanceAlert = async (
+  tx: TransactionClient,
+  wallet: {
+    id: string;
+    userId: string;
+    lowBalanceThreshold: Prisma.Decimal;
+    alertsEnabled: boolean;
+    lowBalanceAlertActive: boolean;
+    user: { email: string };
+  },
+  afterBalance: Prisma.Decimal
+) => {
+  const isTriggered = wallet.alertsEnabled && afterBalance.lte(wallet.lowBalanceThreshold);
+  const { shouldSend, shouldResolve } = decideThresholdAlert({
+    isTriggered,
+    alertActive: wallet.lowBalanceAlertActive,
+  });
+
+  if (!shouldSend && !shouldResolve) {
+    return {};
+  }
+
+  if (shouldSend) {
+    await activityLogService.log(
+      {
+        activityType: ActivityType.WALLET_LOW_BALANCE_ALERT_SENT,
+        entityType: "WALLET",
+        entityId: wallet.id,
+        userId: wallet.userId,
+        metadata: {
+          balance: afterBalance.toString(),
+          threshold: wallet.lowBalanceThreshold.toString(),
+        },
+      },
+      tx
+    );
+
+    await enqueueEmail({
+      to: wallet.user.email,
+      subject: "Your wallet balance is low",
+      text: [
+        `Your wallet balance has dropped to $${formatCurrencyForEmail(afterBalance)}.`,
+        `Low balance threshold: $${formatCurrencyForEmail(wallet.lowBalanceThreshold)}`,
+        "Top up your wallet to avoid interrupted API access.",
+      ].join("\n"),
+      html: `
+        <p>Your wallet balance has dropped to <strong>$${formatCurrencyForEmail(afterBalance)}</strong>.</p>
+        <p>Low balance threshold: <strong>$${formatCurrencyForEmail(wallet.lowBalanceThreshold)}</strong></p>
+        <p>Top up your wallet to avoid interrupted API access.</p>
+      `,
+    });
+  }
+
+  if (shouldResolve) {
+    await activityLogService.log(
+      {
+        activityType: ActivityType.WALLET_LOW_BALANCE_ALERT_RESOLVED,
+        entityType: "WALLET",
+        entityId: wallet.id,
+        userId: wallet.userId,
+        metadata: {
+          balance: afterBalance.toString(),
+          threshold: wallet.lowBalanceThreshold.toString(),
+        },
+      },
+      tx
+    );
+
+    await enqueueEmail({
+      to: wallet.user.email,
+      subject: "Your wallet balance has been restored",
+      text: [
+        `Your wallet balance has recovered to $${formatCurrencyForEmail(afterBalance)}.`,
+        `Low balance threshold: $${formatCurrencyForEmail(wallet.lowBalanceThreshold)}`,
+      ].join("\n"),
+      html: `
+        <p>Your wallet balance has recovered to <strong>$${formatCurrencyForEmail(afterBalance)}</strong>.</p>
+        <p>Low balance threshold: <strong>$${formatCurrencyForEmail(wallet.lowBalanceThreshold)}</strong></p>
+      `,
+    });
+  }
+
+  return {
+    ...(shouldSend ? { lowBalanceAlertActive: true, lastAlertSentAt: new Date() } : {}),
+    ...(shouldResolve ? { lowBalanceAlertActive: false, lastAlertResolvedAt: new Date() } : {}),
+  };
+};
+
 const updateWalletBalanceWithTransaction = async (
   tx: TransactionClient,
   input: {
@@ -141,6 +247,9 @@ const updateWalletBalanceWithTransaction = async (
       userId: input.userId,
       isDeleted: false,
     },
+    include: {
+      user: { select: { email: true } },
+    },
   });
 
   if (!wallet) {
@@ -158,17 +267,6 @@ const updateWalletBalanceWithTransaction = async (
   } else {
     afterBalance = beforeBalance.add(input.amount);
   }
-
-  const updatedWallet = await tx.wallet.update({
-    where: {
-      id: wallet.id,
-    },
-    data: {
-      balance: afterBalance,
-      updatedBy: input.createdBy,
-    },
-    select: walletSelect,
-  });
 
   if (input.operation === "debit") {
     await walletTransactionService.createDebitTransaction(tx, {
@@ -204,6 +302,20 @@ const updateWalletBalanceWithTransaction = async (
       inferenceRequestId: input.inferenceRequestId,
     });
   }
+
+  const alertFieldUpdates = await applyWalletLowBalanceAlert(tx, wallet, afterBalance);
+
+  const updatedWallet = await tx.wallet.update({
+    where: {
+      id: wallet.id,
+    },
+    data: {
+      balance: afterBalance,
+      updatedBy: input.createdBy,
+      ...alertFieldUpdates,
+    },
+    select: walletSelect,
+  });
 
   return updatedWallet;
 };

@@ -16,7 +16,6 @@ import {
   Clock,
   ArrowLeft,
 } from "lucide-react";
-import Navbar from "@/components/shared/Navbar";
 import Footer from "@/components/landingPage/Footer";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
@@ -92,9 +91,7 @@ export default function SupportTicketPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <Navbar />
-
-      <div className="pt-[86px] px-6 py-16">
+      <div className="px-6 py-16">
         <div className="max-w-[640px] mx-auto">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-8">
@@ -265,7 +262,6 @@ export default function SupportTicketPage() {
           )}
         </div>
       </div>
-
       <Footer />
     </div>
   );

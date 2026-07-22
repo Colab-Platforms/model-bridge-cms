@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { Scale } from "lucide-react";
-import Navbar from "@/components/shared/Navbar";
 import Footer from "@/components/landingPage/Footer";
 
 interface LegalSection {
@@ -19,9 +18,6 @@ interface LegalLayoutProps {
 export default function LegalLayout({ eyebrow, title, intro, effectiveDate, sections }: LegalLayoutProps) {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <Navbar />
-
-      <div className="pt-[86px]">
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section
           className="relative pt-20 pb-14 px-6 overflow-hidden"
@@ -63,7 +59,6 @@ export default function LegalLayout({ eyebrow, title, intro, effectiveDate, sect
             </div>
           </div>
         </section>
-      </div>
 
       <Footer />
     </div>
