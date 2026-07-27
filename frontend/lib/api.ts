@@ -23,6 +23,11 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// Endpoints where a 401 means "bad credentials / not yet authenticated", not
+// "session expired" — must not trigger the refresh-and-redirect flow below.
+const authPaths = ["/auth/login", "/auth/register", "/auth/refresh"];
+const isAuthPath = (url?: string) => !!url && authPaths.some((p) => url.endsWith(p));
+
 // Attach token on every request
 api.interceptors.request.use((config) => {
 
@@ -31,8 +36,7 @@ api.interceptors.request.use((config) => {
 
   if (token) config.headers.Authorization = `Bearer ${token}`;
 
-  const authPaths = ["/auth/login", "/auth/register", "/auth/refresh"];
-  if (typeof window !== "undefined" && authPaths.some((p) => config.url?.endsWith(p))) {
+  if (typeof window !== "undefined" && isAuthPath(config.url)) {
     config.headers["x-device-name"] = getDeviceName();
   }
 
@@ -50,7 +54,7 @@ api.interceptors.response.use(
   },
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    if (error.response?.status === 401 && !original._retry && !isAuthPath(original?.url)) {
       original._retry = true;
       try {
         const raw = localStorage.getItem("auth-storage");
