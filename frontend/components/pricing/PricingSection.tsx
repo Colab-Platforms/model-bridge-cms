@@ -170,6 +170,19 @@ export default function PricingSection() {
             <PricingCard key={tier.tier} tier={tier} />
           ))}
         </div>
+
+        <p className="mx-auto mt-10 max-w-2xl text-center text-sm leading-relaxed text-muted-foreground">
+          Prices are billed monthly and usage charges are deducted from your wallet in real time — no
+          hidden fees. By subscribing or adding credits, you agree to our{" "}
+          <Link href="/terms" className="font-medium text-foreground underline underline-offset-4">
+            Terms &amp; Conditions
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="font-medium text-foreground underline underline-offset-4">
+            Privacy Policy
+          </Link>
+          . Please read them carefully before making a payment.
+        </p>
       </div>
     </section>
   );
