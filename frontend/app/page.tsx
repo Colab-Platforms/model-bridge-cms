@@ -9,7 +9,7 @@ import Footer from "@/components/landingPage/Footer";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19]">
       <HeroSection />
       <TrustSection />
       <FeaturesSection />

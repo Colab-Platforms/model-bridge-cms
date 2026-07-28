@@ -22,6 +22,10 @@ import { NvidiaAdapter } from "../adapters/nvidia/nvidia.adapter.js";
 import { NvidiaClient } from "../adapters/nvidia/nvidia.client.js";
 import { OpenAIAdapter } from "../adapters/openai/openai.adapter.js";
 import { OpenAIClient } from "../adapters/openai/openai.client.js";
+import { MistralAdapter } from "../adapters/mistral/mistral.adapter.js";
+import { MistralClient } from "../adapters/mistral/mistral.client.js";
+import { XaiAdapter } from "../adapters/xai/xai.adapter.js";
+import { XaiClient } from "../adapters/xai/xai.client.js";
 import { ProviderHttpClient } from "../shared/provider-http-client.js";
 
 import type { ProviderAdapter } from "../adapters/base/provider.interface.js";
@@ -86,14 +90,23 @@ const providerMetadataRecords: Record<ProviderName, ProviderMetadata> = {
     supportsStreaming: true,
     supportsEmbeddings: false,
   },
-  MISTRAL: {
-    name: "MISTRAL",
-    displayName: "Mistral",
-    apiKeyEnvVar: PROVIDER_ENV_KEYS.MISTRAL,
-    baseUrlEnvVar: PROVIDER_BASE_URL_ENV_KEYS.MISTRAL,
-    defaultBaseUrl: PROVIDER_DEFAULT_BASE_URLS.MISTRAL,
+  MISTRALAI: {
+    name: "MISTRALAI",
+    displayName: "Mistral AI",
+    apiKeyEnvVar: PROVIDER_ENV_KEYS.MISTRALAI,
+    baseUrlEnvVar: PROVIDER_BASE_URL_ENV_KEYS.MISTRALAI,
+    defaultBaseUrl: PROVIDER_DEFAULT_BASE_URLS.MISTRALAI,
     supportsStreaming: true,
     supportsEmbeddings: true,
+  },
+  "X-AI": {
+    name: "X-AI",
+    displayName: "xAI",
+    apiKeyEnvVar: PROVIDER_ENV_KEYS["X-AI"],
+    baseUrlEnvVar: PROVIDER_BASE_URL_ENV_KEYS["X-AI"],
+    defaultBaseUrl: PROVIDER_DEFAULT_BASE_URLS["X-AI"],
+    supportsStreaming: true,
+    supportsEmbeddings: false,
   },
 };
 
@@ -134,6 +147,16 @@ export class ProviderRegistry {
     this.register("NVIDIA", (config, dependencies) => {
       const httpClient = new ProviderHttpClient("NVIDIA", config, dependencies.logger);
       return new NvidiaAdapter(new NvidiaClient(httpClient, config));
+    });
+
+    this.register("X-AI", (config, dependencies) => {
+      const httpClient = new ProviderHttpClient("X-AI", config, dependencies.logger);
+      return new XaiAdapter(new XaiClient(httpClient, config));
+    });
+
+    this.register("MISTRALAI", (config, dependencies) => {
+      const httpClient = new ProviderHttpClient("MISTRALAI", config, dependencies.logger);
+      return new MistralAdapter(new MistralClient(httpClient, config));
     });
   }
 

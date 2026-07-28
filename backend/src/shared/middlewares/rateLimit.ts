@@ -48,6 +48,14 @@ const DEFAULT_LIMITS = {
   resendEmailOtpIpMax: 5,
   resendEmailOtpEmailWindowMs: 15 * 60_000,
   resendEmailOtpEmailMax: 3,
+  forgotPasswordIpWindowMs: 10 * 60_000,
+  forgotPasswordIpMax: 5,
+  forgotPasswordEmailWindowMs: 15 * 60_000,
+  forgotPasswordEmailMax: 3,
+  resetPasswordIpWindowMs: 10 * 60_000,
+  resetPasswordIpMax: 10,
+  resetPasswordEmailWindowMs: 10 * 60_000,
+  resetPasswordEmailMax: 5,
   apiKeyWindowMs: 60_000,
   apiKeyMax: 30,
   apiUserWindowMs: 60_000,
@@ -372,6 +380,72 @@ export const resendEmailOtpEmailRateLimiter = createRateLimitMiddleware({
     DEFAULT_LIMITS.resendEmailOtpEmailMax
   ),
   message: "Too many OTP resend attempts for this email. Please try again later.",
+  failureMode: "open",
+  keyBuilder: (req) => {
+    const email = getNormalizedEmailFromBody(req);
+    return email ? `email:${email}` : null;
+  },
+});
+
+export const forgotPasswordIpRateLimiter = createRateLimitMiddleware({
+  scope: "auth:forgot-password:ip",
+  windowMs: getNumberFromEnv(
+    "RATE_LIMIT_AUTH_FORGOT_PASSWORD_IP_WINDOW_MS",
+    DEFAULT_LIMITS.forgotPasswordIpWindowMs
+  ),
+  max: getNumberFromEnv(
+    "RATE_LIMIT_AUTH_FORGOT_PASSWORD_IP_MAX",
+    DEFAULT_LIMITS.forgotPasswordIpMax
+  ),
+  message: "Too many password reset requests from this IP. Please try again later.",
+  failureMode: "open",
+  keyBuilder: (req) => `ip:${getClientIp(req)}`,
+});
+
+export const forgotPasswordEmailRateLimiter = createRateLimitMiddleware({
+  scope: "auth:forgot-password:email",
+  windowMs: getNumberFromEnv(
+    "RATE_LIMIT_AUTH_FORGOT_PASSWORD_EMAIL_WINDOW_MS",
+    DEFAULT_LIMITS.forgotPasswordEmailWindowMs
+  ),
+  max: getNumberFromEnv(
+    "RATE_LIMIT_AUTH_FORGOT_PASSWORD_EMAIL_MAX",
+    DEFAULT_LIMITS.forgotPasswordEmailMax
+  ),
+  message: "Too many password reset requests for this email. Please try again later.",
+  failureMode: "open",
+  keyBuilder: (req) => {
+    const email = getNormalizedEmailFromBody(req);
+    return email ? `email:${email}` : null;
+  },
+});
+
+export const resetPasswordIpRateLimiter = createRateLimitMiddleware({
+  scope: "auth:reset-password:ip",
+  windowMs: getNumberFromEnv(
+    "RATE_LIMIT_AUTH_RESET_PASSWORD_IP_WINDOW_MS",
+    DEFAULT_LIMITS.resetPasswordIpWindowMs
+  ),
+  max: getNumberFromEnv(
+    "RATE_LIMIT_AUTH_RESET_PASSWORD_IP_MAX",
+    DEFAULT_LIMITS.resetPasswordIpMax
+  ),
+  message: "Too many password reset attempts from this IP. Please try again later.",
+  failureMode: "open",
+  keyBuilder: (req) => `ip:${getClientIp(req)}`,
+});
+
+export const resetPasswordEmailRateLimiter = createRateLimitMiddleware({
+  scope: "auth:reset-password:email",
+  windowMs: getNumberFromEnv(
+    "RATE_LIMIT_AUTH_RESET_PASSWORD_EMAIL_WINDOW_MS",
+    DEFAULT_LIMITS.resetPasswordEmailWindowMs
+  ),
+  max: getNumberFromEnv(
+    "RATE_LIMIT_AUTH_RESET_PASSWORD_EMAIL_MAX",
+    DEFAULT_LIMITS.resetPasswordEmailMax
+  ),
+  message: "Too many password reset attempts for this email. Please try again later.",
   failureMode: "open",
   keyBuilder: (req) => {
     const email = getNormalizedEmailFromBody(req);

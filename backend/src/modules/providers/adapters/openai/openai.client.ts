@@ -24,11 +24,23 @@ import type {
 
 const splitSseFrames = (buffer: string) => buffer.split(/\r?\n\r?\n/);
 
+const hasNonTextModality = (modalities?: string[]) =>
+  (modalities ?? []).some((modality) => modality.trim().toLowerCase() !== "text");
+
 export class OpenAIClient {
   constructor(
     private readonly httpClient: ProviderHttpClient,
     private readonly config: ProviderRuntimeConfig
   ) {}
+
+  private sanitizeForProvider(request: ProviderChatRequest): ProviderChatRequest {
+    if (this.config.name !== "OPENAI" || hasNonTextModality(request.modalities)) {
+      return request;
+    }
+
+    const { modalities: _modalities, ...rest } = request;
+    return rest;
+  }
 
   async chatCompletion(request: ProviderChatRequest) {
     const startedAt = Date.now();
@@ -36,7 +48,7 @@ export class OpenAIClient {
       method: "POST",
       url: "/chat/completions",
       headers: buildBearerAuthHeaders(this.config.apiKey, this.config.headers),
-      data: mapProviderChatRequestToOpenAI(request),
+      data: mapProviderChatRequestToOpenAI(this.sanitizeForProvider(request)),
     });
 
     return mapOpenAIChatResponseToProviderResponse(
@@ -53,7 +65,7 @@ export class OpenAIClient {
       responseType: "stream",
       headers: buildBearerAuthHeaders(this.config.apiKey, this.config.headers),
       data: mapProviderChatRequestToOpenAI({
-        ...request,
+        ...this.sanitizeForProvider(request),
         stream: true,
       }),
     });

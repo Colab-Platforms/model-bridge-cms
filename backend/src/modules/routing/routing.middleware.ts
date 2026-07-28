@@ -64,7 +64,16 @@ export const resolveRoutingModel = async (
   next: NextFunction
 ) => {
   try {
-    const requestedModel = req.body.model as string;
+    const rawModel = req.body.model as string | string[];
+    const requestedModels = Array.isArray(rawModel) ? rawModel : [rawModel];
+
+    if (requestedModels.length > 1) {
+      // Genuine multi-model fallback request — handled by multiModelCompletionsService,
+      // which doesn't consume routing metadata, so sentinels/routing don't apply here.
+      return next();
+    }
+
+    const requestedModel = requestedModels[0];
 
     if (requestedModel === FREE_ROUTE_SENTINEL) {
       const cheapestFreeModel = await getCheapestFreeModel();
@@ -115,6 +124,7 @@ export const resolveRoutingModel = async (
     };
 
     (req as any).routingMeta = routingMeta;
+    req.body.model = requestedModel;
 
     next();
   } catch (error: any) {

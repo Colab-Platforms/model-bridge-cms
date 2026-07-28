@@ -13,7 +13,8 @@ const SUPPORTED_PROVIDER_NAMES = new Set<ProviderName>([
   "GROQ",
   "DEEPSEEK",
   "NVIDIA",
-  "MISTRAL",
+  "MISTRALAI",
+  "X-AI",
 ]);
 
 export const normalizeProviderName = (input: string): ProviderName => {

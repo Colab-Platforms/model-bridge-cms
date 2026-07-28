@@ -5,7 +5,8 @@ export const PROVIDER_NAMES = [
   "GROQ",
   "DEEPSEEK",
   "NVIDIA",
-  "MISTRAL",
+  "MISTRALAI",
+  "X-AI",
 ] as const;
 
 export const DEFAULT_PROVIDER_TIMEOUT_MS = 30_000;
@@ -18,7 +19,8 @@ export const PROVIDER_DEFAULT_BASE_URLS = {
   GROQ: "https://api.groq.com/openai/v1",
   DEEPSEEK: "https://api.deepseek.com/v1",
   NVIDIA: "https://integrate.api.nvidia.com/v1",
-  MISTRAL: "https://api.mistral.ai/v1",
+  MISTRALAI: "https://api.mistral.ai/v1",
+  "X-AI": "https://api.x.ai/v1",
 } as const;
 
 export const PROVIDER_ENV_KEYS = {
@@ -28,7 +30,8 @@ export const PROVIDER_ENV_KEYS = {
   GROQ: "GROQ_API_KEY",
   DEEPSEEK: "DEEPSEEK_API_KEY",
   NVIDIA: "NVIDIA_API_KEY",
-  MISTRAL: "MISTRAL_API_KEY",
+  MISTRALAI: "MISTRAL_API_KEY",
+  "X-AI": "XAI_API_KEY",
 } as const;
 
 export const PROVIDER_BASE_URL_ENV_KEYS = {
@@ -38,5 +41,6 @@ export const PROVIDER_BASE_URL_ENV_KEYS = {
   GROQ: "GROQ_BASE_URL",
   DEEPSEEK: "DEEPSEEK_BASE_URL",
   NVIDIA: "NVIDIA_BASE_URL",
-  MISTRAL: "MISTRAL_BASE_URL",
+  MISTRALAI: "MISTRAL_BASE_URL",
+  "X-AI": "XAI_BASE_URL",
 } as const;

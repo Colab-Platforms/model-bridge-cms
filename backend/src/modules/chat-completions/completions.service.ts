@@ -138,7 +138,6 @@ const buildProviderRequest = (
   input: ExecuteCompletionInput,
   modelRecord: ResolvedModelRecord
 ): UnifiedChatRequest => ({
-  // Keep frontend/API requests slug-based, but send the provider-native model ID upstream.
   model: modelRecord.providerModelId ?? modelRecord.slug,
   messages: input.body.messages,
   ...(input.body.cache_control !== undefined ? { cacheControl: input.body.cache_control } : {}),

@@ -64,23 +64,23 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19]">
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section
-          className="relative pt-20 pb-14 px-6 overflow-hidden"
+          className="relative pt-20 pb-14 px-6 overflow-hidden bg-[#F8FAFC] dark:bg-[#0B0F19]"
           style={{
-            background: `radial-gradient(circle at 50% -10%, rgba(91,77,255,0.08) 0%, transparent 55%), #F8FAFC`,
+            backgroundImage: `radial-gradient(circle at 50% -10%, rgba(91,77,255,0.08) 0%, transparent 55%)`,
           }}
         >
           <div className="relative max-w-[680px] mx-auto text-center">
-            <div className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-1.5 shadow-sm mb-8">
-              <Mail className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="text-[13px] font-medium text-slate-500">Contact</span>
+            <div className="inline-flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-4 py-1.5 shadow-sm mb-8">
+              <Mail className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span className="text-[13px] font-medium text-slate-500 dark:text-slate-400">Contact</span>
             </div>
-            <h1 className="text-[40px] md:text-[52px] font-black text-[#0F172A] leading-[1.02] tracking-[-0.04em]">
+            <h1 className="text-[40px] md:text-[52px] font-black text-[#0F172A] dark:text-white leading-[1.02] tracking-[-0.04em]">
               Let&apos;s talk.
             </h1>
-            <p className="mt-5 text-[16px] md:text-[17px] text-slate-500 leading-[1.6] max-w-[520px] mx-auto">
+            <p className="mt-5 text-[16px] md:text-[17px] text-slate-500 dark:text-slate-400 leading-[1.6] max-w-[520px] mx-auto">
               Questions about the platform, partnerships, or press — send us a note and a real person will get back to you.
             </p>
           </div>
@@ -94,7 +94,7 @@ export default function ContactPage() {
               {CONTACT_CARDS.map((c) => (
                 <div
                   key={c.title}
-                  className="bg-white border border-slate-200 rounded-[24px] p-6"
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] p-6"
                 >
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
@@ -102,8 +102,8 @@ export default function ContactPage() {
                   >
                     <c.icon className="w-5 h-5" style={{ color: c.iconColor }} />
                   </div>
-                  <h3 className="text-[14.5px] font-bold text-[#0F172A] mb-1.5">{c.title}</h3>
-                  <p className="text-[13px] text-slate-500 leading-[1.65] whitespace-pre-line mb-3">
+                  <h3 className="text-[14.5px] font-bold text-[#0F172A] dark:text-white mb-1.5">{c.title}</h3>
+                  <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-[1.65] whitespace-pre-line mb-3">
                     {c.body}
                   </p>
                   {c.link && (
@@ -119,94 +119,94 @@ export default function ContactPage() {
                 </div>
               ))}
 
-              <div className="flex items-center gap-2.5 px-1 text-[12.5px] text-slate-400">
+              <div className="flex items-center gap-2.5 px-1 text-[12.5px] text-slate-400 dark:text-slate-500">
                 <Clock className="w-3.5 h-3.5" />
                 We typically reply within 1–2 business days.
               </div>
             </div>
 
             {/* Form */}
-            <div className="bg-white border border-slate-200 rounded-[28px] p-8 md:p-10">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] p-8 md:p-10">
               {submitted ? (
                 <div className="text-center py-8">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-6">
-                    <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
                   </div>
-                  <h2 className="text-[22px] font-black text-[#0F172A] tracking-tight mb-2">
+                  <h2 className="text-[22px] font-black text-[#0F172A] dark:text-white tracking-tight mb-2">
                     Message sent
                   </h2>
-                  <p className="text-[14px] text-slate-500 max-w-[360px] mx-auto">
+                  <p className="text-[14px] text-slate-500 dark:text-slate-400 max-w-[360px] mx-auto">
                     Thanks for reaching out. We&apos;ve received your message and will follow up by email shortly.
                   </p>
                 </div>
               ) : (
                 <>
-                  <h2 className="text-[20px] font-black text-[#0F172A] tracking-tight mb-6">
+                  <h2 className="text-[20px] font-black text-[#0F172A] dark:text-white tracking-tight mb-6">
                     Send us a message
                   </h2>
                   <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
                     <div className="grid sm:grid-cols-2 gap-5">
                       <div>
-                        <label htmlFor="name" className="block text-[13px] font-bold text-[#0F172A] mb-2">
-                          Name<span className="text-indigo-600">*</span>
+                        <label htmlFor="name" className="block text-[13px] font-bold text-[#0F172A] dark:text-white mb-2">
+                          Name<span className="text-indigo-600 dark:text-indigo-400">*</span>
                         </label>
                         <input
                           id="name"
                           type="text"
                           placeholder="Jane Doe"
-                          className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-white text-[14px] text-[#0F172A] placeholder:text-slate-400 outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                          className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[14px] text-[#0F172A] dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-indigo-300 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                           {...register("name")}
                         />
                         {errors.name && (
-                          <p className="mt-1.5 text-[12.5px] text-rose-600">{errors.name.message}</p>
+                          <p className="mt-1.5 text-[12.5px] text-rose-600 dark:text-rose-400">{errors.name.message}</p>
                         )}
                       </div>
                       <div>
-                        <label htmlFor="email" className="block text-[13px] font-bold text-[#0F172A] mb-2">
-                          Email<span className="text-indigo-600">*</span>
+                        <label htmlFor="email" className="block text-[13px] font-bold text-[#0F172A] dark:text-white mb-2">
+                          Email<span className="text-indigo-600 dark:text-indigo-400">*</span>
                         </label>
                         <input
                           id="email"
                           type="email"
                           placeholder="you@example.com"
-                          className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-white text-[14px] text-[#0F172A] placeholder:text-slate-400 outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                          className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[14px] text-[#0F172A] dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-indigo-300 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                           {...register("email")}
                         />
                         {errors.email && (
-                          <p className="mt-1.5 text-[12.5px] text-rose-600">{errors.email.message}</p>
+                          <p className="mt-1.5 text-[12.5px] text-rose-600 dark:text-rose-400">{errors.email.message}</p>
                         )}
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="subject" className="block text-[13px] font-bold text-[#0F172A] mb-2">
-                        Subject<span className="text-indigo-600">*</span>
+                      <label htmlFor="subject" className="block text-[13px] font-bold text-[#0F172A] dark:text-white mb-2">
+                        Subject<span className="text-indigo-600 dark:text-indigo-400">*</span>
                       </label>
                       <input
                         id="subject"
                         type="text"
                         placeholder="What's this about?"
-                        className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-white text-[14px] text-[#0F172A] placeholder:text-slate-400 outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                        className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[14px] text-[#0F172A] dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-indigo-300 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                         {...register("subject")}
                       />
                       {errors.subject && (
-                        <p className="mt-1.5 text-[12.5px] text-rose-600">{errors.subject.message}</p>
+                        <p className="mt-1.5 text-[12.5px] text-rose-600 dark:text-rose-400">{errors.subject.message}</p>
                       )}
                     </div>
 
                     <div>
-                      <label htmlFor="message" className="block text-[13px] font-bold text-[#0F172A] mb-2">
-                        Message<span className="text-indigo-600">*</span>
+                      <label htmlFor="message" className="block text-[13px] font-bold text-[#0F172A] dark:text-white mb-2">
+                        Message<span className="text-indigo-600 dark:text-indigo-400">*</span>
                       </label>
                       <textarea
                         id="message"
                         rows={5}
                         placeholder="Tell us a bit more…"
-                        className="w-full px-3.5 py-3 rounded-xl border border-slate-200 bg-white text-[14px] text-[#0F172A] placeholder:text-slate-400 outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none"
+                        className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[14px] text-[#0F172A] dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-indigo-300 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none"
                         {...register("message")}
                       />
                       {errors.message && (
-                        <p className="mt-1.5 text-[12.5px] text-rose-600">{errors.message.message}</p>
+                        <p className="mt-1.5 text-[12.5px] text-rose-600 dark:text-rose-400">{errors.message.message}</p>
                       )}
                     </div>
 
