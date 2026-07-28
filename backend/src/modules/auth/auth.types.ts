@@ -9,6 +9,8 @@ import {
 	resendEmailOtpSchema,
 	refreshSchema,
 	verifyEmailOtpSchema,
+	forgotPasswordSchema,
+	resetPasswordSchema,
 } from "./auth.validators.js";
 
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -19,3 +21,5 @@ export type GoogleStartQueryInput = z.infer<typeof googleStartQuerySchema>;
 export type GoogleCallbackQueryInput = z.infer<typeof googleCallbackQuerySchema>;
 export type VerifyEmailOtpInput = z.infer<typeof verifyEmailOtpSchema>;
 export type ResendEmailOtpInput = z.infer<typeof resendEmailOtpSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

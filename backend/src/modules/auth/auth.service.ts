@@ -5,11 +5,13 @@ import AppError from "../../shared/errors/index.js";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import prisma from "../../../prisma.js";
 import type {
+	ForgotPasswordInput,
 	GoogleCallbackQueryInput,
 	GoogleStartQueryInput,
 	LoginInput,
 	ResendEmailOtpInput,
 	RegisterInput,
+	ResetPasswordInput,
 	VerifyEmailOtpInput,
 } from "./auth.types.js";
 import {
@@ -112,6 +114,7 @@ type GoogleAuthResult = {
 };
 
 const EMAIL_OTP_EXPIRY_MINUTES = 10;
+const PASSWORD_RESET_OTP_EXPIRY_MINUTES = 10;
 
 const mapAuthUser = ({ userRoles, ...user }: AuthUserRecord): AuthUser => ({
 	...user,
@@ -170,6 +173,35 @@ const persistEmailVerificationOtp = async (
 		data: {
 			emailVerificationOtpHash: hashToken(otp),
 			emailVerificationOtpExpiresAt: getEmailOtpExpiry(),
+		},
+	});
+
+	return otp;
+};
+
+const getPasswordResetOtpExpiry = () =>
+	new Date(Date.now() + PASSWORD_RESET_OTP_EXPIRY_MINUTES * 60 * 1000);
+
+const sendPasswordResetOtpEmail = async (email: string, otp: string) => {
+	await sendEmail({
+		to: email,
+		subject: "Reset your password",
+		text: `Your password reset code is ${otp}. It expires in ${PASSWORD_RESET_OTP_EXPIRY_MINUTES} minutes. If you didn't request this, you can ignore this email.`,
+		html: `<p>Your password reset code is <strong>${otp}</strong>.</p><p>It expires in ${PASSWORD_RESET_OTP_EXPIRY_MINUTES} minutes.</p><p>If you didn't request this, you can ignore this email.</p>`,
+	});
+};
+
+const persistPasswordResetOtp = async (
+	tx: Prisma.TransactionClient,
+	user: { id: string }
+) => {
+	const otp = generateEmailOtp();
+
+	await tx.user.update({
+		where: { id: user.id },
+		data: {
+			passwordResetOtpHash: hashToken(otp),
+			passwordResetOtpExpiresAt: getPasswordResetOtpExpiry(),
 		},
 	});
 
@@ -738,6 +770,139 @@ export const resendEmailOtpService = async (
 	return {
 		success: true,
 		verificationRequired: true,
+	};
+};
+
+export const forgotPasswordService = async (input: ForgotPasswordInput) => {
+	const user = await prisma.user.findFirst({
+		where: {
+			email: input.email,
+			isDeleted: false,
+		},
+		select: {
+			id: true,
+			email: true,
+			authProvider: true,
+			status: true,
+		},
+	});
+
+	if (!user) {
+		throw new AppError("User not found", STATUS_CODES.NOT_FOUND);
+	}
+
+	if (user.authProvider !== AuthProvider.LOCAL) {
+		throw new AppError(
+			"This account uses Google sign-in. Please continue with Google.",
+			STATUS_CODES.BAD_REQUEST
+		);
+	}
+
+	if (user.status !== UserStatus.ACTIVE) {
+		throw new AppError("User account is not active", STATUS_CODES.FORBIDDEN);
+	}
+
+	const otp = await prisma.$transaction(async (tx) =>
+		persistPasswordResetOtp(tx, {
+			id: user.id,
+		})
+	);
+
+	await sendPasswordResetOtpEmail(user.email, otp);
+
+	return {
+		success: true,
+	};
+};
+
+export const resetPasswordService = async (
+	input: ResetPasswordInput,
+	context?: SessionContext
+) => {
+	const user = await prisma.user.findFirst({
+		where: {
+			email: input.email,
+			isDeleted: false,
+		},
+		select: {
+			id: true,
+			email: true,
+			authProvider: true,
+			status: true,
+			passwordResetOtpHash: true,
+			passwordResetOtpExpiresAt: true,
+		},
+	});
+
+	if (!user) {
+		throw new AppError("User not found", STATUS_CODES.NOT_FOUND);
+	}
+
+	if (user.authProvider !== AuthProvider.LOCAL) {
+		throw new AppError(
+			"This account uses Google sign-in. Please continue with Google.",
+			STATUS_CODES.BAD_REQUEST
+		);
+	}
+
+	if (user.status !== UserStatus.ACTIVE) {
+		throw new AppError("User account is not active", STATUS_CODES.FORBIDDEN);
+	}
+
+	if (!user.passwordResetOtpHash || !user.passwordResetOtpExpiresAt) {
+		throw new AppError("Password reset OTP was not requested", STATUS_CODES.BAD_REQUEST);
+	}
+
+	if (user.passwordResetOtpExpiresAt <= new Date()) {
+		throw new AppError("Password reset OTP has expired", STATUS_CODES.BAD_REQUEST);
+	}
+
+	if (user.passwordResetOtpHash !== hashToken(input.otp)) {
+		throw new AppError("Invalid password reset OTP", STATUS_CODES.BAD_REQUEST);
+	}
+
+	const passwordHash = await bcrypt.hash(input.newPassword, 10);
+
+	await prisma.$transaction(async (tx) => {
+		await tx.user.update({
+			where: { id: user.id },
+			data: {
+				passwordHash,
+				passwordResetOtpHash: null,
+				passwordResetOtpExpiresAt: null,
+			},
+		});
+
+		const revoked = await tx.session.updateMany({
+			where: {
+				userId: user.id,
+				revokedAt: null,
+			},
+			data: {
+				revokedAt: new Date(),
+			},
+		});
+
+		await activityLogService.log(
+			{
+				activityType: ActivityType.USER_PASSWORD_RESET,
+				entityType: "AUTH",
+				entityId: user.id,
+				actorId: user.id,
+				userId: user.id,
+				metadata: {
+					email: user.email,
+					revokedSessions: revoked.count,
+				},
+				ipAddress: context?.ipAddress,
+				userAgent: context?.userAgent,
+			},
+			tx
+		);
+	});
+
+	return {
+		success: true,
 	};
 };
 

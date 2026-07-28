@@ -2,6 +2,8 @@ import { Router } from "express";
 
 import auth from "../../shared/middlewares/auth.js";
 import {
+	forgotPasswordEmailRateLimiter,
+	forgotPasswordIpRateLimiter,
 	googleAuthIpRateLimiter,
 	loginEmailRateLimiter,
 	loginIpRateLimiter,
@@ -10,10 +12,13 @@ import {
 	registerIpRateLimiter,
 	resendEmailOtpEmailRateLimiter,
 	resendEmailOtpIpRateLimiter,
+	resetPasswordEmailRateLimiter,
+	resetPasswordIpRateLimiter,
 	verifyEmailOtpEmailRateLimiter,
 	verifyEmailOtpIpRateLimiter,
 } from "../../shared/middlewares/rateLimit.js";
 import {
+	forgotPasswordController,
 	googleCallbackController,
 	googleStartController,
 	loginController,
@@ -21,16 +26,19 @@ import {
 	logoutController,
 	registerController,
 	refreshController,
+	resetPasswordController,
 	verifyEmailOtpController,
 	resendEmailOtpController,
 } from "./auth.controller.js";
 import {
+	forgotPasswordValidator,
 	googleCallbackValidator,
 	googleStartValidator,
 	loginValidator,
 	logoutValidator,
 	registerValidator,
 	refreshValidator,
+	resetPasswordValidator,
 	verifyEmailOtpValidator,
 	resendEmailOtpValidator,
 } from "./auth.validators.js";
@@ -59,4 +67,20 @@ router.post(
 	resendEmailOtpValidator,
 	resendEmailOtpController
 );
+
+router.post(
+	"/forgot-password",
+	forgotPasswordIpRateLimiter,
+	forgotPasswordEmailRateLimiter,
+	forgotPasswordValidator,
+	forgotPasswordController
+);
+router.post(
+	"/reset-password",
+	resetPasswordIpRateLimiter,
+	resetPasswordEmailRateLimiter,
+	resetPasswordValidator,
+	resetPasswordController
+);
+
 export default router;

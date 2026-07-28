@@ -49,8 +49,20 @@ export const resendEmailOtpSchema = z.object({
   email: z.string().trim().email(),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.string().trim().email(),
+  otp: z.string().trim().length(6),
+  newPassword: z.string().min(8),
+});
+
 export const resendEmailOtpValidator = validateBody(resendEmailOtpSchema);
 export const verifyEmailOtpValidator = validateBody(verifyEmailOtpSchema);
+export const forgotPasswordValidator = validateBody(forgotPasswordSchema);
+export const resetPasswordValidator = validateBody(resetPasswordSchema);
 
 export const loginValidator = validateBody(loginSchema);
 export const registerValidator = validateBody(registerSchema);

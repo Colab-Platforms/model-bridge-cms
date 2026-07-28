@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import STATUS_CODES from "../../utils/statusCodes.js";
 import { sendResponse } from "../../utils/responseUtils.js";
 import {
+	forgotPasswordService,
 	googleCallbackService,
 	getGoogleAuthorizationUrlService,
 	loginService,
@@ -11,9 +12,11 @@ import {
 	refreshService,
 	resendEmailOtpService,
 	registerService,
+	resetPasswordService,
 	verifyEmailOtpService,
 } from "./auth.service.js";
 import type {
+	ForgotPasswordInput,
 	GoogleCallbackQueryInput,
 	GoogleStartQueryInput,
 	LoginInput,
@@ -21,6 +24,7 @@ import type {
 	ResendEmailOtpInput,
 	RegisterInput,
 	RefreshInput,
+	ResetPasswordInput,
 	VerifyEmailOtpInput,
 } from "./auth.types.js";
 import { buildFrontendGoogleCallbackUrl, verifyGoogleOAuthState } from "./auth.utils.js";
@@ -127,4 +131,18 @@ export const resendEmailOtpController = async (req: Request, res: Response) => {
 	const result = await resendEmailOtpService(body);
 
 	return sendResponse(res, true, result, "Email OTP resent successfully", STATUS_CODES.OK);
+};
+
+export const forgotPasswordController = async (req: Request, res: Response) => {
+	const body = req.body as ForgotPasswordInput;
+	const result = await forgotPasswordService(body);
+
+	return sendResponse(res, true, result, "Password reset OTP sent successfully", STATUS_CODES.OK);
+};
+
+export const resetPasswordController = async (req: Request, res: Response) => {
+	const body = req.body as ResetPasswordInput;
+	const result = await resetPasswordService(body, getSessionContext(req));
+
+	return sendResponse(res, true, result, "Password reset successfully", STATUS_CODES.OK);
 };
