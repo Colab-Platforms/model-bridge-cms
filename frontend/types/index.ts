@@ -134,6 +134,7 @@ export interface ModelFilters {
   q?: string;
   providerId?: string[];
   capability?: CapabilityType[];
+  isActive?: boolean;
   minContext?: number;
   maxContext?: number;
   maxInputPrice?: number;

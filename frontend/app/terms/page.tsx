@@ -48,7 +48,7 @@ export default function TermsPage() {
                 Paddle provides all customer service inquiries relating to billing, invoicing, and
                 payment processing, and handles returns and refunds in accordance with Paddle&rsquo;s
                 own policies and applicable consumer protection law, as further described in our{" "}
-                <Link href="/refunds" className="text-indigo-600 font-semibold hover:underline">
+                <Link href="/refunds" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
                   Refund Policy
                 </Link>
                 . Nothing in this section limits Colab Intelligence Pvt Ltd&rsquo;s responsibility for
@@ -153,7 +153,7 @@ export default function TermsPage() {
             <p>
               If you have any questions regarding these Terms or the technical operation of Model
               Bridge CMS, please contact us at{" "}
-              <a href="mailto:support@colabone.com" className="text-indigo-600 font-semibold hover:underline">
+              <a href="mailto:support@colabone.com" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
                 support@colabone.com
               </a>
               . For billing or payment-related queries, including invoices and refunds, Paddle

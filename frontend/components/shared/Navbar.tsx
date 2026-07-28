@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { useTheme } from "next-themes";
+import { ArrowRight, Menu, X, Sun, Moon } from "lucide-react";
 
 const NAV_LINKS = [
   { label: "Models", href: "/models" },
@@ -15,7 +16,7 @@ const NAV_LINKS = [
 
 // Routes that render their own full-screen layout and never had a Navbar —
 // keep them opted out rather than forcing a global header into their design.
-const NAVBAR_EXCLUDED_PREFIXES = ["/admin", "/auth"];
+const NAVBAR_EXCLUDED_PREFIXES = ["/admin", "/auth", "/dashboard"];
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -23,6 +24,10 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const hidden = NAVBAR_EXCLUDED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
@@ -59,16 +64,23 @@ export default function Navbar() {
       observer.disconnect();
       document.documentElement.style.setProperty("--navbar-h", "0px");
     };
-  }, [hidden, mobileOpen, scrolled]);
+    // Only re-run this setup/teardown when visibility itself changes — the
+    // ResizeObserver above already tracks height changes caused by `scrolled`/
+    // `mobileOpen` while visible. Including them here made this effect re-fire on
+    // every scroll event (even while hidden on /dashboard), repeatedly resetting
+    // --navbar-h to "0px" and clobbering the height another header (e.g. the
+    // dashboard's own sticky header) had published, which snapped the fixed
+    // sidebar's top offset back to 0 mid-scroll.
+  }, [hidden]);
 
   if (hidden) return null;
 
   return (
-    <header ref={headerRef} className="sticky top-0 z-50 w-full px-6 pt-6">
+    <header ref={headerRef} className="relative z-50 w-full px-6 pt-4 bg-background">
       <nav
-        className={`max-w-[1200px] mx-auto flex items-center justify-between h-[58px] px-5 rounded-3xl border bg-white backdrop-blur-md transition-all duration-500 ease-in-out ${scrolled
-          ? "border-slate-200 shadow-[0_8px_32px_-4px_rgba(15,23,42,0.08)] scale-[0.98] py-1"
-          : "border-slate-200/50 shadow-[0_2px_10px_rgba(15,23,42,0.02)]"
+        className={`max-w-[1200px] mx-auto flex items-center justify-between h-[58px] px-5 rounded-3xl border bg-white dark:bg-slate-900 backdrop-blur-md transition-all duration-500 ease-in-out ${scrolled
+          ? "border-slate-200 dark:border-slate-800 shadow-[0_8px_32px_-4px_rgba(15,23,42,0.08)] scale-[0.98] py-1"
+          : "border-slate-200/50 dark:border-slate-800/50 shadow-[0_2px_10px_rgba(15,23,42,0.02)]"
           }`}
       >
         {/* ── Logo ─────────────────────────────────────────── */}
@@ -80,7 +92,7 @@ export default function Navbar() {
             style={{ height: "30px", width: "auto" }}
             className="group-hover:scale-110 transition-transform duration-300 rounded-md"
           />
-          <span className="font-bold text-[#0F172A] text-[20px] tracking-[-0.03em]">
+          <span className="font-bold text-[#0F172A] dark:text-white text-[20px] tracking-[-0.03em]">
             ColabOne
           </span>
         </Link>
@@ -91,7 +103,7 @@ export default function Navbar() {
             <Link
               key={link.label}
               href={link.href}
-              className="text-[14px] font-medium text-slate-600 hover:text-indigo-600 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all duration-200"
+              className="text-[14px] font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-4 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all duration-200"
             >
               {link.label}
             </Link>
@@ -100,9 +112,22 @@ export default function Navbar() {
 
         {/* ── Right CTA ─────────────────────────────────────── */}
         <div className="flex items-center gap-3">
+          {/* Theme toggle */}
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            aria-label="Toggle theme"
+            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all cursor-pointer"
+          >
+            {mounted && resolvedTheme === "dark" ? (
+              <Sun className="w-[18px] h-[18px]" />
+            ) : (
+              <Moon className="w-[18px] h-[18px]" />
+            )}
+          </button>
+
           {user ? (
             <Link href="/dashboard">
-              <span className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-white bg-[#0F172A] hover:bg-indigo-600 px-5 py-2.5 rounded-2xl transition-all duration-300 shadow-sm cursor-pointer">
+              <span className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-white bg-[#0F172A] dark:bg-indigo-600 hover:bg-indigo-600 px-5 py-2.5 rounded-2xl transition-all duration-300 shadow-sm cursor-pointer">
                 Dashboard
                 <ArrowRight className="w-4 h-4" />
               </span>
@@ -111,7 +136,7 @@ export default function Navbar() {
             <>
               <Link
                 href="/auth/login"
-                className="hidden sm:block text-[14px] font-medium text-slate-600 hover:text-indigo-600 px-4 py-2 rounded-xl transition-all duration-200"
+                className="hidden sm:block text-[14px] font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-4 py-2 rounded-xl transition-all duration-200"
               >
                 Sign in
               </Link>
@@ -125,7 +150,7 @@ export default function Navbar() {
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-50 transition-all"
+            className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label="Toggle menu"
           >
@@ -136,22 +161,22 @@ export default function Navbar() {
 
       {/* ── Mobile drawer ──────────────────────────────────── */}
       {mobileOpen && (
-        <div className="md:hidden max-w-[1200px] mx-auto mt-3 rounded-2xl border border-slate-200/60 bg-white/95 backdrop-blur-xl shadow-2xl shadow-indigo-500/10 p-4 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="md:hidden max-w-[1200px] mx-auto mt-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-2xl shadow-indigo-500/10 p-4 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="flex flex-col gap-1">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.label}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className="block text-[15px] font-medium text-slate-600 hover:text-indigo-600 px-4 py-3 rounded-xl hover:bg-slate-50 transition-all"
+                className="block text-[15px] font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all"
               >
                 {link.label}
               </Link>
             ))}
           </div>
-          <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3">
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3">
             <Link href="/auth/login" onClick={() => setMobileOpen(false)}>
-              <span className="block text-center text-[15px] font-medium text-slate-600 py-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer">
+              <span className="block text-center text-[15px] font-medium text-slate-600 dark:text-slate-300 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all cursor-pointer">
                 Sign in
               </span>
             </Link>

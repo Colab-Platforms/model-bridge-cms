@@ -118,7 +118,7 @@ export default function PrivacyPage() {
               If you have any questions or concerns about this Privacy Policy or our data
               practices, or if you wish to exercise any of your data protection rights, please
               contact us at{" "}
-              <a href="mailto:support@colabone.com" className="text-indigo-600 font-semibold hover:underline">
+              <a href="mailto:support@colabone.com" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
                 support@colabone.com
               </a>
               .

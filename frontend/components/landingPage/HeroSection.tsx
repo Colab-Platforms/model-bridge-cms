@@ -128,12 +128,11 @@ const TRUST_AVATARS = ["#5B4DFF", "#10B981", "#F59E0B", "#EC4899", "#3B82F6"];
 export default function HeroSection() {
   return (
     <section
-      className="relative min-h-[90vh] flex flex-col items-center justify-start pt-12 pb-20 overflow-hidden"
+      className="relative min-h-[90vh] flex flex-col items-center justify-start pt-12 pb-20 overflow-hidden bg-[#F8FAFC] dark:bg-[#0B0F19]"
       style={{
-        background: `
+        backgroundImage: `
           radial-gradient(circle at 50% -20%, rgba(91,77,255,0.1) 0%, transparent 50%),
-          radial-gradient(circle at 100% 100%, rgba(129,140,248,0.03) 0%, transparent 40%),
-          #F8FAFC
+          radial-gradient(circle at 100% 100%, rgba(129,140,248,0.03) 0%, transparent 40%)
         `,
       }}
     >
@@ -151,20 +150,20 @@ export default function HeroSection() {
       <div className="relative w-full max-w-[1200px] mx-auto px-6 flex flex-col items-center text-center">
         
         {/* Badge */}
-        <div className="opacity-0-init animate-fade-in flex items-center gap-2.5 bg-white border border-slate-200 rounded-full px-4 py-1.5 shadow-sm mb-10 translate-y-4">
+        <div className="opacity-0-init animate-fade-in flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-4 py-1.5 shadow-sm mb-10 translate-y-4">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[13px] font-medium text-slate-500">
-            Trusted by <span className="font-bold text-indigo-600">12,000+ engineers</span>
+          <span className="text-[13px] font-medium text-slate-500 dark:text-slate-400">
+            Trusted by <span className="font-bold text-indigo-600 dark:text-indigo-400">12,000+ engineers</span>
           </span>
-          <div className="w-px h-3 bg-slate-200 mx-1" />
-          <Link href="/blog/v1-launch" className="flex items-center gap-1 text-[13px] font-bold text-indigo-600 hover:text-indigo-700">
+          <div className="w-px h-3 bg-slate-200 dark:bg-slate-700 mx-1" />
+          <Link href="/blog/v1-launch" className="flex items-center gap-1 text-[13px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">
             Reading v1.4 is out
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
         {/* Headline */}
-        <h1 className="opacity-0-init animate-fade-in-up delay-100 text-[56px] md:text-[72px] lg:text-[84px] font-black text-[#0F172A] leading-[0.95] tracking-[-0.05em] max-w-[900px]">
+        <h1 className="opacity-0-init animate-fade-in-up delay-100 text-[56px] md:text-[72px] lg:text-[84px] font-black text-[#0F172A] dark:text-white leading-[0.95] tracking-[-0.05em] max-w-[900px]">
           One API. Every{" "}
           <span
             className="animate-gradient text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-violet-500 to-indigo-600"
@@ -175,7 +174,7 @@ export default function HeroSection() {
         </h1>
 
         {/* Subheadline */}
-        <p className="opacity-0-init animate-fade-in-up delay-200 mt-8 text-[18px] md:text-[20px] text-slate-500 leading-[1.6] max-w-[640px]">
+        <p className="opacity-0-init animate-fade-in-up delay-200 mt-8 text-[18px] md:text-[20px] text-slate-500 dark:text-slate-400 leading-[1.6] max-w-[640px]">
           The intelligent neural backbone for your AI applications. Connect to 150+ models with a single endpoint. Smart routing, automatic failover, and unified billing.
         </p>
 
@@ -188,7 +187,7 @@ export default function HeroSection() {
             </span>
           </Link>
           <Link href="/docs">
-            <span className="inline-flex items-center gap-2 text-[15px] font-bold text-slate-900 bg-white hover:bg-slate-50 px-8 py-4 rounded-2xl border border-slate-200 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
+            <span className="inline-flex items-center gap-2 text-[15px] font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 px-8 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
               Read the Docs
             </span>
           </Link>
@@ -206,12 +205,12 @@ export default function HeroSection() {
 
           {/* Floating detail card 1 */}
           <div className="absolute -left-12 top-1/4 hidden xl:block animate-float delay-700">
-            <div className="bg-white/90 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-xl w-48">
+            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-48">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fastest Model</span>
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Fastest Model</span>
               </div>
-              <div className="text-[14px] font-bold text-slate-900">gemini-1.5-flash</div>
+              <div className="text-[14px] font-bold text-slate-900 dark:text-white">gemini-1.5-flash</div>
               <div className="text-[11px] text-emerald-500 font-semibold mt-1">0.24s Latency</div>
             </div>
           </div>
@@ -221,10 +220,10 @@ export default function HeroSection() {
             <div className="bg-[#0F172A] p-4 rounded-2xl shadow-2xl w-52 border border-white/5">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Routing Intelligence</span>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Routing Intelligence</span>
               </div>
               <div className="text-[12px] font-medium text-slate-300">Switched to <span className="text-white font-bold">Claude 3.5</span></div>
-              <div className="text-[10px] text-slate-500 mt-1">Reason: Lower cost per token</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Reason: Lower cost per token</div>
             </div>
           </div>
         </div>

@@ -111,6 +111,7 @@ function ModelsContent() {
   const outputModalities = searchParams.getAll("outputModality");
 
   const filters: ModelFilters = {
+    isActive: true,
     q: searchParams.get("q") ?? undefined,
     providerId: providerIds.length > 0 ? providerIds : undefined,
     capability: capabilities.length > 0

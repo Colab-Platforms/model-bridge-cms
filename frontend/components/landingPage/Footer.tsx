@@ -64,16 +64,16 @@ const SOCIALS = [
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t border-slate-100 mt-20">
+    <footer className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 mt-20">
 
       {/* ── CTA banner ─────────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-100">
+      <div className="border-b border-slate-100 dark:border-slate-800">
         <div className="max-w-[1240px] mx-auto px-6 py-20 flex flex-col md:flex-row items-center justify-between gap-10">
           <div>
-            <h3 className="text-3xl font-black text-[#0F172A] tracking-tighter mb-2">
+            <h3 className="text-3xl font-black text-[#0F172A] dark:text-white tracking-tighter mb-2">
               Ready to simplify your AI stack?
             </h3>
-            <p className="text-lg text-slate-500 font-medium">
+            <p className="text-lg text-slate-500 dark:text-slate-400 font-medium">
               Join 12,000+ developers already building on ColabOne.
             </p>
           </div>
@@ -101,12 +101,12 @@ export default function Footer() {
                 style={{ height: "48px", width: "auto" }}
                 className="group-hover:scale-110 transition-transform duration-300 drop-shadow-md"
               />
-              <span className="font-black text-[#0F172A] text-xl tracking-tighter uppercase opacity-80">
+              <span className="font-black text-[#0F172A] dark:text-white text-xl tracking-tighter uppercase opacity-80">
                 ColabOne
               </span>
             </Link>
 
-            <p className="text-sm text-slate-500 leading-relaxed max-w-[240px] mb-6 font-medium">
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-[240px] mb-6 font-medium">
               The intelligent AI infrastructure platform. One unified API for the world's best models.
             </p>
 
@@ -118,7 +118,7 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="w-10 h-10 rounded-xl border border-slate-100 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all duration-300"
+                  className="w-10 h-10 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all duration-300"
                 >
                   <Icon className="w-4 h-4" />
                 </a>
@@ -130,7 +130,7 @@ export default function Footer() {
           {(Object.entries(LINKS) as [string, { label: string; href: string }[]][]).map(
             ([section, links]) => (
               <div key={section}>
-                <div className="text-[12px] font-black text-slate-900 uppercase tracking-widest mb-6">
+                <div className="text-[12px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6">
                   {section}
                 </div>
                 <ul className="flex flex-col gap-3">
@@ -138,7 +138,7 @@ export default function Footer() {
                     <li key={link.label}>
                       <Link
                         href={link.href}
-                        className="text-[14px] font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
+                        className="text-[14px] font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition-colors"
                       >
                         {link.label}
                       </Link>
@@ -151,12 +151,12 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-16 pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-slate-400 font-bold tracking-tight">
+        <div className="mt-16 pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-slate-400 dark:text-slate-500 font-bold tracking-tight">
             © {new Date().getFullYear()} ColabOne. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
-             <Link href="/status" className="flex items-center gap-2 text-sm text-slate-400 font-bold hover:text-indigo-600">
+             <Link href="/status" className="flex items-center gap-2 text-sm text-slate-400 dark:text-slate-500 font-bold hover:text-indigo-600">
                <div className="w-2 h-2 rounded-full bg-emerald-500" />
                System Status
              </Link>

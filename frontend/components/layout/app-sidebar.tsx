@@ -17,13 +17,13 @@ import {
 
 import { NavMain } from "@/components/layout/nav-main";
 import { NavUser } from "@/components/layout/nav-user";
-import { ProjectSwitcher } from "@/components/layout/team-switcher";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 const navMain = [
@@ -90,11 +90,16 @@ const navAccount = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <ProjectSwitcher />
+      <SidebarHeader className="py-1.5">
+        <div className="flex items-center justify-between gap-2 px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <span className="text-xs font-medium text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
+            Platform
+          </span>
+          <SidebarTrigger />
+        </div>
       </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={navMain} />
+      <SidebarContent className="gap-0">
+        <NavMain items={navMain} hideLabel />
         <NavMain items={navAccount} label="Account" />
       </SidebarContent>
       <SidebarFooter>

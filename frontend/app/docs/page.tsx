@@ -785,9 +785,9 @@ const ERROR_TYPES = [
 ];
 
 const MULTI_MODEL_STATUSES = [
-  { status: "success", color: "bg-green-50 text-green-700 border-green-200", desc: "Model responded successfully within timeout." },
-  { status: "failed",  color: "bg-red-50 text-red-700 border-red-200",       desc: "Model returned an error (provider error, invalid request, etc.)." },
-  { status: "timeout", color: "bg-amber-50 text-amber-700 border-amber-200", desc: "Model did not respond within MULTI_MODEL_TIMEOUT_MS (default 60s)." },
+  { status: "success", color: "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/30", desc: "Model responded successfully within timeout." },
+  { status: "failed",  color: "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30",       desc: "Model returned an error (provider error, invalid request, etc.)." },
+  { status: "timeout", color: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30", desc: "Model did not respond within MULTI_MODEL_TIMEOUT_MS (default 60s)." },
 ];
 
 // ── Coding-agent integrations ───────────────────────────────────────────────────
@@ -1040,7 +1040,7 @@ function CopyBtn({ code }: { code: string }) {
       className={`flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium border transition-all cursor-pointer ${
         done
           ? "border-indigo-400/40 bg-indigo-500/10 text-indigo-400"
-          : "border-white/10 bg-transparent text-slate-500 hover:text-slate-300"
+          : "border-white/10 bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-300"
       }`}
     >
       {done ? <Check size={10} /> : <Copy size={10} />}
@@ -1052,9 +1052,9 @@ function CopyBtn({ code }: { code: string }) {
 /** Plain (non-tabbed) code block */
 function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
   return (
-    <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm mb-6">
+    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
       <div className="flex items-center justify-between px-4 py-2.5 bg-[#0F172A] border-b border-white/5">
-        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest font-mono">{lang}</span>
+        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest font-mono">{lang}</span>
         <CopyBtn code={code} />
       </div>
       <pre className="m-0 p-5 bg-[#0F172A] text-[13px] leading-[1.75] overflow-x-auto font-mono">
@@ -1077,18 +1077,18 @@ function LangCodeBlock({
 
   if (!code) {
     return (
-      <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm mb-6">
+      <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
         <div className="flex items-center justify-between px-4 py-2.5 bg-[#0F172A] border-b border-white/5">
           <span className={`text-[10px] font-semibold uppercase tracking-widest font-mono ${langMeta.color}`}>
             {langMeta.label}
           </span>
         </div>
         <div className="p-8 bg-[#0F172A] flex flex-col items-center justify-center gap-3">
-          <Clock size={22} className="text-slate-600" />
-          <p className="text-slate-500 text-[13px] font-medium">
+          <Clock size={22} className="text-slate-600 dark:text-slate-300" />
+          <p className="text-slate-500 dark:text-slate-400 text-[13px] font-medium">
             {langMeta.label} SDK — coming soon
           </p>
-          <p className="text-slate-600 text-[12px]">
+          <p className="text-slate-600 dark:text-slate-300 text-[12px]">
             Use the <a href="#sdk-rest" className="text-indigo-400 hover:underline">REST API</a> in the meantime — it works from any language.
           </p>
         </div>
@@ -1099,7 +1099,7 @@ function LangCodeBlock({
   const langLabel = activeLang === "typescript" ? "typescript" : activeLang === "python" ? "python" : activeLang;
 
   return (
-    <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm mb-6">
+    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
       <div className="flex items-center justify-between px-4 py-2.5 bg-[#0F172A] border-b border-white/5">
         <span className={`text-[10px] font-semibold uppercase tracking-widest font-mono ${langMeta.color}`}>
           {langMeta.label}
@@ -1122,7 +1122,7 @@ function LangTabs({
   onChange: (l: LangTab) => void;
 }) {
   return (
-    <div className="flex items-center gap-0.5 border border-slate-200 rounded-xl p-1 bg-slate-50 mb-4 w-fit">
+    <div className="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-xl p-1 bg-slate-50 dark:bg-slate-800/60 mb-4 w-fit">
       {LANG_TABS.map(tab => (
         <button
           key={tab.id}
@@ -1130,17 +1130,17 @@ function LangTabs({
           disabled={!!tab.badge}
           className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
             tab.badge
-              ? "text-slate-400 cursor-not-allowed"
+              ? "text-slate-400 dark:text-slate-500 cursor-not-allowed"
               : activeLang === tab.id
               ? "bg-[#0F172A] text-white shadow-sm"
-              : "text-slate-500 hover:text-slate-800 cursor-pointer"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-800 cursor-pointer"
           }`}
         >
           <span className={activeLang === tab.id && !tab.badge ? "text-white" : tab.color}>
             {tab.label}
           </span>
           {tab.badge && (
-            <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-200 text-slate-400 rounded-full px-1.5 py-0.5">
+            <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 rounded-full px-1.5 py-0.5">
               {tab.badge}
             </span>
           )}
@@ -1152,7 +1152,7 @@ function LangTabs({
 
 function InlineCode({ children }: { children: React.ReactNode }) {
   return (
-    <code className="font-mono text-[0.855em] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100">
+    <code className="font-mono text-[0.855em] bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-500/20">
       {children}
     </code>
   );
@@ -1160,9 +1160,9 @@ function InlineCode({ children }: { children: React.ReactNode }) {
 
 function Callout({ type = "tip", children }: { type?: "tip" | "info" | "warn"; children: React.ReactNode }) {
   const cfg = {
-    tip:  { cls: "bg-indigo-50 border-l-indigo-500", icon: "✦", textCls: "text-indigo-900" },
-    info: { cls: "bg-blue-50 border-l-blue-500",     icon: "ℹ", textCls: "text-blue-900"   },
-    warn: { cls: "bg-amber-50 border-l-amber-500",   icon: "⚠", textCls: "text-amber-900"  },
+    tip:  { cls: "bg-indigo-50 dark:bg-indigo-500/10 border-l-indigo-500", icon: "✦", textCls: "text-indigo-900 dark:text-indigo-200" },
+    info: { cls: "bg-blue-50 dark:bg-blue-500/10 border-l-blue-500",     icon: "ℹ", textCls: "text-blue-900 dark:text-blue-200"   },
+    warn: { cls: "bg-amber-50 dark:bg-amber-500/10 border-l-amber-500",   icon: "⚠", textCls: "text-amber-900 dark:text-amber-200"  },
   }[type];
   return (
     <div className={`border-l-4 rounded-r-lg p-4 flex gap-3 mb-6 ${cfg.cls}`}>
@@ -1176,7 +1176,7 @@ function SecHead({ id, eyebrow, title }: { id: string; eyebrow: string; title: s
   return (
     <div id={id} className="scroll-mt-[86px] mb-7 group">
       <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-2">{eyebrow}</p>
-      <h2 className="text-2xl font-black text-[#0F172A] tracking-tight leading-tight flex items-baseline gap-2">
+      <h2 className="text-2xl font-black text-[#0F172A] dark:text-white tracking-tight leading-tight flex items-baseline gap-2">
         {title}
         <a href={`#${id}`} className="text-base text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity no-underline" aria-hidden>#</a>
       </h2>
@@ -1189,8 +1189,8 @@ function SectionNext({ currentId }: { currentId: string }) {
   const next = FLAT_SECTIONS[idx + 1];
   if (!next) return null;
   return (
-    <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end">
-      <a href={`#${next.id}`} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-400 hover:text-indigo-600 transition-colors">
+    <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+      <a href={`#${next.id}`} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-400 dark:text-slate-500 hover:text-indigo-600 transition-colors">
         Next: {next.label} →
       </a>
     </div>
@@ -1205,18 +1205,18 @@ function IntegrationBlock({ integration }: { integration: IntegrationEntry }) {
       <div id={integration.id} className="scroll-mt-[86px] mb-7 group">
         <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-2">Integrations</p>
         <div className="flex items-center gap-2.5">
-          <h2 className="text-2xl font-black text-[#0F172A] tracking-tight leading-tight flex items-baseline gap-2">
+          <h2 className="text-2xl font-black text-[#0F172A] dark:text-white tracking-tight leading-tight flex items-baseline gap-2">
             {integration.name}
             <a href={`#${integration.id}`} className="text-base text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity no-underline" aria-hidden>#</a>
           </h2>
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 border border-slate-200 bg-slate-50 rounded-full px-2.5 py-0.5">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 rounded-full px-2.5 py-0.5">
             <CategoryIcon size={11} />
             {integration.category}
           </span>
         </div>
       </div>
 
-      <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">{integration.blurb}</p>
+      <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">{integration.blurb}</p>
 
       <div className="flex flex-col gap-2 mb-6">
         {integration.steps.map((step, i) => (
@@ -1224,7 +1224,7 @@ function IntegrationBlock({ integration }: { integration: IntegrationEntry }) {
             <div className="w-6 h-6 rounded-full bg-indigo-600 text-white text-[11px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
               {i + 1}
             </div>
-            <p className="text-[13.5px] text-slate-600 leading-relaxed pt-0.5">{step}</p>
+            <p className="text-[13.5px] text-slate-600 dark:text-slate-300 leading-relaxed pt-0.5">{step}</p>
           </div>
         ))}
       </div>
@@ -1276,7 +1276,7 @@ export default function DocsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen  bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19]">
       {/* Search overlay */}
       {searchOpen && (
         <div
@@ -1284,30 +1284,30 @@ export default function DocsPage() {
           onClick={() => setSearchOpen(false)}
         >
           <div
-            className="w-full max-w-[540px] bg-white border border-slate-200 rounded-2xl shadow-2xl shadow-indigo-500/10 overflow-hidden"
+            className="w-full max-w-[540px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl shadow-indigo-500/10 overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
-              <Search size={15} className="text-slate-400 flex-shrink-0" />
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+              <Search size={15} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
               <input
                 autoFocus
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search documentation…"
-                className="flex-1 border-none bg-transparent text-[15px] text-[#0F172A] outline-none placeholder:text-slate-400 font-medium"
+                className="flex-1 border-none bg-transparent text-[15px] text-[#0F172A] dark:text-white outline-none placeholder:text-slate-400 font-medium"
               />
               <button
                 aria-label="Close search"
                 onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-slate-400 dark:text-slate-500 hover:text-slate-600 transition-colors"
               >
                 <X size={15} />
               </button>
             </div>
             {searchQuery.trim() === "" ? (
-              <div className="px-5 py-4 text-sm text-slate-400">Type to search across all documentation.</div>
+              <div className="px-5 py-4 text-sm text-slate-400 dark:text-slate-500">Type to search across all documentation.</div>
             ) : searchResults.length === 0 ? (
-              <div className="px-5 py-4 text-sm text-slate-400">No results for &ldquo;{searchQuery}&rdquo;</div>
+              <div className="px-5 py-4 text-sm text-slate-400 dark:text-slate-500">No results for &ldquo;{searchQuery}&rdquo;</div>
             ) : (
               <div className="py-2">
                 {searchResults.map(item => (
@@ -1315,7 +1315,7 @@ export default function DocsPage() {
                     key={item.id}
                     href={`#${item.id}`}
                     onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
-                    className="flex items-center gap-3 px-5 py-3 hover:bg-indigo-50 text-[14px] text-[#0F172A] font-medium transition-colors"
+                    className="flex items-center gap-3 px-5 py-3 hover:bg-indigo-50 text-[14px] text-[#0F172A] dark:text-white font-medium transition-colors"
                   >
                     <Search size={13} className="text-indigo-400 flex-shrink-0" />
                     {item.label}
@@ -1332,11 +1332,11 @@ export default function DocsPage() {
 
           {/* ── Left sidebar ── */}
           <aside
-            className="hidden md:flex flex-col sticky bg-white border-r border-slate-100 overflow-y-auto"
+            className="hidden md:flex flex-col sticky bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 overflow-y-auto scrollbar-thin-indigo"
             style={{ top: "86px", height: "calc(100vh - 86px)" }}
           >
             <div className="p-5 flex flex-col gap-4 flex-1">
-              <div className="flex items-center gap-2.5 px-1 pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5 px-1 pb-4 border-b border-slate-100 dark:border-slate-800">
                 <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-sm shadow-indigo-600/20 flex-shrink-0">
                   <svg width="13" height="13" viewBox="0 0 15 15" fill="none">
                     <path d="M7.5 2L12.5 5V10L7.5 13L2.5 10V5L7.5 2Z" fill="white" fillOpacity="0.25" stroke="white" strokeWidth="1.2" strokeLinejoin="round" />
@@ -1344,27 +1344,27 @@ export default function DocsPage() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-[13px] font-black text-[#0F172A] tracking-tight leading-none">ColabOne</p>
-                  <p className="text-[11px] text-slate-400 font-medium leading-none mt-0.5">Docs</p>
+                  <p className="text-[13px] font-black text-[#0F172A] dark:text-white tracking-tight leading-none">ColabOne</p>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium leading-none mt-0.5">Docs</p>
                 </div>
-                <span className="ml-auto text-[10px] font-bold text-indigo-600 border border-indigo-200 bg-indigo-50 rounded-full px-2 py-0.5 tracking-wide">
+                <span className="ml-auto text-[10px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 rounded-full px-2 py-0.5 tracking-wide">
                   v1.0.0
                 </span>
               </div>
 
               <button
                 onClick={() => setSearchOpen(true)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-slate-400 text-[13px] font-medium cursor-pointer"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-slate-400 dark:text-slate-500 text-[13px] font-medium cursor-pointer"
               >
                 <Search size={12} />
                 <span className="flex-1 text-left">Search docs…</span>
-                <span className="text-[10px] font-mono bg-white border border-slate-200 rounded px-1.5 py-0.5">⌘K</span>
+                <span className="text-[10px] font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-1.5 py-0.5">⌘K</span>
               </button>
 
               <nav className="flex flex-col gap-1">
                 {SECTIONS.map(grp => (
                   <div key={grp.group} className="mb-3">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.18em] px-3 mb-1.5">{grp.group}</p>
+                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.18em] px-3 mb-1.5">{grp.group}</p>
                     {grp.items.map(it => {
                       const isActive = active === it.id;
                       return (
@@ -1373,8 +1373,8 @@ export default function DocsPage() {
                           href={`#${it.id}`}
                           className={`block px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all border-l-2 ${
                             isActive
-                              ? "text-indigo-600 bg-indigo-50 border-indigo-500 font-semibold"
-                              : "text-slate-600 hover:text-indigo-600 hover:bg-slate-50 border-transparent"
+                              ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border-indigo-500 font-semibold"
+                              : "text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-slate-50 border-transparent"
                           }`}
                         >
                           {it.label}
@@ -1392,20 +1392,20 @@ export default function DocsPage() {
 
             {/* Introduction */}
             <div id="introduction" className="scroll-mt-[86px] mb-16">
-              <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-3 py-1 mb-6">
+              <div className="inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-full px-3 py-1 mb-6">
                 <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                <span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.18em]">Documentation · v1.0.0</span>
+                <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.18em]">Documentation · v1.0.0</span>
               </div>
-              <h1 className="text-5xl font-black text-[#0F172A] tracking-tight leading-[1.05] mb-5">
-                ColabOne <span className="text-indigo-600">Docs</span>
+              <h1 className="text-5xl font-black text-[#0F172A] dark:text-white tracking-tight leading-[1.05] mb-5">
+                ColabOne <span className="text-indigo-600 dark:text-indigo-400">Docs</span>
               </h1>
-              <p className="text-[17px] text-slate-600 leading-[1.72] mb-4 max-w-[580px]">
+              <p className="text-[17px] text-slate-600 dark:text-slate-300 leading-[1.72] mb-4 max-w-[580px]">
                 Access 150+ AI models through a single, unified API — with multi-model parallel routing, streaming, retries, and full type-safety built in.
               </p>
 
               {/* SDK language pills */}
               <div className="flex items-center gap-2 flex-wrap mb-8">
-                <span className="text-[12px] text-slate-400 font-medium">SDKs available in:</span>
+                <span className="text-[12px] text-slate-400 dark:text-slate-500 font-medium">SDKs available in:</span>
                 {[
                   { lang: "TypeScript", color: "bg-sky-50 text-sky-700 border-sky-200" },
                   { lang: "Python",     color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
@@ -1423,10 +1423,10 @@ export default function DocsPage() {
                 <a href="#quickstart" className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-indigo-600/20 hover:-translate-y-0.5">
                   Get Started →
                 </a>
-                <a href="#multimodel" className="inline-flex items-center gap-2 px-5 py-2.5 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold rounded-2xl transition-all hover:-translate-y-0.5">
+                <a href="#multimodel" className="inline-flex items-center gap-2 px-5 py-2.5 border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-400 text-sm font-bold rounded-2xl transition-all hover:-translate-y-0.5">
                   Multi-Model Docs →
                 </a>
-                <a href="https://github.com" className="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-200 bg-white hover:border-indigo-200 text-slate-700 text-sm font-bold rounded-2xl transition-all hover:-translate-y-0.5">
+                <a href="https://github.com" className="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-200 text-slate-700 dark:text-slate-300 text-sm font-bold rounded-2xl transition-all hover:-translate-y-0.5">
                   <ExternalLink size={13} />View on GitHub
                 </a>
               </div>
@@ -1449,9 +1449,9 @@ export default function DocsPage() {
                 <CopyBtn code="pip install colab-one-sdk" />
               </div>
 
-              <div className="mt-4 bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+              <div className="mt-4 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 rounded-xl p-4">
                 <p className="text-[13px] font-bold text-indigo-800 mb-1">💡 Unified model selection</p>
-                <p className="text-[13px] text-indigo-700 leading-relaxed">
+                <p className="text-[13px] text-indigo-700 dark:text-indigo-400 leading-relaxed">
                   ColabOne uses the unified <InlineCode>model</InlineCode> field, which accepts either a single model string or an array of model strings for parallel routing. See the <a href="#sdk-model-field" className="underline font-semibold">model field docs →</a>
                 </p>
               </div>
@@ -1463,14 +1463,14 @@ export default function DocsPage() {
             <section className="mb-14">
               <SecHead id="installation" eyebrow="Getting Started" title="Installation" />
 
-              <p className="text-[14px] font-semibold text-[#0F172A] mb-3">TypeScript / JavaScript</p>
-              <div className="flex gap-0.5 border-b border-slate-200 mb-3">
+              <p className="text-[14px] font-semibold text-[#0F172A] dark:text-white mb-3">TypeScript / JavaScript</p>
+              <div className="flex gap-0.5 border-b border-slate-200 dark:border-slate-800 mb-3">
                 {(["npm", "pnpm", "yarn", "bun"] as const).map(pkg => (
                   <button
                     key={pkg}
                     onClick={() => setPkgTab(pkg)}
                     className={`px-4 py-2 text-[13px] font-mono font-medium border-b-2 -mb-px transition-all cursor-pointer ${
-                      pkgTab === pkg ? "text-indigo-600 border-indigo-600" : "text-slate-500 border-transparent hover:text-slate-700"
+                      pkgTab === pkg ? "text-indigo-600 dark:text-indigo-400 border-indigo-600" : "text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-700"
                     }`}
                   >
                     {pkg}
@@ -1479,10 +1479,10 @@ export default function DocsPage() {
               </div>
               <CodeBlock code={INSTALL_PKG[pkgTab]} lang="bash" />
 
-              <p className="text-[14px] font-semibold text-[#0F172A] mb-3">Python</p>
+              <p className="text-[14px] font-semibold text-[#0F172A] dark:text-white mb-3">Python</p>
               <CodeBlock code={INSTALL_PYTHON} lang="bash" />
 
-              <p className="text-[14px] text-slate-600 leading-relaxed">
+              <p className="text-[14px] text-slate-600 dark:text-slate-300 leading-relaxed">
                 TypeScript requires <InlineCode>Node.js 18+</InlineCode>, Bun, Deno, or a modern browser. Python requires <InlineCode>Python 3.9+</InlineCode>. No additional runtime dependencies for either.
               </p>
               <SectionNext currentId="installation" />
@@ -1492,7 +1492,7 @@ export default function DocsPage() {
             <section className="mb-14">
               <SecHead id="quickstart" eyebrow="Getting Started" title="Quick Start" />
               <Callout type="tip">
-                Get your API key from the <a href="/dashboard/keys" className="text-indigo-600 font-semibold hover:underline">ColabOne Dashboard</a>. Set it as <InlineCode>COLABONE_API_KEY</InlineCode> in your environment.
+                Get your API key from the <a href="/dashboard/keys" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">ColabOne Dashboard</a>. Set it as <InlineCode>COLABONE_API_KEY</InlineCode> in your environment.
               </Callout>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
               <LangCodeBlock codes={CODES.quickstart} activeLang={activeLang} />
@@ -1504,12 +1504,12 @@ export default function DocsPage() {
               <SecHead id="features" eyebrow="Overview" title="SDK Features" />
               <div className="grid grid-cols-2 gap-3">
                 {FEATURES.map(f => (
-                  <div key={f.title} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all duration-200 cursor-default group">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center mb-2.5">
-                      <f.Icon size={15} className="text-indigo-600" />
+                  <div key={f.title} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all duration-200 cursor-default group">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-2.5">
+                      <f.Icon size={15} className="text-indigo-600 dark:text-indigo-400" />
                     </div>
-                    <h3 className="text-[14px] font-bold text-[#0F172A] mb-1.5 group-hover:text-indigo-700 transition-colors">{f.title}</h3>
-                    <p className="text-[13px] text-slate-500 leading-relaxed">{f.desc}</p>
+                    <h3 className="text-[14px] font-bold text-[#0F172A] dark:text-white mb-1.5 group-hover:text-indigo-700 transition-colors">{f.title}</h3>
+                    <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">{f.desc}</p>
                   </div>
                 ))}
               </div>
@@ -1519,27 +1519,27 @@ export default function DocsPage() {
             {/* Configuration */}
             <section className="mb-14">
               <SecHead id="configuration" eyebrow="Core Concepts" title="Configuration" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Pass options to the client constructor. Only <InlineCode>apiKey</InlineCode> (TypeScript) / <InlineCode>api_key</InlineCode> (Python) is required.
               </p>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
               <LangCodeBlock codes={CODES.config} activeLang={activeLang} />
-              <div className="border border-slate-200 rounded-xl overflow-hidden mt-5">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mt-5">
                 <table className="w-full border-collapse text-[13px]">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
+                    <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
                       {["Parameter", "Type", "Default", "Description"].map(h => (
-                        <th key={h} className="text-left px-4 py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-[0.12em]">{h}</th>
+                        <th key={h} className="text-left px-4 py-2.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.12em]">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {CONFIG_PARAMS.map((row, i) => (
-                      <tr key={row.param} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
-                        <td className={`px-4 py-3 ${i < CONFIG_PARAMS.length - 1 ? "border-b border-slate-100" : ""}`}><InlineCode>{row.param}</InlineCode></td>
-                        <td className={`px-4 py-3 ${i < CONFIG_PARAMS.length - 1 ? "border-b border-slate-100" : ""}`}><InlineCode>{row.type}</InlineCode></td>
-                        <td className={`px-4 py-3 font-mono text-[12px] text-slate-400 ${i < CONFIG_PARAMS.length - 1 ? "border-b border-slate-100" : ""}`}>{row.default}</td>
-                        <td className={`px-4 py-3 text-slate-600 ${i < CONFIG_PARAMS.length - 1 ? "border-b border-slate-100" : ""}`}>{row.desc}</td>
+                      <tr key={row.param} className={i % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/60"}>
+                        <td className={`px-4 py-3 ${i < CONFIG_PARAMS.length - 1 ? "border-b border-slate-100 dark:border-slate-800" : ""}`}><InlineCode>{row.param}</InlineCode></td>
+                        <td className={`px-4 py-3 ${i < CONFIG_PARAMS.length - 1 ? "border-b border-slate-100 dark:border-slate-800" : ""}`}><InlineCode>{row.type}</InlineCode></td>
+                        <td className={`px-4 py-3 font-mono text-[12px] text-slate-400 dark:text-slate-500 ${i < CONFIG_PARAMS.length - 1 ? "border-b border-slate-100 dark:border-slate-800" : ""}`}>{row.default}</td>
+                        <td className={`px-4 py-3 text-slate-600 dark:text-slate-300 ${i < CONFIG_PARAMS.length - 1 ? "border-b border-slate-100 dark:border-slate-800" : ""}`}>{row.desc}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1551,21 +1551,21 @@ export default function DocsPage() {
             {/* Architecture */}
             <section className="mb-14">
               <SecHead id="architecture" eyebrow="Core Concepts" title="Architecture" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 All SDK resources share a single configured client. Requests flow through the ColabOne gateway which handles routing, billing, and logging.
               </p>
-              <div className="bg-white border border-slate-200 rounded-xl p-8 mb-5">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 mb-5">
                 <div className="flex items-center justify-center flex-wrap gap-y-3">
                   {["SDK Client", "ColabOne Gateway", "Provider Router", "AI Providers"].map((node, i, arr) => (
                     <div key={node} className="flex items-center">
                       <div className={`border rounded-lg px-4 py-2 text-[13px] font-semibold font-mono whitespace-nowrap ${
-                        i === 0 ? "border-indigo-300 bg-indigo-50 text-indigo-700" : i === arr.length - 1 ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-700"
+                        i === 0 ? "border-indigo-300 dark:border-indigo-500/40 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400" : i === arr.length - 1 ? "border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
                       }`}>{node}</div>
                       {i < arr.length - 1 && <span className="px-2 text-indigo-400 font-bold">→</span>}
                     </div>
                   ))}
                 </div>
-                <p className="text-center text-[12px] text-slate-400 font-medium mt-4">
+                <p className="text-center text-[12px] text-slate-400 dark:text-slate-500 font-medium mt-4">
                   Single API call → ColabOne routes to any of 150+ models across multiple providers, returning a unified response with usage and billing.
                 </p>
               </div>
@@ -1577,9 +1577,9 @@ export default function DocsPage() {
               <SecHead id="environments" eyebrow="Core Concepts" title="Environment Support" />
               <div className="grid grid-cols-3 gap-3">
                 {ENVIRONMENTS.map(env => (
-                  <div key={env.name} className="bg-white border border-slate-200 rounded-xl p-4 text-center hover:border-indigo-200 transition-colors">
-                    <p className="text-[13px] font-bold text-[#0F172A] mb-0.5">{env.name}</p>
-                    <p className="text-[11px] text-slate-400 font-medium">{env.note}</p>
+                  <div key={env.name} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center hover:border-indigo-200 transition-colors">
+                    <p className="text-[13px] font-bold text-[#0F172A] dark:text-white mb-0.5">{env.name}</p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{env.note}</p>
                   </div>
                 ))}
               </div>
@@ -1591,7 +1591,7 @@ export default function DocsPage() {
             {/* model field */}
             <section className="mb-14">
               <SecHead id="sdk-model-field" eyebrow="SDK Reference" title="The model Field" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Both SDKs use the unified <InlineCode>model</InlineCode> field. It accepts either a single model name as a string, or an array of model names as strings. Passing an array of models enables parallel routing and executes all requested models simultaneously.
               </p>
               <Callout type="tip">
@@ -1605,12 +1605,12 @@ export default function DocsPage() {
             {/* Chat Completions */}
             <section className="mb-14">
               <SecHead id="chat" eyebrow="SDK Reference" title="Chat Completions (Single Model)" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Pass a single model name string in <InlineCode>model</InlineCode> for a standard chat response. All parameters are supported: <InlineCode>temperature</InlineCode>, <InlineCode>max_tokens</InlineCode>, <InlineCode>modalities</InlineCode>, and more.
               </p>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
               <LangCodeBlock codes={CODES.chat} activeLang={activeLang} />
-              <p className="text-[14px] text-slate-600 leading-relaxed">Direct REST API (any language):</p>
+              <p className="text-[14px] text-slate-600 dark:text-slate-300 leading-relaxed">Direct REST API (any language):</p>
               <CodeBlock code={CODE_REST_SINGLE} lang="bash" />
               <SectionNext currentId="chat" />
             </section>
@@ -1618,7 +1618,7 @@ export default function DocsPage() {
             {/* Multi-Model Requests */}
             <section className="mb-14">
               <SecHead id="multimodel" eyebrow="SDK Reference" title="Multi-Model Requests" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-3">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-3">
                 Pass two or more model names in a string array to the <InlineCode>model</InlineCode> field. ColabOne executes all models <strong>in parallel</strong> and returns a grouped response with per-model results, latency, usage, and billing.
               </p>
               <Callout type="info">
@@ -1627,7 +1627,7 @@ export default function DocsPage() {
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
               <LangCodeBlock codes={CODES.multimodel} activeLang={activeLang} />
 
-              <p className="text-[14px] font-semibold text-[#0F172A] mb-3 mt-2">Result status codes</p>
+              <p className="text-[14px] font-semibold text-[#0F172A] dark:text-white mb-3 mt-2">Result status codes</p>
               <div className="flex flex-col gap-2 mb-6">
                 {MULTI_MODEL_STATUSES.map(s => (
                   <div key={s.status} className={`flex items-start gap-3 border rounded-xl p-3 ${s.color}`}>
@@ -1637,7 +1637,7 @@ export default function DocsPage() {
                 ))}
               </div>
 
-              <p className="text-[14px] text-slate-600 leading-relaxed mb-3">Direct REST API — same endpoint, any number of models:</p>
+              <p className="text-[14px] text-slate-600 dark:text-slate-300 leading-relaxed mb-3">Direct REST API — same endpoint, any number of models:</p>
               <CodeBlock code={CODE_REST_MULTI} lang="bash" />
               <SectionNext currentId="multimodel" />
             </section>
@@ -1645,7 +1645,7 @@ export default function DocsPage() {
             {/* Streaming */}
             <section className="mb-14">
               <SecHead id="streaming" eyebrow="SDK Reference" title="Streaming" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Set <InlineCode>stream: true</InlineCode> (TypeScript) / <InlineCode>stream=True</InlineCode> (Python) to receive tokens in real time. Supported for <strong>single-model</strong> requests only.
               </p>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
@@ -1659,7 +1659,7 @@ export default function DocsPage() {
             {/* Platform Models */}
             <section className="mb-14">
               <SecHead id="platform-models" eyebrow="SDK Reference" title="Listing Models" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Browse, filter, and retrieve metadata for all 150+ available models including real-time pricing and capabilities.
               </p>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
@@ -1670,7 +1670,7 @@ export default function DocsPage() {
             {/* Usage */}
             <section className="mb-14">
               <SecHead id="usage" eyebrow="SDK Reference" title="Usage Records" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Query your usage history and aggregate statistics for billing and analytics.
               </p>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
@@ -1681,14 +1681,14 @@ export default function DocsPage() {
             {/* Credits */}
             <section className="mb-14">
               <SecHead id="credits" eyebrow="SDK Reference" title="Credits" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Check your credit balance and list transaction history programmatically.
               </p>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
               <LangCodeBlock codes={CODES.credits} activeLang={activeLang} />
               <Callout type="tip">
                 Start with <strong>$5 free credits</strong> on signup — no credit card required.{" "}
-                <a href="/auth/register" className="text-indigo-600 font-semibold hover:underline">Create your account →</a>
+                <a href="/auth/register" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">Create your account →</a>
               </Callout>
               <SectionNext currentId="credits" />
             </section>
@@ -1697,11 +1697,11 @@ export default function DocsPage() {
 
             <section className="mb-14">
               <SecHead id="integrations-overview" eyebrow="Integrations" title="Coding Agent Integrations" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Most AI coding agents already speak the OpenAI Chat Completions format. Point their <InlineCode>base URL</InlineCode> at Colab-One and drop in your Colab-One API key as the <InlineCode>API key</InlineCode> — no other code changes required.
               </p>
               <Callout type="tip">
-                Grab your key from the <a href="/dashboard/keys" className="text-indigo-600 font-semibold hover:underline">Colab-One Dashboard</a> first. Every guide below uses this Base URL: <InlineCode>{INTEGRATIONS_BASE_URL}</InlineCode>
+                Grab your key from the <a href="/dashboard/keys" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">Colab-One Dashboard</a> first. Every guide below uses this Base URL: <InlineCode>{INTEGRATIONS_BASE_URL}</InlineCode>
               </Callout>
               <div className="grid grid-cols-3 gap-3 mt-2">
                 {INTEGRATIONS.map(integration => {
@@ -1710,13 +1710,13 @@ export default function DocsPage() {
                     <a
                       key={integration.id}
                       href={`#${integration.id}`}
-                      className="bg-white border border-slate-200 rounded-xl p-4 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all group"
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all group"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center mb-2.5">
-                        <CategoryIcon size={15} className="text-indigo-600" />
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-2.5">
+                        <CategoryIcon size={15} className="text-indigo-600 dark:text-indigo-400" />
                       </div>
-                      <p className="text-[13px] font-bold text-[#0F172A] mb-0.5 group-hover:text-indigo-700 transition-colors">{integration.name}</p>
-                      <p className="text-[11px] text-slate-400 font-medium">{integration.category}</p>
+                      <p className="text-[13px] font-bold text-[#0F172A] dark:text-white mb-0.5 group-hover:text-indigo-700 transition-colors">{integration.name}</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{integration.category}</p>
                     </a>
                   );
                 })}
@@ -1732,17 +1732,17 @@ export default function DocsPage() {
 
             <section className="mb-14">
               <SecHead id="platform-overview" eyebrow="Platform Features" title="Platform Overview" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-6">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-6">
                 ColabOne is more than an SDK — it is a full AI gateway platform with multi-provider routing, unified billing, and a model registry.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {PLATFORM_FEATURES.map(f => (
-                  <div key={f.title} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-indigo-200 hover:shadow-md transition-all group">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center mb-2.5">
-                      <f.Icon size={15} className="text-indigo-600" />
+                  <div key={f.title} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:border-indigo-200 hover:shadow-md transition-all group">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-2.5">
+                      <f.Icon size={15} className="text-indigo-600 dark:text-indigo-400" />
                     </div>
-                    <h3 className="text-[14px] font-bold text-[#0F172A] mb-1.5 group-hover:text-indigo-700 transition-colors">{f.title}</h3>
-                    <p className="text-[13px] text-slate-500 leading-relaxed">{f.desc}</p>
+                    <h3 className="text-[14px] font-bold text-[#0F172A] dark:text-white mb-1.5 group-hover:text-indigo-700 transition-colors">{f.title}</h3>
+                    <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">{f.desc}</p>
                   </div>
                 ))}
               </div>
@@ -1751,7 +1751,7 @@ export default function DocsPage() {
 
             <section className="mb-14">
               <SecHead id="chatbot-agents" eyebrow="Platform Features" title="Building Chatbots & Agents" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Maintain a conversation history array, append each turn, and send it with your preferred model. Passing a model array to the <InlineCode>model</InlineCode> field means you can try multiple models per turn automatically.
               </p>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
@@ -1761,11 +1761,11 @@ export default function DocsPage() {
 
             <section className="mb-14">
               <SecHead id="multimodel-agents" eyebrow="Platform Features" title="Multi-Model Agents" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Build resilient agents that automatically try alternative models when the primary fails — no extra infrastructure needed.
               </p>
-              <div className="bg-white border border-slate-200 rounded-xl p-6 mb-6">
-                <p className="text-[13px] font-black text-[#0F172A] uppercase tracking-wide mb-4">How multi-model agent routing works</p>
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 mb-6">
+                <p className="text-[13px] font-black text-[#0F172A] dark:text-white uppercase tracking-wide mb-4">How multi-model agent routing works</p>
                 <div className="flex flex-col gap-3">
                   {[
                     { step: "1", title: "Send one request", desc: "Pass multiple model names as an array in the model field along with your messages." },
@@ -1776,8 +1776,8 @@ export default function DocsPage() {
                     <div key={item.step} className="flex gap-4 items-start">
                       <div className="w-7 h-7 rounded-full bg-indigo-600 text-white text-[12px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">{item.step}</div>
                       <div>
-                        <p className="text-[14px] font-bold text-[#0F172A]">{item.title}</p>
-                        <p className="text-[13px] text-slate-500 leading-relaxed">{item.desc}</p>
+                        <p className="text-[14px] font-bold text-[#0F172A] dark:text-white">{item.title}</p>
+                        <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">{item.desc}</p>
                       </div>
                     </div>
                   ))}
@@ -1791,11 +1791,11 @@ export default function DocsPage() {
 
             <section className="mb-14">
               <SecHead id="guardrails" eyebrow="Platform Features" title="Guardrails" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 ColabOne includes a guardrails module for content safety. Guardrails run between your request and the provider, allowing you to block or flag harmful content before it is sent or returned.
               </p>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6">
-                <p className="text-[13px] text-slate-500 italic">Guardrails configuration is managed via the platform dashboard. SDK-level guardrails configuration coming in a future release.</p>
+              <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl p-5 mb-6">
+                <p className="text-[13px] text-slate-500 dark:text-slate-400 italic">Guardrails configuration is managed via the platform dashboard. SDK-level guardrails configuration coming in a future release.</p>
               </div>
               <SectionNext currentId="guardrails" />
             </section>
@@ -1803,12 +1803,12 @@ export default function DocsPage() {
             {/* Error Handling */}
             <section className="mb-14">
               <SecHead id="errors" eyebrow="Advanced" title="Error Handling" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Single-model errors are thrown/raised as structured error classes. Multi-model errors are returned per-result inside <InlineCode>results[].error</InlineCode> — never thrown.
               </p>
               <div className="flex flex-wrap gap-2 mb-5">
                 {ERROR_TYPES.map(e => (
-                  <span key={e} className="font-mono text-[12px] bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg px-3 py-1">{e}</span>
+                  <span key={e} className="font-mono text-[12px] bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20 rounded-lg px-3 py-1">{e}</span>
                 ))}
               </div>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
@@ -1819,7 +1819,7 @@ export default function DocsPage() {
             {/* Advanced Usage */}
             <section className="mb-14">
               <SecHead id="advanced" eyebrow="Advanced" title="Advanced Usage" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 Override per-request options, cancel requests, and configure custom retry behaviour.
               </p>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
@@ -1830,7 +1830,7 @@ export default function DocsPage() {
             {/* SDK Reference */}
             <section className="mb-14">
               <SecHead id="sdks" eyebrow="Reference" title="SDK Type Reference" />
-              <p className="text-[15px] text-slate-600 leading-[1.75] mb-5">
+              <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-[1.75] mb-5">
                 All SDK types are exported from the main entry point. <InlineCode>MultiModelChatCompletionResponse</InlineCode> is the key type for multi-model calls.
               </p>
               <LangTabs activeLang={activeLang} onChange={setActiveLang} />
@@ -1840,11 +1840,11 @@ export default function DocsPage() {
 
           {/* ── Right TOC ── */}
           <aside
-            className="hidden xl:block sticky bg-white border-l border-slate-100 overflow-y-auto"
+            className="hidden xl:block sticky bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-slate-800 overflow-y-auto scrollbar-thin-indigo"
             style={{ top: "86px", height: "calc(100vh - 86px)" }}
           >
             <div className="px-5 py-8">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.18em] mb-3">On this page</p>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.18em] mb-3">On this page</p>
               <nav className="flex flex-col gap-0.5">
                 {FLAT_SECTIONS.map(item => {
                   const isActive = active === item.id;
@@ -1854,8 +1854,8 @@ export default function DocsPage() {
                       href={`#${item.id}`}
                       className={`text-[12.5px] px-3 py-1 rounded-lg border-l-2 transition-all ${
                         isActive
-                          ? "text-indigo-600 border-indigo-500 bg-indigo-50 font-semibold"
-                          : "text-slate-400 border-transparent hover:text-slate-600"
+                          ? "text-indigo-600 dark:text-indigo-400 border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 font-semibold"
+                          : "text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600"
                       }`}
                     >
                       {item.label}
@@ -1863,10 +1863,10 @@ export default function DocsPage() {
                   );
                 })}
               </nav>
-              <div className="mt-6 pt-5 border-t border-slate-100">
+              <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
                 <a
                   href="https://github.com"
-                  className="flex items-center gap-1.5 text-[12px] text-slate-400 hover:text-indigo-600 transition-colors font-medium"
+                  className="flex items-center gap-1.5 text-[12px] text-slate-400 dark:text-slate-500 hover:text-indigo-600 transition-colors font-medium"
                 >
                   <ExternalLink size={11} />Edit on GitHub
                 </a>

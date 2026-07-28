@@ -90,37 +90,37 @@ export default function SupportTicketPage() {
   if (!hasHydrated || !user) return null;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19]">
       <div className="px-6 py-16">
         <div className="max-w-[640px] mx-auto">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-8">
-            <Link href="/support" className="hover:text-indigo-600 transition-colors">
+          <div className="flex items-center gap-1.5 text-[13px] text-slate-400 dark:text-slate-500 font-medium mb-8">
+            <Link href="/support" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               Support
             </Link>
             <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-slate-600">Submit a request</span>
+            <span className="text-slate-600 dark:text-slate-300">Submit a request</span>
           </div>
 
           {reference ? (
             /* ── Success state ─────────────────────────────────────────────── */
-            <div className="bg-white border border-slate-200 rounded-[28px] p-10 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-6">
-                <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] p-10 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
+                <CheckCircle2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <h1 className="text-[24px] font-black text-[#0F172A] tracking-tight mb-2">
+              <h1 className="text-[24px] font-black text-[#0F172A] dark:text-white tracking-tight mb-2">
                 Request submitted
               </h1>
-              <p className="text-[14.5px] text-slate-500 leading-relaxed max-w-[400px] mx-auto mb-6">
+              <p className="text-[14.5px] text-slate-500 dark:text-slate-400 leading-relaxed max-w-[400px] mx-auto mb-6">
                 We&apos;ve got it. A member of our support team will respond by email, usually within one business day.
               </p>
-              <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 mb-8">
-                <span className="text-[12px] font-medium text-slate-400">Reference</span>
-                <span className="text-[13px] font-mono font-bold text-[#0F172A]">{reference}</span>
+              <div className="inline-flex items-center gap-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 mb-8">
+                <span className="text-[12px] font-medium text-slate-400 dark:text-slate-500">Reference</span>
+                <span className="text-[13px] font-mono font-bold text-[#0F172A] dark:text-white">{reference}</span>
               </div>
               <div className="flex items-center justify-center gap-3">
                 <Link href="/support">
-                  <span className="inline-flex items-center gap-2 text-[13.5px] font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 px-5 py-3 rounded-xl transition-all cursor-pointer">
+                  <span className="inline-flex items-center gap-2 text-[13.5px] font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 px-5 py-3 rounded-xl transition-all cursor-pointer">
                     <ArrowLeft className="w-3.5 h-3.5" />
                     Back to Support
                   </span>
@@ -129,23 +129,23 @@ export default function SupportTicketPage() {
             </div>
           ) : (
             /* ── Form ───────────────────────────────────────────────────────── */
-            <div className="bg-white border border-slate-200 rounded-[28px] p-8 md:p-10">
-              <h1 className="text-[26px] font-black text-[#0F172A] tracking-tight mb-2">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] p-8 md:p-10">
+              <h1 className="text-[26px] font-black text-[#0F172A] dark:text-white tracking-tight mb-2">
                 Submit a request
               </h1>
-              <p className="text-[13.5px] text-slate-500 mb-8">
+              <p className="text-[13.5px] text-slate-500 dark:text-slate-400 mb-8">
                 Fields marked with an asterisk (*) are required.
               </p>
 
               <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
                 <div>
-                  <label htmlFor="category" className="block text-[13px] font-bold text-[#0F172A] mb-2">
-                    Category<span className="text-indigo-600">*</span>
+                  <label htmlFor="category" className="block text-[13px] font-bold text-[#0F172A] dark:text-white mb-2">
+                    Category<span className="text-indigo-600 dark:text-indigo-400">*</span>
                   </label>
                   <select
                     id="category"
                     defaultValue=""
-                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-white text-[14px] text-[#0F172A] outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none"
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[14px] text-[#0F172A] dark:text-white outline-none focus:border-indigo-300 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none"
                     {...register("category")}
                   >
                     <option value="" disabled>
@@ -158,52 +158,52 @@ export default function SupportTicketPage() {
                     ))}
                   </select>
                   {errors.category && (
-                    <p className="mt-1.5 text-[12.5px] text-rose-600">{errors.category.message}</p>
+                    <p className="mt-1.5 text-[12.5px] text-rose-600 dark:text-rose-400">{errors.category.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="subject" className="block text-[13px] font-bold text-[#0F172A] mb-2">
-                    Subject<span className="text-indigo-600">*</span>
+                  <label htmlFor="subject" className="block text-[13px] font-bold text-[#0F172A] dark:text-white mb-2">
+                    Subject<span className="text-indigo-600 dark:text-indigo-400">*</span>
                   </label>
                   <input
                     id="subject"
                     type="text"
                     placeholder="A short summary of your issue"
-                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-white text-[14px] text-[#0F172A] placeholder:text-slate-400 outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[14px] text-[#0F172A] dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-indigo-300 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                     {...register("subject")}
                   />
                   {errors.subject && (
-                    <p className="mt-1.5 text-[12.5px] text-rose-600">{errors.subject.message}</p>
+                    <p className="mt-1.5 text-[12.5px] text-rose-600 dark:text-rose-400">{errors.subject.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="description" className="block text-[13px] font-bold text-[#0F172A] mb-2">
-                    Description<span className="text-indigo-600">*</span>
+                  <label htmlFor="description" className="block text-[13px] font-bold text-[#0F172A] dark:text-white mb-2">
+                    Description<span className="text-indigo-600 dark:text-indigo-400">*</span>
                   </label>
-                  <p className="text-[12.5px] text-slate-400 mb-2">
+                  <p className="text-[12.5px] text-slate-400 dark:text-slate-500 mb-2">
                     Please include as much detail as possible — request IDs, API key prefix, or error messages help us respond faster.
                   </p>
                   <textarea
                     id="description"
                     rows={6}
                     placeholder="Describe what happened…"
-                    className="w-full px-3.5 py-3 rounded-xl border border-slate-200 bg-white text-[14px] text-[#0F172A] placeholder:text-slate-400 outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none"
+                    className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[14px] text-[#0F172A] dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-indigo-300 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none"
                     {...register("description")}
                   />
                   {errors.description && (
-                    <p className="mt-1.5 text-[12.5px] text-rose-600">{errors.description.message}</p>
+                    <p className="mt-1.5 text-[12.5px] text-rose-600 dark:text-rose-400">{errors.description.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-bold text-[#0F172A] mb-2">Attachment</label>
+                  <label className="block text-[13px] font-bold text-[#0F172A] dark:text-white mb-2">Attachment</label>
                   {attachment ? (
-                    <div className="flex items-center justify-between gap-3 border border-slate-200 rounded-xl px-4 py-3">
+                    <div className="flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <Paperclip className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <span className="text-[13.5px] text-[#0F172A] font-medium truncate">
+                        <Paperclip className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                        <span className="text-[13.5px] text-[#0F172A] dark:text-white font-medium truncate">
                           {attachment.name}
                         </span>
                       </div>
@@ -211,7 +211,7 @@ export default function SupportTicketPage() {
                         type="button"
                         onClick={() => setAttachment(null)}
                         aria-label="Remove attachment"
-                        className="text-slate-400 hover:text-rose-600 transition-colors flex-shrink-0 cursor-pointer"
+                        className="text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors flex-shrink-0 cursor-pointer"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -219,13 +219,13 @@ export default function SupportTicketPage() {
                   ) : (
                     <label
                       htmlFor="attachment"
-                      className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-200 rounded-xl py-7 text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all"
+                      className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl py-7 text-center cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition-all"
                     >
-                      <Paperclip className="w-4.5 h-4.5 text-slate-400" />
-                      <span className="text-[13px] font-semibold text-indigo-600">
+                      <Paperclip className="w-4.5 h-4.5 text-slate-400 dark:text-slate-500" />
+                      <span className="text-[13px] font-semibold text-indigo-600 dark:text-indigo-400">
                         Choose a file or drag and drop here
                       </span>
-                      <span className="text-[11.5px] text-slate-400">Optional — up to 10MB</span>
+                      <span className="text-[11.5px] text-slate-400 dark:text-slate-500">Optional — up to 10MB</span>
                       <input
                         id="attachment"
                         type="file"
@@ -255,7 +255,7 @@ export default function SupportTicketPage() {
           )}
 
           {!reference && (
-            <div className="mt-6 flex items-center gap-2.5 justify-center text-[12.5px] text-slate-400">
+            <div className="mt-6 flex items-center gap-2.5 justify-center text-[12.5px] text-slate-400 dark:text-slate-500">
               <Clock className="w-3.5 h-3.5" />
               Average first response time: under 1 business day
             </div>

@@ -26,18 +26,18 @@ const CATEGORY_ICON: Record<(typeof TOOLS)[number]["category"], LucideIcon> = {
 
 export default function IntegrationsSection() {
   return (
-    <section className="bg-[#F8FAFC] py-32">
+    <section className="bg-[#F8FAFC] dark:bg-[#0B0F19] py-32">
       <div className="max-w-[1240px] mx-auto px-6">
 
         {/* Header */}
         <div className="text-center mb-16">
-          <p className="text-[12px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-4">
+          <p className="text-[12px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em] mb-4">
             Drop-in Compatible
           </p>
-          <h2 className="text-[44px] md:text-[56px] font-black text-[#0F172A] tracking-[-0.04em] leading-[0.95] mb-6">
-            One config. Every coding tool <span className="text-indigo-600">works.</span>
+          <h2 className="text-[44px] md:text-[56px] font-black text-[#0F172A] dark:text-white tracking-[-0.04em] leading-[0.95] mb-6">
+            One config. Every coding tool <span className="text-indigo-600 dark:text-indigo-400">works.</span>
           </h2>
-          <p className="text-[18px] text-slate-500 max-w-[560px] mx-auto leading-[1.6]">
+          <p className="text-[18px] text-slate-500 dark:text-slate-400 max-w-[560px] mx-auto leading-[1.6]">
             Point any OpenAI-compatible CLI or editor at a single base URL — 150+ models behind the scenes.
           </p>
         </div>
@@ -46,7 +46,7 @@ export default function IntegrationsSection() {
 
           {/* ── Config panel ──────────────────────────────────── */}
           <div>
-            <div className="rounded-2xl overflow-hidden border border-[#E2E8F0] shadow-[0_8px_32px_rgba(15,23,42,0.08)]">
+            <div className="rounded-2xl overflow-hidden border border-[#E2E8F0] dark:border-slate-800 shadow-[0_8px_32px_rgba(15,23,42,0.08)]">
               <div className="flex items-center gap-1.5 px-4 py-3 bg-[#0F172A] border-b border-white/[0.07]">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
                 <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
@@ -74,7 +74,7 @@ export default function IntegrationsSection() {
 
             <a
               href="/docs#integrations-overview"
-              className="mt-5 inline-flex items-center gap-1.5 text-[13.5px] font-bold text-indigo-600 hover:text-indigo-500 transition-colors"
+              className="mt-5 inline-flex items-center gap-1.5 text-[13.5px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
             >
               View integration guides
               <ArrowRight className="w-3.5 h-3.5" />
@@ -89,12 +89,12 @@ export default function IntegrationsSection() {
                 <a
                   key={tool.slug}
                   href={`/docs#integration-${tool.slug}`}
-                  className="flex items-center gap-2.5 bg-white border border-[#E2E8F0] rounded-xl px-4 py-3.5 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all group"
+                  className="flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-slate-800 rounded-xl px-4 py-3.5 hover:border-indigo-200 dark:hover:border-indigo-500/40 hover:shadow-md hover:shadow-indigo-500/5 transition-all group"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-[#EEF2FF] flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-3.5 h-3.5 text-indigo-600" />
+                  <div className="w-7 h-7 rounded-lg bg-[#EEF2FF] dark:bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                   </div>
-                  <span className="text-[13.5px] font-bold text-[#0F172A] group-hover:text-indigo-700 transition-colors truncate">
+                  <span className="text-[13.5px] font-bold text-[#0F172A] dark:text-white group-hover:text-indigo-700 dark:group-hover:text-indigo-400 transition-colors truncate">
                     {tool.name}
                   </span>
                 </a>

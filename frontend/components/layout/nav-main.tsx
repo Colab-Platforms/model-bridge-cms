@@ -26,12 +26,20 @@ interface NavItem {
   items?: { title: string; url: string }[]
 }
 
-export function NavMain({ items, label = "Platform" }: { items: NavItem[]; label?: string }) {
+export function NavMain({
+  items,
+  label = "Platform",
+  hideLabel = false,
+}: {
+  items: NavItem[]
+  label?: string
+  hideLabel?: boolean
+}) {
   const pathname = usePathname()
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      {!hideLabel && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
       <SidebarMenu>
         {items.map((item) => {
           const hasChildren = !!item.items?.length

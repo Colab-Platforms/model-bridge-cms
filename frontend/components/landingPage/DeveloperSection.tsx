@@ -37,18 +37,18 @@ const SDK_FEATURES = [
 
 export default function DeveloperSection() {
   return (
-    <section className="bg-white py-32">
+    <section className="bg-white dark:bg-slate-900 py-32">
       <div className="max-w-[1240px] mx-auto px-6">
 
         {/* Header */}
         <div className="text-center mb-20">
-          <p className="text-[12px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-4">
+          <p className="text-[12px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em] mb-4">
             Developer Experience
           </p>
-          <h2 className="text-[44px] md:text-[56px] font-black text-[#0F172A] tracking-[-0.04em] leading-[0.95] mb-6">
-            Integrate in <span className="text-indigo-600">seconds.</span>
+          <h2 className="text-[44px] md:text-[56px] font-black text-[#0F172A] dark:text-white tracking-[-0.04em] leading-[0.95] mb-6">
+            Integrate in <span className="text-indigo-600 dark:text-indigo-400">seconds.</span>
           </h2>
-          <p className="text-[18px] text-slate-500 max-w-[520px] mx-auto leading-[1.6]">
+          <p className="text-[18px] text-slate-500 dark:text-slate-400 max-w-[520px] mx-auto leading-[1.6]">
             One SDK, every provider. API-compatible with the OpenAI standard.
           </p>
         </div>
@@ -56,7 +56,7 @@ export default function DeveloperSection() {
         <div className="grid lg:grid-cols-[1.2fr_1fr] gap-16 items-center">
 
           {/* ── Code block ──────────────────────────────────── */}
-          <div className="rounded-2xl overflow-hidden border border-[#E2E8F0] shadow-[0_8px_32px_rgba(15,23,42,0.08)]">
+          <div className="rounded-2xl overflow-hidden border border-[#E2E8F0] dark:border-slate-800 shadow-[0_8px_32px_rgba(15,23,42,0.08)]">
 
             {/* Window bar */}
             <div className="flex items-center justify-between px-4 py-3 bg-[#0F172A] border-b border-white/[0.07]">
@@ -120,25 +120,25 @@ export default function DeveloperSection() {
             {SDK_FEATURES.map((f, i) => (
               <div
                 key={f.title}
-                className="flex gap-4 p-4 rounded-2xl border border-[#F1F5F9] hover:border-[#E2E8F0] hover:bg-[#FAFAFA] transition-all duration-200"
+                className="flex gap-4 p-4 rounded-2xl border border-[#F1F5F9] dark:border-slate-800 hover:border-[#E2E8F0] dark:hover:border-slate-700 hover:bg-[#FAFAFA] dark:hover:bg-slate-800/40 transition-all duration-200"
               >
-                <div className="w-8 h-8 rounded-xl bg-[#EEF2FF] flex items-center justify-center text-[12px] font-bold text-[#5B4DFF] flex-shrink-0 mt-0.5">
+                <div className="w-8 h-8 rounded-xl bg-[#EEF2FF] dark:bg-indigo-500/10 flex items-center justify-center text-[12px] font-bold text-[#5B4DFF] dark:text-indigo-400 flex-shrink-0 mt-0.5">
                   {String(i + 1).padStart(2, "0")}
                 </div>
                 <div>
-                  <div className="text-[14px] font-bold text-[#0F172A] mb-1">{f.title}</div>
-                  <div className="text-[13px] text-[#64748B] leading-[1.6]">{f.description}</div>
+                  <div className="text-[14px] font-bold text-[#0F172A] dark:text-white mb-1">{f.title}</div>
+                  <div className="text-[13px] text-[#64748B] dark:text-slate-400 leading-[1.6]">{f.description}</div>
                 </div>
               </div>
             ))}
 
             {/* Install line */}
-            <div className="mt-2 flex items-center gap-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-3">
-              <Terminal className="w-4 h-4 text-[#94A3B8] flex-shrink-0" />
-              <code className="text-[12.5px] font-mono text-[#334155]">
+            <div className="mt-2 flex items-center gap-3 bg-[#F8FAFC] dark:bg-slate-800/60 border border-[#E2E8F0] dark:border-slate-800 rounded-xl px-4 py-3">
+              <Terminal className="w-4 h-4 text-[#94A3B8] dark:text-slate-500 flex-shrink-0" />
+              <code className="text-[12.5px] font-mono text-[#334155] dark:text-slate-300">
                 npm install @colabone/sdk
               </code>
-              <div className="ml-auto flex items-center gap-1 text-[11px] text-[#94A3B8]">
+              <div className="ml-auto flex items-center gap-1 text-[11px] text-[#94A3B8] dark:text-slate-500">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
                 v1.4.2
               </div>

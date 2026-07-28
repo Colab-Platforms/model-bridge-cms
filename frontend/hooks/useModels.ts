@@ -36,7 +36,7 @@ export function useAllModelsForFilters(options: { staleTime?: number } = {}) {
   const { data, isLoading, isError, error, refetch } = useQuery<Model[]>({
     queryKey: ["models", "all-for-filters"],
     queryFn: async () => {
-      const firstQs = buildModelsQueryString({ page: 1, pageSize: MAX_PAGE_SIZE });
+      const firstQs = buildModelsQueryString({ isActive: true, page: 1, pageSize: MAX_PAGE_SIZE });
       const first = normalizePaginatedResponse(
         (await api.get<PaginatedModels | Model[]>(`/models?${firstQs}`)).data
       );
@@ -47,7 +47,7 @@ export function useAllModelsForFilters(options: { staleTime?: number } = {}) {
       const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
       const rest = await Promise.all(
         remainingPages.map((page) => {
-          const qs = buildModelsQueryString({ page, pageSize: MAX_PAGE_SIZE });
+          const qs = buildModelsQueryString({ isActive: true, page, pageSize: MAX_PAGE_SIZE });
           return api
             .get<PaginatedModels | Model[]>(`/models?${qs}`)
             .then((r) => normalizePaginatedResponse(r.data).data);

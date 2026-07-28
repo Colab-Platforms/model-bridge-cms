@@ -17,7 +17,7 @@ export default function RefundsPage() {
               are assessed with reference to the portion of purchased digital credits that remains
               unused at the time a refund request is submitted, rather than as a blanket right to a
               refund of any purchase. This policy is intended to be read together with our{" "}
-              <Link href="/terms" className="text-indigo-600 font-semibold hover:underline">
+              <Link href="/terms" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
                 Terms of Service
               </Link>{" "}
               and applies to all purchases of digital credits made through the Service.
@@ -59,7 +59,7 @@ export default function RefundsPage() {
                 As Paddle.com is the Merchant of Record for all orders placed through the Service,
                 Paddle manages all payment processing and the issuance of refunds. To request a
                 refund for unused digital credits, please contact our support team at{" "}
-                <a href="mailto:support@colabone.com" className="text-indigo-600 font-semibold hover:underline">
+                <a href="mailto:support@colabone.com" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
                   support@colabone.com
                 </a>{" "}
                 with your account details and the transaction you wish to have refunded.
@@ -91,7 +91,7 @@ export default function RefundsPage() {
             <p>
               If you have any questions about this Refund Policy or the status of a refund request,
               please contact us at{" "}
-              <a href="mailto:support@colabone.com" className="text-indigo-600 font-semibold hover:underline">
+              <a href="mailto:support@colabone.com" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
                 support@colabone.com
               </a>
               .

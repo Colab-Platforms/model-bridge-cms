@@ -75,7 +75,7 @@ function FeatureCard({ feature }: { feature: Feature }) {
   const { icon: Icon, iconBg, iconColor, title, description, tag } = feature;
 
   return (
-    <div className="group relative bg-white border border-[#E2E8F0] rounded-2xl p-6 hover:border-[#C7D2FE] hover:shadow-[0_8px_32px_rgba(91,77,255,0.08)] transition-all duration-250 cursor-default">
+    <div className="group relative bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-slate-800 rounded-2xl p-6 hover:border-[#C7D2FE] hover:shadow-[0_8px_32px_rgba(91,77,255,0.08)] transition-all duration-250 cursor-default">
       {/* Top: icon + tag */}
       <div className="flex items-start justify-between mb-4">
         <div
@@ -99,12 +99,12 @@ function FeatureCard({ feature }: { feature: Feature }) {
       </div>
 
       {/* Title */}
-      <h3 className="text-[15px] font-bold text-[#0F172A] mb-2 tracking-[-0.01em]">
+      <h3 className="text-[15px] font-bold text-[#0F172A] dark:text-white mb-2 tracking-[-0.01em]">
         {title}
       </h3>
 
       {/* Description */}
-      <p className="text-[13.5px] text-[#64748B] leading-[1.65]">{description}</p>
+      <p className="text-[13.5px] text-[#64748B] dark:text-slate-400 leading-[1.65]">{description}</p>
 
       {/* Subtle bottom accent line on hover */}
       <div
@@ -119,18 +119,18 @@ function FeatureCard({ feature }: { feature: Feature }) {
 
 export default function FeaturesSection() {
   return (
-    <section className="bg-white py-32 overflow-hidden">
+    <section className="bg-white dark:bg-slate-900 py-32 overflow-hidden">
       <div className="max-w-[1240px] mx-auto px-6">
         
         {/* Header */}
         <div className="text-center mb-20">
-          <p className="text-[12px] font-bold text-indigo-600 uppercase tracking-[0.2em] mb-4">
+          <p className="text-[12px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em] mb-4">
             The Infrastructure Layer
           </p>
-          <h2 className="text-[44px] md:text-[56px] font-black text-[#0F172A] tracking-[-0.04em] leading-[0.95] mb-6">
-            Engineered for <span className="text-indigo-600">reliability.</span>
+          <h2 className="text-[44px] md:text-[56px] font-black text-[#0F172A] dark:text-white tracking-[-0.04em] leading-[0.95] mb-6">
+            Engineered for <span className="text-indigo-600 dark:text-indigo-400">reliability.</span>
           </h2>
-          <p className="text-[18px] text-slate-500 max-w-[580px] mx-auto leading-[1.6]">
+          <p className="text-[18px] text-slate-500 dark:text-slate-400 max-w-[580px] mx-auto leading-[1.6]">
             We handle the complexities of multi-provider orchestration so your team can focus on building what matters.
           </p>
         </div>
@@ -139,13 +139,13 @@ export default function FeaturesSection() {
         <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-6">
           
           {/* Main: Smart Routing (Large) */}
-          <div className="md:col-span-6 lg:col-span-8 bg-slate-50 border border-slate-200 rounded-[32px] p-10 flex flex-col justify-between group hover:border-indigo-200 transition-all duration-300 relative overflow-hidden">
+          <div className="md:col-span-6 lg:col-span-8 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-[32px] p-10 flex flex-col justify-between group hover:border-indigo-200 dark:hover:border-indigo-500/40 transition-all duration-300 relative overflow-hidden">
             <div className="relative z-10">
-              <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-lg shadow-indigo-500/5 mb-6 group-hover:scale-110 transition-transform">
-                <Zap className="w-6 h-6 text-indigo-600" />
+              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center shadow-lg shadow-indigo-500/5 mb-6 group-hover:scale-110 transition-transform">
+                <Zap className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
               </div>
-              <h3 className="text-2xl font-bold text-[#0F172A] mb-4">Smart Model Routing</h3>
-              <p className="text-slate-600 text-lg leading-relaxed max-w-sm">
+              <h3 className="text-2xl font-bold text-[#0F172A] dark:text-white mb-4">Smart Model Routing</h3>
+              <p className="text-slate-600 dark:text-slate-300 text-lg leading-relaxed max-w-sm">
                 Our dynamic router executes each request on the optimal model based on your custom cost, speed, and quality policies.
               </p>
             </div>
@@ -154,9 +154,9 @@ export default function FeaturesSection() {
             <div className="absolute right-0 bottom-0 top-0 w-1/2 bg-gradient-to-l from-indigo-100/50 to-transparent flex items-center justify-end pr-10">
                <div className="flex flex-col gap-3">
                   {[1, 2, 3].map(i => (
-                    <div key={i} className={`w-32 h-10 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center px-3 gap-2 opacity-${40 + (i*20)}`}>
+                    <div key={i} className={`w-32 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center px-3 gap-2 opacity-${40 + (i*20)}`}>
                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                       <div className="w-16 h-1.5 bg-slate-100 rounded-full" />
+                       <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full" />
                     </div>
                   ))}
                </div>
@@ -170,33 +170,33 @@ export default function FeaturesSection() {
             </div>
             <div>
               <h3 className="text-2xl font-bold text-white mb-4">Instant Failover</h3>
-              <p className="text-slate-400 text-lg leading-relaxed">
+              <p className="text-slate-400 dark:text-slate-500 text-lg leading-relaxed">
                 99.99% uptime guaranteed. If OpenAI dips, we switch to Claude in milliseconds.
               </p>
             </div>
           </div>
 
           {/* Analytics (Small) */}
-          <div className="md:col-span-3 lg:col-span-4 bg-white border border-slate-200 rounded-[32px] p-8 flex flex-col gap-6 hover:shadow-2xl hover:shadow-indigo-500/5 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-indigo-600" />
+          <div className="md:col-span-3 lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-8 flex flex-col gap-6 hover:shadow-2xl hover:shadow-indigo-500/5 transition-all">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-[#0F172A] mb-2">Deep Analytics</h3>
-              <p className="text-slate-500 text-base leading-relaxed">
+              <h3 className="text-xl font-bold text-[#0F172A] dark:text-white mb-2">Deep Analytics</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-base leading-relaxed">
                 Every token and request tracked. Real-time cost transparency.
               </p>
             </div>
           </div>
 
           {/* Cost (Small) */}
-          <div className="md:col-span-3 lg:col-span-4 bg-white border border-slate-200 rounded-[32px] p-8 flex flex-col gap-6 hover:shadow-2xl hover:shadow-indigo-500/5 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <TrendingDown className="w-5 h-5 text-emerald-600" />
+          <div className="md:col-span-3 lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-8 flex flex-col gap-6 hover:shadow-2xl hover:shadow-indigo-500/5 transition-all">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
+              <TrendingDown className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-[#0F172A] mb-2">Cost Reduction</h3>
-              <p className="text-slate-500 text-base leading-relaxed">
+              <h3 className="text-xl font-bold text-[#0F172A] dark:text-white mb-2">Cost Reduction</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-base leading-relaxed">
                 Save 30% on average by leveraging cheaper models for simple tasks.
               </p>
             </div>
