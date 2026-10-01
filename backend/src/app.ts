@@ -39,6 +39,8 @@ app.use(cors());
 app.use(helmet());
 app.use(compression());
 app.use(express.json({
+  // Agent clients (Cline, etc.) resend long histories and file contents on every call.
+  limit: "25mb",
   verify: (req, _res, buffer) => {
     const requestUrl = (req as Request).originalUrl ?? req.url ?? "";
 
