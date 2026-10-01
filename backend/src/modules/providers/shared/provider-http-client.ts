@@ -102,7 +102,7 @@ export class ProviderHttpClient {
 
         return response.data;
       } catch (error: unknown) {
-        const normalizedError = this.normalizeError(error);
+        const normalizedError = await this.normalizeError(error);
 
         this.logger.warn("Provider HTTP request failed", {
           provider: this.providerName,
@@ -112,6 +112,7 @@ export class ProviderHttpClient {
           retryable: normalizedError.retryable,
           statusCode: normalizedError.statusCode,
           message: normalizedError.message,
+          details: (normalizedError as { details?: unknown }).details,
         });
 
         if (attempt >= retries || !normalizedError.retryable) {
@@ -130,7 +131,30 @@ export class ProviderHttpClient {
     return this.request<TResponse>(requestConfig, options);
   }
 
-  private normalizeError(error: unknown) {
+  // With responseType "stream", error bodies arrive as unread streams (which also
+  // carry the request headers, including API keys). Read them into plain data.
+  private async readErrorBody(data: unknown): Promise<unknown> {
+    if (!data || typeof (data as { on?: unknown }).on !== "function") {
+      return data;
+    }
+
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of data as AsyncIterable<Buffer | string>) {
+        chunks.push(Buffer.from(chunk));
+      }
+      const text = Buffer.concat(chunks).toString("utf8");
+      try {
+        return JSON.parse(text);
+      } catch {
+        return text;
+      }
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async normalizeError(error: unknown) {
     if (error instanceof ProviderError) {
       return error;
     }
@@ -143,7 +167,7 @@ export class ProviderHttpClient {
 
     const axiosError = error as AxiosError<unknown>;
     const statusCode = axiosError.response?.status;
-    const responseData = axiosError.response?.data;
+    const responseData = await this.readErrorBody(axiosError.response?.data);
 
     if (axiosError.code === "ECONNABORTED") {
       return new ProviderTimeoutError(this.providerName, "Provider request timed out", responseData);
