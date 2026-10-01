@@ -31,6 +31,8 @@ export const mapProviderChatRequestToOpenAI = (
   ...(request.stream ? { stream: true, stream_options: { include_usage: true } } : {}),
   ...(request.tools?.length ? { tools: request.tools } : {}),
   ...(request.toolChoice !== undefined ? { tool_choice: request.toolChoice } : {}),
+  // GPT-5 family reasons by default, and /chat/completions rejects function tools in that mode.
+  ...(request.tools?.length && /^gpt-5/i.test(request.model) ? { reasoning_effort: "none" as const } : {}),
 });
 
 const toProviderUsage = (usage?: OpenAIChatCompletionResponse["usage"]) => ({

@@ -1,5 +1,6 @@
 export interface OpenAIChatCompletionRequest {
   model: string;
+  reasoning_effort?: "none";
   messages: Array<{
     role: "system" | "user" | "assistant" | "tool";
     content:
